@@ -83,16 +83,24 @@ class PublicController extends BaseController
     }
 
     /**
-     * Get Single Alumni Public Profile
+     * Get Single Alumni Public Profile (by numeric id OR Alumni ID like AUAA2024012345)
+     * QR scan isi endpoint se profile par aata hai.
      */
     public function getAlumniDetail($id)
     {
-        $alumni = $this->db->table('alumni_profiles')
+        $builder = $this->db->table('alumni_profiles')
             ->select('alumni_profiles.*, IF(alumni_profiles.show_email_public = 1, users.email, NULL) as public_email, users.verification_status')
             ->join('users', 'users.id = alumni_profiles.user_id')
-            ->where('alumni_profiles.id', $id)
-            ->where('alumni_profiles.is_public_profile', 1)
-            ->get()->getRowArray();
+            ->where('alumni_profiles.is_public_profile', 1);
+
+        // /api/public/alumni/AUAAxxxxxxxxxx  (QR scan)
+        if (!is_numeric($id)) {
+            $builder->where('alumni_profiles.alumni_id', $id);
+        } else {
+            $builder->where('alumni_profiles.id', $id);
+        }
+
+        $alumni = $builder->get()->getRowArray();
 
         if (!$alumni) {
             return $this->respondError('Alumni profile not found', 404);

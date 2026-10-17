@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { UserPlus, ShieldCheck, GraduationCap, AlertCircle, CheckCircle2, Plus, Trash2, BookOpen } from 'lucide-react';
+import { UserPlus, ShieldCheck, GraduationCap, AlertCircle, CheckCircle2, Plus, Trash2, BookOpen, Camera, Briefcase, Building2, Landmark } from 'lucide-react';
 
 const DEPARTMENTS = [
   'Computer Science & Engineering',
@@ -62,8 +62,31 @@ const RegisterPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [educations, setEducations] = useState([createEducation('alumni')]);
+  // 1. DP photo (base64 data-url)
+  const [profilePhoto, setProfilePhoto] = useState('');
+  const [photoError, setPhotoError] = useState('');
+  const fileInputRef = useRef(null);
+  // 2. AUID — 9 digit unique
+  const [auid, setAuid] = useState('');
+  // 3. Current status — higher_study / job / other + conditional details
+  const [currentStatus, setCurrentStatus] = useState('');
+  const [studyInstitution, setStudyInstitution] = useState('');
+  const [studyCourse, setStudyCourse] = useState('');
+  const [studyLocation, setStudyLocation] = useState('');
+  const [jobType, setJobType] = useState(''); // private / government
+  const [jobOrganization, setJobOrganization] = useState('');
+  const [jobDesignation, setJobDesignation] = useState('');
+  const [jobLocation, setJobLocation] = useState('');
+  // Other status -> generic company/designation (only visible when status is "Other")
   const [currentCompany, setCurrentCompany] = useState('');
   const [currentDesignation, setCurrentDesignation] = useState('');
+  // Remaining profile fields (also stored in DB: phone, city, country, bio, skills, linkedin)
+  const [phone, setPhone] = useState('');
+  const [locationCity, setLocationCity] = useState('');
+  const [locationCountry, setLocationCountry] = useState('India');
+  const [bio, setBio] = useState('');
+  const [skills, setSkills] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
   const [isMentor, setIsMentor] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -89,10 +112,81 @@ const RegisterPage = () => {
     setEducations((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
   };
 
+  // DP photo -> resize karke base64 data-url banaye (max ~2MB, 512px)
+  const handlePhotoChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    setPhotoError('');
+    if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(file.type)) {
+      setPhotoError('Please choose a JPG / PNG / WEBP image.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError('Photo must be under 5MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const maxSize = 512;
+        let { width, height } = img;
+        const scale = Math.min(1, maxSize / Math.max(width, height));
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        if (dataUrl.length > 2800000) {
+          setPhotoError('Photo is too large after resize. Please choose a smaller image.');
+          return;
+        }
+        setProfilePhoto(dataUrl);
+      };
+      img.onerror = () => setPhotoError('Could not read this image. Please try another photo.');
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setLoading(true);
+
+    // --- AUID validation (alumni ke liye mandatory, 9 digit) ---
+    if (role === 'alumni') {
+      if (!/^[0-9]{9}$/.test(auid.trim())) {
+        setErrorMsg('AUID must be exactly 9 digits (e.g. 202401234). Alumni ID is created as AUAA + AUID.');
+        setLoading(false);
+        return;
+      }
+      // --- Current status validation ---
+      if (!['higher_study', 'job', 'other'].includes(currentStatus)) {
+        setErrorMsg('Please select what you are currently doing — Higher Study / Job / Other.');
+        setLoading(false);
+        return;
+      }
+      if (currentStatus === 'higher_study' && !studyInstitution.trim()) {
+        setErrorMsg('Please enter where you are doing higher studies (institution / university name).');
+        setLoading(false);
+        return;
+      }
+      if (currentStatus === 'job') {
+        if (!['private', 'government'].includes(jobType)) {
+          setErrorMsg('Please select Private or Government job.');
+          setLoading(false);
+          return;
+        }
+        if (!jobOrganization.trim()) {
+          setErrorMsg('Please enter your job organization / company name.');
+          setLoading(false);
+          return;
+        }
+      }
+    }
 
     // --- Validate every Akal University education entry (UG / PG / PhD ...) ---
     if (educations.length === 0) {
@@ -150,12 +244,31 @@ const RegisterPage = () => {
       last_name: lastName,
       email,
       password,
+      auid: role === 'alumni' ? auid.trim() : undefined,
+      profile_photo: profilePhoto || undefined,
+      current_status: role === 'alumni' ? currentStatus : undefined,
+      // Higher study details
+      study_institution: studyInstitution,
+      study_course: studyCourse,
+      study_location: studyLocation,
+      // Job details (private / government)
+      job_type: jobType || undefined,
+      job_organization: jobOrganization,
+      job_designation: jobDesignation,
+      job_location: jobLocation,
       enrollment_no: primary.enrollment_no.trim(),
       degree: primary.degree_name.trim(),
       department: primary.department,
       batch_year: primaryEnd ? `${primaryStart}-${primaryEnd}` : `${primaryStart}-Pursuing`,
-      current_company: currentCompany,
-      current_designation: currentDesignation,
+      // "Other" status uses generic fields; job/highestudy sync into company/designation via backend
+      current_company: currentStatus === 'other' ? currentCompany : (currentStatus === 'job' ? jobOrganization : ''),
+      current_designation: currentStatus === 'other' ? currentDesignation : (currentStatus === 'job' ? jobDesignation : ''),
+      phone,
+      location_city: locationCity,
+      location_country: locationCountry,
+      bio,
+      skills,
+      linkedin_url: linkedinUrl,
       is_mentor: isMentor ? 1 : 0,
       // Every degree/programme (UG, PG, PhD, ...) done at Akal University
       educations: educations.map((edu) => ({
@@ -243,6 +356,42 @@ const RegisterPage = () => {
               )}
 
               <form onSubmit={handleSubmit}>
+                {/* 1. DP Photo upload — DP + Digital card dono me dikhegi */}
+                <div className="border rounded-3 p-3 mb-4 bg-light">
+                  <div className="d-flex align-items-center gap-3 flex-wrap">
+                    <div
+                      className="rounded-circle d-flex align-items-center justify-content-center overflow-hidden border bg-white"
+                      style={{ width: '88px', height: '88px', cursor: 'pointer', borderWidth: '2px' }}
+                      onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                      title="Click to upload profile photo"
+                    >
+                      {profilePhoto ? (
+                        <img src={profilePhoto} alt="Profile preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <Camera size={30} className="text-muted" />
+                      )}
+                    </div>
+                    <div className="flex-grow-1" style={{ minWidth: '220px' }}>
+                      <div className="fw-bold small">Profile Photo (DP) *</div>
+                      <div className="text-muted mb-2" style={{ fontSize: '0.78rem' }}>
+                        This photo will appear as your profile picture and on your Digital Alumni Card. JPG / PNG, max 5MB.
+                      </div>
+                      <div className="d-flex gap-2">
+                        <button type="button" className="btn btn-sm btn-outline-primary rounded-pill fw-bold" onClick={() => fileInputRef.current && fileInputRef.current.click()}>
+                          <Camera size={14} className="me-1" /> {profilePhoto ? 'Change Photo' : 'Upload Photo'}
+                        </button>
+                        {profilePhoto && (
+                          <button type="button" className="btn btn-sm btn-outline-danger rounded-pill" onClick={() => setProfilePhoto('')}>
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      {photoError && <div className="text-danger small mt-1">{photoError}</div>}
+                    </div>
+                  </div>
+                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/jpg" className="d-none" onChange={handlePhotoChange} />
+                </div>
+
                 <div className="row g-3 mb-3">
                   <div className="col-md-6">
                     <label className="form-label small fw-bold">First Name *</label>
@@ -291,6 +440,35 @@ const RegisterPage = () => {
                     />
                   </div>
                 </div>
+
+                {/* 2. AUID (9 digit unique) — Alumni ID = AUAA + AUID */}
+                {role === 'alumni' && (
+                  <div className="border rounded-3 p-3 mb-4 bg-light">
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold">AUID (9-digit University ID) *</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={9}
+                          className="form-control font-monospace fw-bold"
+                          placeholder="e.g. 202401234"
+                          value={auid}
+                          onChange={(e) => setAuid(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                          required
+                        />
+                        <div className="form-text">Exactly 9 digits. Must be unique.</div>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold">Your Alumni ID (auto-generated)</label>
+                        <div className="form-control bg-white font-monospace fw-bold text-primary">
+                          {auid.length === 9 ? `AUAA${auid}` : 'Type 9 digits above to generate Alumni ID'}
+                        </div>
+                        <div className="form-text">Alumni ID is created by combining AUAA with your AUID.</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Education at Akal University — UG, PG, PhD ... (all must be filled) */}
                 <div className="border rounded-3 p-3 mb-4 bg-light">
@@ -466,26 +644,137 @@ const RegisterPage = () => {
 
                 {role === 'alumni' && (
                   <>
-                    <div className="row g-3 mb-3">
-                      <div className="col-md-6">
-                        <label className="form-label small fw-bold">Current Company / Organization</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="e.g. Google / Microsoft / TCS"
-                          value={currentCompany}
-                          onChange={(e) => setCurrentCompany(e.target.value)}
-                        />
+                    <div className="border rounded-3 p-3 mb-3 bg-light">
+                      <div className="fw-bold small mb-2">What are you currently doing? *</div>
+                      <div className="d-flex flex-wrap gap-2">
+                        <button type="button" onClick={() => setCurrentStatus('higher_study')}
+                          className={`btn btn-sm rounded-pill fw-bold px-3 ${currentStatus === 'higher_study' ? 'btn-akal-primary' : 'btn-light border text-muted'}`}>
+                          Higher Study
+                        </button>
+                        <button type="button" onClick={() => setCurrentStatus('job')}
+                          className={`btn btn-sm rounded-pill fw-bold px-3 ${currentStatus === 'job' ? 'btn-akal-primary' : 'btn-light border text-muted'}`}>
+                          Job
+                        </button>
+                        <button type="button" onClick={() => setCurrentStatus('other')}
+                          className={`btn btn-sm rounded-pill fw-bold px-3 ${currentStatus === 'other' ? 'btn-akal-primary' : 'btn-light border text-muted'}`}>
+                          Other
+                        </button>
                       </div>
-                      <div className="col-md-6">
-                        <label className="form-label small fw-bold">Designation / Role</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="e.g. Software Engineer"
-                          value={currentDesignation}
-                          onChange={(e) => setCurrentDesignation(e.target.value)}
-                        />
+                    </div>
+
+                    {currentStatus === 'higher_study' && (
+                      <div className="bg-light border rounded-3 p-3 mb-3">
+                        <div className="fw-bold small mb-2 text-primary">Higher Study Details</div>
+                        <div className="row g-3">
+                          <div className="col-md-6">
+                            <label className="form-label small fw-bold">Institution / University *</label>
+                            <input type="text" className="form-control" placeholder="e.g. IIT Delhi"
+                              value={studyInstitution} onChange={(e) => setStudyInstitution(e.target.value)} />
+                          </div>
+                          <div className="col-md-6">
+                            <label className="form-label small fw-bold">Course / Programme</label>
+                            <input type="text" className="form-control" placeholder="e.g. M.Tech CSE"
+                              value={studyCourse} onChange={(e) => setStudyCourse(e.target.value)} />
+                          </div>
+                          <div className="col-md-6">
+                            <label className="form-label small fw-bold">Study City</label>
+                            <input type="text" className="form-control" placeholder="e.g. New Delhi"
+                              value={studyLocation} onChange={(e) => setStudyLocation(e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {currentStatus === 'job' && (
+                      <div className="bg-light border rounded-3 p-3 mb-3">
+                        <div className="fw-bold small mb-2 text-primary">Job Details</div>
+                        <div className="d-flex flex-wrap gap-2 mb-3">
+                          <button type="button" onClick={() => setJobType('private')}
+                            className={`btn btn-sm rounded-pill fw-bold px-3 ${jobType === 'private' ? 'btn-akal-primary' : 'btn-light border text-muted'}`}>
+                            Private Job
+                          </button>
+                          <button type="button" onClick={() => setJobType('government')}
+                            className={`btn btn-sm rounded-pill fw-bold px-3 ${jobType === 'government' ? 'btn-akal-primary' : 'btn-light border text-muted'}`}>
+                            Government Job
+                          </button>
+                        </div>
+                        <div className="row g-3">
+                          <div className="col-md-6">
+                            <label className="form-label small fw-bold">Organization *</label>
+                            <input type="text" className="form-control" placeholder="e.g. TCS / Punjab Govt"
+                              value={jobOrganization} onChange={(e) => setJobOrganization(e.target.value)} />
+                          </div>
+                          <div className="col-md-6">
+                            <label className="form-label small fw-bold">Designation</label>
+                            <input type="text" className="form-control" placeholder="e.g. SDE / Clerk"
+                              value={jobDesignation} onChange={(e) => setJobDesignation(e.target.value)} />
+                          </div>
+                          <div className="col-md-6">
+                            <label className="form-label small fw-bold">Job City</label>
+                            <input type="text" className="form-control" placeholder="e.g. Bengaluru"
+                              value={jobLocation} onChange={(e) => setJobLocation(e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {currentStatus === 'other' && (
+                      <div className="bg-light border rounded-3 p-3 mb-3">
+                        <div className="fw-bold small mb-2 text-primary">Current Details</div>
+                        <div className="row g-3">
+                          <div className="col-md-6">
+                            <label className="form-label small fw-bold">Current Company / Organization</label>
+                            <input type="text" className="form-control" placeholder="e.g. Freelance / Startup"
+                              value={currentCompany} onChange={(e) => setCurrentCompany(e.target.value)} />
+                          </div>
+                          <div className="col-md-6">
+                            <label className="form-label small fw-bold">Designation / Role</label>
+                            <input type="text" className="form-control" placeholder="e.g. Founder"
+                              value={currentDesignation} onChange={(e) => setCurrentDesignation(e.target.value)} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Contact & profile fields — saved in alumni_profiles table */}
+                    <div className="border rounded-3 p-3 mb-3">
+                      <div className="fw-bold small mb-2">Contact & Profile Details</div>
+                      <div className="row g-3">
+                        <div className="col-md-4">
+                          <label className="form-label small fw-bold">Phone</label>
+                          <input type="text" className="form-control" placeholder="e.g. 98765 43210"
+                            value={phone} onChange={(e) => setPhone(e.target.value)} />
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label small fw-bold">City</label>
+                          <input type="text" className="form-control" placeholder="e.g. Bathinda"
+                            value={locationCity} onChange={(e) => setLocationCity(e.target.value)} />
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label small fw-bold">Country</label>
+                          <input type="text" className="form-control" placeholder="India"
+                            value={locationCountry} onChange={(e) => setLocationCountry(e.target.value)} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border rounded-3 p-3 mb-3">
+                      <div className="row g-3">
+                        <div className="col-md-6">
+                          <label className="form-label small fw-bold">Skills (comma separated)</label>
+                          <input type="text" className="form-control" placeholder="e.g. Java, React"
+                            value={skills} onChange={(e) => setSkills(e.target.value)} />
+                        </div>
+                        <div className="col-md-6">
+                          <label className="form-label small fw-bold">LinkedIn URL</label>
+                          <input type="text" className="form-control" placeholder="https://linkedin.com/in/you"
+                            value={linkedinUrl} onChange={(e) => setLinkedinUrl(e.target.value)} />
+                        </div>
+                        <div className="col-12">
+                          <label className="form-label small fw-bold">Short Bio</label>
+                          <textarea className="form-control" rows="2" placeholder="Briefly about yourself..."
+                            value={bio} onChange={(e) => setBio(e.target.value)} />
+                        </div>
                       </div>
                     </div>
 

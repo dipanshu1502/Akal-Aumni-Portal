@@ -57,6 +57,8 @@ const DEFAULT_SETTINGS_METADATA = {
   tagline: { group: 'general', description: 'Portal Tagline / Subtitle' },
   logo_text: { group: 'general', description: 'Navbar Brand Title' },
   logo_subtext: { group: 'general', description: 'Navbar Brand Subtitle' },
+  // About University Content (Navbar "About")
+  about_akal_university: { group: 'about', description: 'About page content (Navbar → About)' },
   primary_color: { group: 'general', description: 'Primary Brand Color (Hex)' },
   accent_color: { group: 'general', description: 'Accent Yellow Color (Hex)' },
 
@@ -629,6 +631,7 @@ const AdminDashboard = () => {
     { key: 'social', label: '🌐 Social Links & Handles', icon: Share2 },
     { key: 'footer', label: '🏛️ Footer & Accreditation', icon: ShieldCheck },
     { key: 'features', label: '⚙️ Module Visibility & Rules', icon: Sliders },
+    { key: 'about', label: '\ud83d\udcda About University', icon: BookOpen },
     { key: 'custom', label: '➕ Custom Parameters', icon: PlusCircle },
   ];
 

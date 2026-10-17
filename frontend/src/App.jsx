@@ -15,9 +15,11 @@ import MentorshipPage from './pages/public/MentorshipPage';
 import ChaptersPage from './pages/public/ChaptersPage';
 import StoriesPage from './pages/public/StoriesPage';
 import NewsGalleryPage from './pages/public/NewsGalleryPage';
+import AboutPage from './pages/public/AboutPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import AlumniDashboard from './pages/alumni/AlumniDashboard';
+import AlumniProfilePage from './pages/public/AlumniProfilePage';
 import StudentDashboard from './pages/student/StudentDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 
@@ -33,12 +35,15 @@ function App() {
                 {/* Public Routes */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/directory" element={<AlumniDirectoryPage />} />
+                {/* QR scan -> public profile (Alumni ID: AUAA + AUID) */}
+                <Route path="/alumni/:alumniId" element={<AlumniProfilePage />} />
                 <Route path="/events" element={<EventsPage />} />
                 <Route path="/jobs" element={<JobsPage />} />
                 <Route path="/mentorship" element={<MentorshipPage />} />
                 <Route path="/chapters" element={<ChaptersPage />} />
                 <Route path="/stories" element={<StoriesPage />} />
                 <Route path="/news-gallery" element={<NewsGalleryPage />} />
+                <Route path="/about" element={<AboutPage />} />
 
                 {/* Authentication Routes */}
                 <Route path="/login" element={<LoginPage />} />

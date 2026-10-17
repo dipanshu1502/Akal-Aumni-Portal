@@ -1,6 +1,7 @@
 <?php
 
 use CodeIgniter\Router\RouteCollection;
+use CodeIgniter\Config\Services;
 
 /** @var RouteCollection $routes */
 
@@ -10,16 +11,14 @@ $routes->get('/', 'Home::index');
 $routes->group('api', function ($routes) {
 
     // Options preflight handler for CORS
-    $routes->options('(:any)', function () {
-        return Services::response()->setStatusCode(200);
-    });
+    $routes->options('(:any)', fn () => Services::response()->setStatusCode(200));
 
     // Public Routes
     $routes->group('public', function ($routes) {
         $routes->get('settings', 'Api\PublicController::getSettings');
         $routes->get('stats', 'Api\PublicController::getStats');
         $routes->get('alumni', 'Api\PublicController::getAlumni');
-        $routes->get('alumni/(:num)', 'Api\PublicController::getAlumniDetail/$1');
+        $routes->get('alumni/(:any)', 'Api\PublicController::getAlumniDetail/$1');
         $routes->get('events', 'Api\PublicController::getEvents');
         $routes->get('jobs', 'Api\PublicController::getJobs');
         $routes->get('chapters', 'Api\PublicController::getChapters');

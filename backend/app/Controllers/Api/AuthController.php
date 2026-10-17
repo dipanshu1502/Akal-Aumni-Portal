@@ -125,6 +125,50 @@ class AuthController extends BaseController
             return $this->respondValidationError(['first_name' => 'First name is required']);
         }
 
+        // --- AUID: exactly 9 digits, unique (mandatory for alumni) ---
+        $auid = trim((string)($json['auid'] ?? ''));
+        if ($role !== 'student') {
+            if ($auid === '' || !preg_match('/^[0-9]{9}$/', $auid)) {
+                return $this->respondValidationError(['auid' => 'AUID must be exactly 9 digits (e.g. 202401234)']);
+            }
+            $auidExists = $this->db->table('alumni_profiles')->where('auid', $auid)->get()->getRow();
+            if ($auidExists) {
+                return $this->respondValidationError(['auid' => 'This AUID is already registered']);
+            }
+        } elseif ($auid !== '' && !preg_match('/^[0-9]{9}$/', $auid)) {
+            return $this->respondValidationError(['auid' => 'AUID must be exactly 9 digits']);
+        }
+
+        // --- Current status: higher_study / job / other + conditional details ---
+        $currentStatus = trim((string)($json['current_status'] ?? ''));
+        if ($role !== 'student' && !in_array($currentStatus, ['higher_study', 'job', 'other'], true)) {
+            return $this->respondValidationError(['current_status' => 'Please select what you are currently doing (Higher Study / Job / Other)']);
+        }
+        // job_type: private / government (sirf job walo ke liye mandatory)
+        $jobType = trim((string)($json['job_type'] ?? ''));
+        if ($role !== 'student' && $currentStatus === 'job' && !in_array($jobType, ['private', 'government'], true)) {
+            return $this->respondValidationError(['job_type' => 'Please select Private or Government job']);
+        }
+        // higher study details mandatory
+        if ($role !== 'student' && $currentStatus === 'higher_study' && trim((string)($json['study_institution'] ?? '')) === '') {
+            return $this->respondValidationError(['study_institution' => 'Please enter where you are doing higher studies (institution name)']);
+        }
+
+        // --- Profile photo (DP): base64 data-url ya https URL, max ~2MB for base64 ---
+        $profilePhoto = $json['profile_photo'] ?? null;
+        if (is_string($profilePhoto) && $profilePhoto !== '') {
+            $isDataUrl = (bool)preg_match('#^data:image/(jpeg|jpg|png|webp);base64,#i', $profilePhoto);
+            $isUrl = (bool)preg_match('#^https?://#i', $profilePhoto);
+            if (!$isDataUrl && !$isUrl) {
+                return $this->respondValidationError(['profile_photo' => 'Profile photo must be a JPG/PNG/WEBP image']);
+            }
+            if ($isDataUrl && strlen($profilePhoto) > 2800000) {
+                return $this->respondValidationError(['profile_photo' => 'Profile photo is too large (max ~2MB). Please choose a smaller image.']);
+            }
+        } else {
+            $profilePhoto = null;
+        }
+
         // Validate every degree/programme (UG / PG / PhD ...) done at Akal University
         [$educations, $educationErrors] = $this->sanitizeEducations($json['educations'] ?? []);
         if (!empty($educationErrors)) {
@@ -166,38 +210,63 @@ class AuthController extends BaseController
         $userId = $this->db->insertID();
 
         if ($role === 'alumni') {
+            // Alumni ID = AUAA + AUID (e.g. AUAA202401234)
+            $alumniId = 'AUAA' . $auid;
+            $strOrNull = static function ($v) {
+                $v = is_string($v) ? trim($v) : $v;
+                return ($v === '' || $v === null) ? null : $v;
+            };
             $this->db->table('alumni_profiles')->insert([
                 'user_id'             => $userId,
                 'first_name'          => $firstName,
                 'last_name'           => $lastName,
+                'auid'                => $auid,
+                'alumni_id'           => $alumniId,
                 'enrollment_no'       => $primary['enrollment_no'] !== '' ? $primary['enrollment_no'] : ($json['enrollment_no'] ?? null),
                 'degree'              => $primary['degree_name'],
                 'department'          => $primary['department'],
                 'batch_year'          => $batchYear,
                 'graduation_year'     => $primary['end_year'] ?: null,
-                'phone'               => $json['phone'] ?? null,
-                'current_company'     => $json['current_company'] ?? null,
-                'current_designation' => $json['current_designation'] ?? null,
-                'location_city'       => $json['location_city'] ?? null,
-                'location_country'    => $json['location_country'] ?? 'India',
-                'bio'                 => $json['bio'] ?? null,
-                'skills'              => $json['skills'] ?? null,
-                'linkedin_url'        => $json['linkedin_url'] ?? null,
+                'phone'               => $strOrNull($json['phone'] ?? null),
+                'current_company'     => $currentStatus === 'job' ? $strOrNull(($json['job_organization'] ?? '') !== '' ? $json['job_organization'] : ($json['current_company'] ?? null)) : $strOrNull($json['current_company'] ?? null),
+                'current_designation' => $currentStatus === 'job' ? $strOrNull(($json['job_designation'] ?? '') !== '' ? $json['job_designation'] : ($json['current_designation'] ?? null)) : $strOrNull($json['current_designation'] ?? null),
+                'current_status'      => $currentStatus !== '' ? $currentStatus : null,
+                'study_institution'   => $strOrNull($json['study_institution'] ?? null),
+                'study_course'        => $strOrNull($json['study_course'] ?? null),
+                'study_location'      => $strOrNull($json['study_location'] ?? null),
+                'job_type'            => $jobType !== '' ? $jobType : null,
+                'job_organization'    => $strOrNull($json['job_organization'] ?? null),
+                'job_designation'     => $strOrNull($json['job_designation'] ?? null),
+                'job_location'        => $strOrNull($json['job_location'] ?? null),
+                'location_city'       => $strOrNull($json['location_city'] ?? null),
+                'location_country'    => $strOrNull($json['location_country'] ?? null) ?? 'India',
+                'bio'                 => $strOrNull($json['bio'] ?? null),
+                'skills'              => $strOrNull($json['skills'] ?? null),
+                'linkedin_url'        => $strOrNull($json['linkedin_url'] ?? null),
+                'profile_photo'       => $profilePhoto,
                 'is_mentor'           => !empty($json['is_mentor']) ? 1 : 0,
-                'mentorship_topics'   => $json['mentorship_topics'] ?? null,
+                'mentorship_topics'   => $strOrNull($json['mentorship_topics'] ?? null),
                 'is_public_profile'   => 1,
                 'created_at'          => date('Y-m-d H:i:s'),
                 'updated_at'          => date('Y-m-d H:i:s'),
             ]);
 
-            // If verified immediately, generate card
+            // If verified immediately, generate card (card_number = Alumni ID = AUAA + AUID)
             if ($verificationStatus === 'verified') {
+                $baseUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? getenv('FRONTEND_URL') ?: 'http://localhost:5173'), '/');
                 $this->db->table('alumni_id_cards')->insert([
                     'user_id'     => $userId,
-                    'card_number' => 'AU-AID-' . ($primary['end_year'] ?: date('Y')) . '-0' . rand(100, 999),
+                    'card_number' => $alumniId,
                     'issue_date'  => date('Y-m-d'),
                     'expiry_date' => date('Y-m-d', strtotime('+5 years')),
-                    'qr_payload'  => json_encode(['alumni_id' => 'AU-AID-' . $userId, 'name' => "$firstName $lastName", 'status' => 'VERIFIED']),
+                    'qr_payload'  => json_encode([
+                        'alumni_id'   => $alumniId,
+                        'auid'        => $auid,
+                        'name'        => "$firstName $lastName",
+                        'status'      => 'VERIFIED',
+                        // QR scan -> public profile page
+                        'profile_url' => $baseUrl . '/alumni/' . $alumniId,
+                    ]),
                     'status'      => 'active',
                     'created_at'  => date('Y-m-d H:i:s'),
                     'updated_at'  => date('Y-m-d H:i:s'),

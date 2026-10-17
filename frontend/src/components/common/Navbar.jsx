@@ -9,7 +9,6 @@ import {
   Briefcase, 
   GraduationCap, 
   Globe, 
-  BookOpen, 
   Image, 
   Bell, 
   LogIn, 
@@ -44,19 +43,19 @@ const Navbar = () => {
     <>
       {/* Top University Notification & Quick Demo Switcher Bar */}
       {showTopBanner && (
-        <div className="bg-dark text-white py-1 px-3 border-bottom border-secondary border-opacity-25 small" style={{ backgroundColor: 'var(--akal-navy-dark)' }}>
+        <div className="akal-topbar text-white py-1 px-3 small">
           <div className="container-fluid d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div className="d-flex align-items-center gap-2 text-warning">
-              <span className="badge rounded-pill bg-warning text-dark px-2 py-1 fw-bold" style={{ fontSize: '0.68rem' }}>{bannerBadge}</span>
-              <span className="d-none d-md-inline opacity-75">{bannerText}</span>
+            <div className="d-flex align-items-center gap-2">
+              <span className="badge rounded-pill px-2 py-1 fw-bold" style={{ fontSize: '0.68rem', background: 'var(--grad-gold-foil)', color: '#172333' }}>{bannerBadge}</span>
+              <span className="d-none d-md-inline" style={{ color: 'rgba(255,255,255,0.85)' }}>{bannerText}</span>
             </div>
 
             {/* Quick Demo Switcher */}
             <div className="d-flex align-items-center gap-2 position-relative">
-              <span className="text-light opacity-50 small d-none d-sm-inline">Quick Role Test:</span>
+              <span className="small d-none d-sm-inline" style={{ color: 'rgba(255,255,255,0.7)' }}>Quick Role Test:</span>
               <button 
-                className="btn btn-sm btn-outline-warning py-0 px-2 d-flex align-items-center gap-1 text-nowrap"
-                style={{ fontSize: '0.75rem' }}
+                className="btn btn-sm py-0 px-2 d-flex align-items-center gap-1 text-nowrap fw-bold"
+                style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.12)', color: '#FFD75E', border: '1px solid rgba(255,215,94,0.5)' }}
                 onClick={() => setShowDemoMenu(!showDemoMenu)}
               >
                 <Zap size={12} className="text-warning" />
@@ -94,7 +93,7 @@ const Navbar = () => {
       )}
 
       {/* Main Navbar */}
-      <nav className="navbar navbar-expand-lg navbar-light bg-white sticky-top py-2" style={{ boxShadow: 'var(--shadow-sm)' }}>
+      <nav className="navbar navbar-expand-lg sticky-top py-2 akal-navbar">
         <div className="container-fluid px-lg-4">
           {/* Brand Logo */}
           <Link to="/" className="university-logo-container">
@@ -119,57 +118,62 @@ const Navbar = () => {
 
           {/* Navigation Links */}
           <div className="collapse navbar-collapse" id="navbarContent">
-            <ul className="navbar-nav mx-auto mb-2 mb-lg-0 fw-semibold">
+            <ul className="navbar-nav mx-auto mb-2 mb-lg-0 fw-semibold flex-wrap justify-content-center align-items-center">
               <li className="nav-item">
-                <NavLink to="/" className={({ isActive }) => `nav-link px-3 ${isActive ? 'text-primary fw-bold' : ''}`}>
+                <NavLink to="/" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
                   Home
+                </NavLink>
+              </li>
+              <li className="nav-item">
+                <NavLink to="/about" className={({ isActive }) => `nav-link px-3 akal-nav-link text-nowrap ${isActive ? 'active-nav' : ''}`}>
+                  About
                 </NavLink>
               </li>
               {isFeatureEnabled('enable_public_directory', true) && (
                 <li className="nav-item">
-                  <NavLink to="/directory" className={({ isActive }) => `nav-link px-3 ${isActive ? 'text-primary fw-bold' : ''}`}>
+                  <NavLink to="/directory" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
                     Directory
                   </NavLink>
                 </li>
               )}
               {isFeatureEnabled('enable_public_events', true) && (
                 <li className="nav-item">
-                  <NavLink to="/events" className={({ isActive }) => `nav-link px-3 ${isActive ? 'text-primary fw-bold' : ''}`}>
+                  <NavLink to="/events" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
                     Events
                   </NavLink>
                 </li>
               )}
               {isFeatureEnabled('enable_public_jobs', true) && (
                 <li className="nav-item">
-                  <NavLink to="/jobs" className={({ isActive }) => `nav-link px-3 ${isActive ? 'text-primary fw-bold' : ''}`}>
+                  <NavLink to="/jobs" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
                     Jobs & Internships
                   </NavLink>
                 </li>
               )}
               {isFeatureEnabled('enable_public_mentorship', true) && (
                 <li className="nav-item">
-                  <NavLink to="/mentorship" className={({ isActive }) => `nav-link px-3 ${isActive ? 'text-primary fw-bold' : ''}`}>
+                  <NavLink to="/mentorship" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
                     Mentorship
                   </NavLink>
                 </li>
               )}
               {isFeatureEnabled('enable_public_chapters', true) && (
                 <li className="nav-item">
-                  <NavLink to="/chapters" className={({ isActive }) => `nav-link px-3 ${isActive ? 'text-primary fw-bold' : ''}`}>
+                  <NavLink to="/chapters" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
                     Chapters
                   </NavLink>
                 </li>
               )}
               {isFeatureEnabled('enable_public_stories', true) && (
                 <li className="nav-item">
-                  <NavLink to="/stories" className={({ isActive }) => `nav-link px-3 ${isActive ? 'text-primary fw-bold' : ''}`}>
+                  <NavLink to="/stories" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
                     Stories
                   </NavLink>
                 </li>
               )}
               {isFeatureEnabled('enable_public_gallery', true) && (
                 <li className="nav-item">
-                  <NavLink to="/news-gallery" className={({ isActive }) => `nav-link px-3 ${isActive ? 'text-primary fw-bold' : ''}`}>
+                  <NavLink to="/news-gallery" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
                     Gallery & News
                   </NavLink>
                 </li>
@@ -177,31 +181,39 @@ const Navbar = () => {
             </ul>
 
             {/* Right Action / Auth Buttons */}
-            <div className="d-flex align-items-center gap-2 mt-2 mt-lg-0">
+            <div className="d-flex align-items-center gap-2 mt-2 mt-lg-0 flex-shrink-0 text-nowrap">
               {isAuthenticated ? (
                 <div className="dropdown">
                   <button 
-                    className="btn btn-light rounded-pill border d-flex align-items-center gap-2 py-1 px-3"
+                    className="btn rounded-pill d-flex align-items-center gap-2 py-1 ps-1 pe-3 akal-user-chip"
                     type="button" 
                     data-bs-toggle="dropdown" 
                     aria-expanded="false"
                   >
-                    <div className="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style={{ width: '30px', height: '30px', fontSize: '13px' }}>
-                      {user.email[0].toUpperCase()}
-                    </div>
+                    <span className="akal-avatar-ring d-flex">
+                      <span className="akal-avatar-inner d-flex align-items-center justify-content-center">
+                        {profile?.profile_photo ? (
+                          <img src={profile.profile_photo} alt="DP" style={{ width: '32px', height: '32px', objectFit: 'cover' }} />
+                        ) : (
+                          <span className="text-white d-flex align-items-center justify-content-center fw-bold" style={{ width: '32px', height: '32px', fontSize: '13px', background: 'var(--grad-primary)' }}>
+                            {user.email[0].toUpperCase()}
+                          </span>
+                        )}
+                      </span>
+                    </span>
                     <div className="text-start d-none d-sm-block" style={{ lineHeight: 1.1 }}>
-                      <div className="fw-bold small">{profile?.first_name ? `${profile.first_name}` : user.email.split('@')[0]}</div>
-                      <div className="text-muted" style={{ fontSize: '0.65rem' }}>{user.role.toUpperCase()}</div>
+                      <div className="fw-bold small user-chip-name">{profile?.first_name ? `${profile.first_name}` : user.email.split('@')[0]}</div>
+                      <div className="user-chip-role fw-bold" style={{ fontSize: '0.65rem' }}>{user.role.toUpperCase()}</div>
                     </div>
-                    <ChevronDown size={14} className="text-muted" />
+                    <ChevronDown size={14} style={{ color: 'rgba(255,255,255,0.7)' }} />
                   </button>
 
-                  <ul className="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2 rounded-3" style={{ minWidth: '220px' }}>
-                    <li className="px-3 py-2 border-bottom mb-1 bg-light rounded-2">
-                      <div className="fw-bold small text-dark">{profile?.first_name ? `${profile.first_name}${profile.last_name ? ` ${profile.last_name}` : ''}` : 'Authenticated User'}</div>
-                      <div className="text-muted small font-monospace" style={{ fontSize: '0.7rem' }}>{user.email}</div>
-                      <span className="badge bg-primary-subtle text-primary rounded-pill mt-1" style={{ fontSize: '0.65rem' }}>
-                        Role: {user.role}
+                  <ul className="dropdown-menu dropdown-menu-end mt-2 p-2 rounded-3 akal-dropdown" style={{ minWidth: '220px' }}>
+                    <li className="px-3 py-2 border-bottom mb-1 rounded-2" style={{ background: 'var(--grad-hero)' }}>
+                      <div className="fw-bold small text-white">{profile?.first_name ? `${profile.first_name}${profile.last_name ? ` ${profile.last_name}` : ''}` : 'Authenticated User'}</div>
+                      <div className="small font-monospace" style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.75)' }}>{user.email}</div>
+                      <span className="badge rounded-pill mt-1 fw-bold" style={{ fontSize: '0.65rem', background: 'var(--grad-gold-foil)', color: '#172333' }}>
+                        {user.role.toUpperCase()}
                       </span>
                     </li>
 
@@ -252,11 +264,11 @@ const Navbar = () => {
                 </div>
               ) : (
                 <div className="d-flex align-items-center gap-2">
-                  <Link to="/login" className="btn btn-akal-outline">
-                    <LogIn size={16} />
+                  <Link to="/login" className="btn btn-akal-outline btn-sm rounded-pill px-3 text-nowrap">
+                    <LogIn size={15} />
                     <span>Login</span>
                   </Link>
-                  <Link to="/register" className="btn btn-akal-yellow">
+                  <Link to="/register" className="btn btn-akal-yellow btn-sm rounded-pill px-3 akal-join-btn text-nowrap">
                     <span>Join Network</span>
                   </Link>
                 </div>

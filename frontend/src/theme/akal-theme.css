@@ -287,32 +287,206 @@ h1, h2, h3, h4, h5, h6, .brand-font {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
   text-decoration: none;
+  position: relative;
+  padding: 4px 14px 4px 4px;
+  border-radius: 16px;
+  transition: var(--transition-normal);
+}
+
+.university-logo-container:hover {
+  background: var(--akal-blue-soft);
+  transform: translateY(-1px);
 }
 
 .university-crest {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   background: var(--grad-hero);
   border: 2px solid var(--akal-yellow);
-  border-radius: 12px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #FFFFFF;
   font-weight: 900;
   font-size: 20px;
-  box-shadow: 0 4px 10px rgba(8, 123, 181, 0.3);
+  box-shadow: 0 4px 14px rgba(8, 123, 181, 0.35);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.university-crest::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 45%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  transform: skewX(-20deg);
+  animation: crestShine 3.5s ease-in-out infinite;
+}
+
+@keyframes crestShine {
+  0%, 60% { left: -60%; }
+  100% { left: 130%; }
+}
+
+/* ------- Premium Navbar — dark navy + gold (footer/hero se match) ------- */
+.akal-navbar {
+  background: linear-gradient(90deg, #0D1622 0%, #172333 50%, #0D1622 100%);
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, transparent, #F9B900 20%, #F9B900 80%, transparent) 1;
+  box-shadow: 0 6px 28px rgba(13, 22, 34, 0.45);
+}
+
+.akal-topbar {
+  background: linear-gradient(90deg, #075985 0%, #087BB5 50%, #075985 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.akal-topbar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--grad-gold-foil);
+}
+
+.akal-navbar .university-title-main {
+  color: #FFFFFF;
+}
+
+.akal-navbar .university-title-sub {
+  color: var(--akal-yellow);
+}
+
+.akal-navbar .navbar-toggler {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.akal-navbar .navbar-toggler-icon {
+  filter: invert(1);
+}
+
+.akal-nav-link {
+  position: relative;
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  padding: 0.42rem 0.7rem !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+  border-radius: 10px;
+  transition: var(--transition-normal);
+}
+
+/* Compact nav on medium screens — sab ek line me fit rahe */
+@media (max-width: 1200px) {
+  .akal-nav-link {
+    font-size: 0.84rem;
+    padding: 0.38rem 0.52rem !important;
+  }
+}
+
+.akal-nav-link:hover {
+  color: #FFFFFF !important;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.akal-nav-link.active-nav {
+  color: #172333 !important;
+  font-weight: 800;
+  background: var(--grad-yellow);
+  box-shadow: 0 3px 12px rgba(249, 185, 0, 0.4);
+}
+
+.akal-nav-link.active-nav::after {
+  display: none;
+}
+
+.akal-avatar-ring {
+  background: conic-gradient(from 180deg, #087BB5, #F9B900, #087BB5);
+  padding: 2px;
+  border-radius: 9999px;
+}
+
+.akal-avatar-inner {
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 2px solid #FFFFFF;
+}
+
+.akal-user-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: none;
+  transition: var(--transition-normal);
+  color: #FFFFFF;
+}
+
+.akal-user-chip:hover {
+  border-color: var(--akal-yellow);
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 4px 16px rgba(249, 185, 0, 0.25);
+  transform: translateY(-1px);
+}
+
+.akal-user-chip .user-chip-name {
+  color: #FFFFFF;
+}
+
+.akal-user-chip .user-chip-role {
+  color: var(--akal-yellow);
+}
+
+.akal-dropdown {
+  border: 1px solid rgba(8, 123, 181, 0.14) !important;
+  box-shadow: 0 18px 45px rgba(23, 35, 51, 0.16) !important;
+  overflow: hidden;
+}
+
+.akal-dropdown .dropdown-item {
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.akal-dropdown .dropdown-item:hover {
+  background: var(--akal-blue-soft);
+}
+
+.akal-join-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.akal-join-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -70%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-20deg);
+  animation: crestShine 3s ease-in-out infinite;
 }
 
 .university-title-text {
   line-height: 1.15;
+  white-space: nowrap;
 }
 
 .university-title-main {
   font-family: var(--font-heading);
   font-weight: 800;
-  font-size: 1.15rem;
+  font-size: 1.02rem;
   letter-spacing: -0.02em;
   color: var(--akal-navy);
 }
@@ -351,7 +525,7 @@ h1, h2, h3, h4, h5, h6, .brand-font {
   box-shadow: 0 2px 10px rgba(8, 123, 181, 0.25);
 }
 
-/* Digital ID Card Styling */
+/* Digital ID Card Styling — dark navy card, saara text high-contrast */
 .digital-id-card {
   width: 100%;
   max-width: 440px;
@@ -363,6 +537,27 @@ h1, h2, h3, h4, h5, h6, .brand-font {
   position: relative;
   overflow: hidden;
   border: 1px solid rgba(255, 201, 40, 0.4);
+}
+
+.digital-id-card .id-card-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #BCD2E8;
+  margin-bottom: 2px;
+}
+
+.digital-id-card .id-card-value {
+  color: #FFFFFF;
+}
+
+.digital-id-card .id-card-gold {
+  color: #FFD75E;
+}
+
+.digital-id-card .id-card-muted {
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .digital-id-card::before {

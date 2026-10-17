@@ -53,7 +53,12 @@ class AlumniController extends BaseController
             'current_designation', 'industry', 'experience_years', 'location_city',
             'location_country', 'bio', 'skills', 'linkedin_url', 'github_url',
             'twitter_url', 'website_url', 'profile_photo', 'is_mentor',
-            'mentorship_topics', 'is_public_profile', 'show_email_public', 'show_phone_public'
+            'mentorship_topics', 'is_public_profile', 'show_email_public', 'show_phone_public',
+            // current status (higher study / job) + conditional details
+            'current_status', 'study_institution', 'study_course', 'study_location',
+            'job_type', 'job_organization', 'job_designation', 'job_location',
+            // academic record (verified by admin, lekin alumni edit request bhej sakta hai)
+            'enrollment_no', 'degree', 'department', 'batch_year', 'graduation_year',
         ];
 
         $updateData = [];
@@ -62,6 +67,27 @@ class AlumniController extends BaseController
                 $updateData[$field] = $json[$field];
             }
         }
+
+        // DP photo validation (base64 data-url ya https URL, max ~2MB for base64)
+        if (isset($updateData['profile_photo']) && is_string($updateData['profile_photo']) && $updateData['profile_photo'] !== '') {
+            $isDataUrl = (bool)preg_match('#^data:image/(jpeg|jpg|png|webp);base64,#i', $updateData['profile_photo']);
+            $isUrl = (bool)preg_match('#^https?://#i', $updateData['profile_photo']);
+            if (!$isDataUrl && !$isUrl) {
+                return $this->respondValidationError(['profile_photo' => 'Profile photo must be a JPG/PNG/WEBP image']);
+            }
+            if ($isDataUrl && strlen($updateData['profile_photo']) > 2800000) {
+                return $this->respondValidationError(['profile_photo' => 'Profile photo is too large (max ~2MB). Please choose a smaller image.']);
+            }
+        }
+
+        // current_status normalise + job_type check
+        if (isset($updateData['current_status']) && !in_array($updateData['current_status'], ['higher_study', 'job', 'other'], true)) {
+            return $this->respondValidationError(['current_status' => 'Invalid current status']);
+        }
+        if (isset($updateData['job_type']) && $updateData['job_type'] !== null && $updateData['job_type'] !== '' && !in_array($updateData['job_type'], ['private', 'government'], true)) {
+            return $this->respondValidationError(['job_type' => 'Job type must be Private or Government']);
+        }
+
         $updateData['updated_at'] = date('Y-m-d H:i:s');
 
         $this->db->table('alumni_profiles')->where('user_id', $authUser['id'])->update($updateData);
@@ -93,18 +119,41 @@ class AlumniController extends BaseController
         $user = $this->db->table('users')->where('id', $authUser['id'])->get()->getRowArray();
 
         if (!$card) {
-            // Auto generate card if verified
+            // Auto generate card — card_number hamesha Alumni ID (AUAA + AUID) hota hai
+            $alumniId = $profile['alumni_id'] ?? null;
+            if (empty($alumniId)) {
+                $auid = $profile['auid'] ?? null;
+                if (empty($auid)) {
+                    $auid = str_pad((string)random_int(0, 999999999), 9, '0', STR_PAD_LEFT);
+                    $this->db->table('alumni_profiles')->where('user_id', $authUser['id'])->update([
+                        'auid'       => $auid,
+                        'updated_at' => date('Y-m-d H:i:s'),
+                    ]);
+                    $profile['auid'] = $auid;
+                }
+                $alumniId = 'AUAA' . $auid;
+                $this->db->table('alumni_profiles')->where('user_id', $authUser['id'])->update([
+                    'alumni_id'  => $alumniId,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+                $profile['alumni_id'] = $alumniId;
+            }
+            $baseUrl = rtrim((string)($_ENV['FRONTEND_URL'] ?? getenv('FRONTEND_URL') ?: 'http://localhost:5173'), '/');
             $card = [
                 'user_id'     => $authUser['id'],
-                'card_number' => 'AU-AID-' . ($profile['graduation_year'] ?? date('Y')) . '-00' . $authUser['id'],
+                'card_number' => $alumniId,
                 'issue_date'  => date('Y-m-d'),
                 'expiry_date' => date('Y-m-d', strtotime('+5 years')),
                 'qr_payload'  => json_encode([
-                    'card_number' => 'AU-AID-' . ($profile['graduation_year'] ?? date('Y')) . '-00' . $authUser['id'],
+                    'alumni_id'   => $alumniId,
+                    'auid'        => $profile['auid'] ?? '',
+                    'card_number' => $alumniId,
                     'name'        => ($profile['first_name'] ?? '') . ' ' . ($profile['last_name'] ?? ''),
                     'degree'      => $profile['degree'] ?? '',
                     'batch'       => $profile['batch_year'] ?? '',
-                    'status'      => 'OFFICIAL_VERIFIED'
+                    'status'      => 'OFFICIAL_VERIFIED',
+                    // QR scan -> public profile page
+                    'profile_url' => $baseUrl . '/alumni/' . $alumniId,
                 ]),
                 'status'      => 'active',
                 'created_at'  => date('Y-m-d H:i:s'),

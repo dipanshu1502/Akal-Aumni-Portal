@@ -66,4 +66,4 @@ The development of the **Akal University Alumni Portal** has been established fo
 
 ## 3. Running Dev Servers
 - **Backend API**: `http://localhost:8080` (`php spark serve --port=8080`)
-- **Frontend App**: `http://localhost:5173` (`npm run dev`)
+- **Frontend App**: `http://localhost:5173` (`npm run dev -- --host 0.0.0.0`)

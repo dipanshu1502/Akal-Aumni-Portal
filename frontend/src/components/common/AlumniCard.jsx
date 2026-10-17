@@ -1,9 +1,16 @@
 import { ShieldCheck, Award, GraduationCap, MapPin, Building, Sparkles, Mail, Globe, ExternalLink } from 'lucide-react';
 
+const getPhotoSrc = (photo) => {
+  if (!photo) return null;
+  if (photo.startsWith('data:') || photo.startsWith('http')) return photo;
+  return photo;
+};
+
 const AlumniCard = ({ alumni, onConnect }) => {
   const fullName = `${alumni.first_name} ${alumni.last_name || ''}`;
   const isDistinguished = Boolean(Number(alumni.is_distinguished));
   const isMentor = Boolean(Number(alumni.is_mentor));
+  const photoSrc = getPhotoSrc(alumni.profile_photo);
 
   const skillsList = alumni.skills 
     ? alumni.skills.split(',').map(s => s.trim()).filter(Boolean).slice(0, 3) 
@@ -26,6 +33,14 @@ const AlumniCard = ({ alumni, onConnect }) => {
         {/* Header with Avatar and Badges */}
         <div className="d-flex justify-content-between align-items-start mb-3">
           <div className="d-flex align-items-center gap-3">
+            {photoSrc ? (
+              <img
+                src={photoSrc}
+                alt={fullName}
+                className="rounded-circle shadow-sm object-fit-cover"
+                style={{ width: '54px', height: '54px', objectFit: 'cover', border: isDistinguished ? '2px solid #F9B900' : '2px solid #E2E8F0' }}
+              />
+            ) : (
             <div 
               className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
               style={{ 
@@ -40,6 +55,7 @@ const AlumniCard = ({ alumni, onConnect }) => {
             >
               {alumni.first_name[0]}{alumni.last_name ? alumni.last_name[0] : ''}
             </div>
+            )}
 
             <div>
               <h5 className="mb-0 fw-bold text-dark d-flex align-items-center gap-1">

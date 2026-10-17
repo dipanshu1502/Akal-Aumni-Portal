@@ -103,6 +103,26 @@ const AlumniDashboard = () => {
     }
   };
 
+  // Dashboard DP change -> resize karke base64 banaye
+  const handleDpChange = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 512;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale);
+        c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        setProfile((p) => ({ ...p, profile_photo: c.toDataURL('image/jpeg', 0.82) }));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   if (loading) {
     return (
       <div className="container py-5 text-center">
@@ -182,6 +202,37 @@ const AlumniDashboard = () => {
                 )}
 
                 <form onSubmit={handleProfileSave}>
+                  <div className="d-flex align-items-center gap-3 mb-3 p-3 bg-light rounded-3 border">
+                    {profile.profile_photo ? (
+                      <img src={profile.profile_photo} alt="DP"
+                        className="rounded-circle" style={{ width: '72px', height: '72px', objectFit: 'cover' }} />
+                    ) : (
+                      <div className="rounded-circle bg-secondary bg-opacity-25 d-flex align-items-center justify-content-center fw-bold"
+                        style={{ width: '72px', height: '72px', fontSize: '24px' }}>
+                        {profile.first_name?.[0]}{profile.last_name?.[0] || ''}
+                      </div>
+                    )}
+                    <div>
+                      <div className="fw-bold small">Profile Photo (DP)</div>
+                      <div className="text-muted" style={{ fontSize: '0.75rem' }}>Shown on your DP and Digital ID Card</div>
+                      <label className="btn btn-sm btn-outline-primary rounded-pill mt-1 mb-0" style={{ cursor: 'pointer' }}>
+                        Change Photo
+                        <input type="file" accept="image/jpeg,image/png,image/webp" className="d-none" onChange={(e) => handleDpChange(e.target.files?.[0])} />
+                      </label>
+                      {profile.profile_photo && (
+                        <button type="button" className="btn btn-sm btn-link text-danger text-decoration-none ms-1"
+                          onClick={() => setProfile({ ...profile, profile_photo: '' })}>Remove</button>
+                      )}
+                    </div>
+                    <div className="ms-auto text-end small">
+                      <div className="text-muted">AUID</div>
+                      <div className="font-monospace fw-bold">{profile.auid || '—'}</div>
+                      <div className="text-muted mt-1">Alumni ID</div>
+                      <div className="font-monospace fw-bold text-primary">{profile.alumni_id || '—'}</div>
+                    </div>
+                  </div>
+                  {/* Basic info */}
+                  <div className="fw-bold small text-primary mb-2">Basic Information</div>
                   <div className="row g-3 mb-3">
                     <div className="col-md-6">
                       <label className="form-label small fw-bold">First Name</label>
@@ -202,8 +253,28 @@ const AlumniDashboard = () => {
                         onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
                       />
                     </div>
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold">Phone</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={profile.phone || ''}
+                        onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold">Alternate Email</label>
+                      <input
+                        type="email"
+                        className="form-control"
+                        value={profile.alt_email || ''}
+                        onChange={(e) => setProfile({ ...profile, alt_email: e.target.value })}
+                      />
+                    </div>
                   </div>
 
+                  {/* Professional info */}
+                  <div className="fw-bold small text-primary mb-2">Professional Information</div>
                   <div className="row g-3 mb-3">
                     <div className="col-md-6">
                       <label className="form-label small fw-bold">Current Company / Organization</label>
@@ -221,6 +292,25 @@ const AlumniDashboard = () => {
                         className="form-control" 
                         value={profile.current_designation || ''}
                         onChange={(e) => setProfile({ ...profile, current_designation: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold">Industry</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={profile.industry || ''}
+                        onChange={(e) => setProfile({ ...profile, industry: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold">Experience (Years)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="form-control"
+                        value={profile.experience_years ?? ''}
+                        onChange={(e) => setProfile({ ...profile, experience_years: e.target.value })}
                       />
                     </div>
                   </div>
@@ -274,6 +364,135 @@ const AlumniDashboard = () => {
                       value={profile.linkedin_url || ''}
                       onChange={(e) => setProfile({ ...profile, linkedin_url: e.target.value })}
                     />
+                  </div>
+
+                  {/* Social links — saare URL fields */}
+                  <div className="fw-bold small text-primary mb-2">Social Links</div>
+                  <div className="row g-3 mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold">GitHub URL</label>
+                      <input type="text" className="form-control"
+                        value={profile.github_url || ''}
+                        onChange={(e) => setProfile({ ...profile, github_url: e.target.value })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold">Twitter / X URL</label>
+                      <input type="text" className="form-control"
+                        value={profile.twitter_url || ''}
+                        onChange={(e) => setProfile({ ...profile, twitter_url: e.target.value })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold">Website URL</label>
+                      <input type="text" className="form-control"
+                        value={profile.website_url || ''}
+                        onChange={(e) => setProfile({ ...profile, website_url: e.target.value })} />
+                    </div>
+                  </div>
+
+                  {/* Privacy settings */}
+                  <div className="fw-bold small text-primary mb-2">Privacy Settings</div>
+                  <div className="p-3 bg-light rounded-3 mb-3 border d-flex flex-column gap-2">
+                    {[
+                      { key: 'is_public_profile', label: 'Show my profile in public alumni directory' },
+                      { key: 'show_email_public', label: 'Show my email publicly' },
+                      { key: 'show_phone_public', label: 'Show my phone publicly' },
+                    ].map((opt) => (
+                      <div className="form-check" key={opt.key}>
+                        <input className="form-check-input" type="checkbox" id={`privacy-${opt.key}`}
+                          checked={Boolean(Number(profile[opt.key]))}
+                          onChange={(e) => setProfile({ ...profile, [opt.key]: e.target.checked ? 1 : 0 })} />
+                        <label className="form-check-label small fw-bold" htmlFor={`privacy-${opt.key}`}>{opt.label}</label>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Academic record — table ke saare academic fields */}
+                  <div className="fw-bold small text-primary mb-2">Academic Record</div>
+                  <div className="row g-3 mb-3">
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold">Enrollment No</label>
+                      <input type="text" className="form-control"
+                        value={profile.enrollment_no || ''}
+                        onChange={(e) => setProfile({ ...profile, enrollment_no: e.target.value })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold">Batch Year</label>
+                      <input type="text" className="form-control" placeholder="e.g. 2016-2020"
+                        value={profile.batch_year || ''}
+                        onChange={(e) => setProfile({ ...profile, batch_year: e.target.value })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold">Degree</label>
+                      <input type="text" className="form-control"
+                        value={profile.degree || ''}
+                        onChange={(e) => setProfile({ ...profile, degree: e.target.value })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold">Department</label>
+                      <input type="text" className="form-control"
+                        value={profile.department || ''}
+                        onChange={(e) => setProfile({ ...profile, department: e.target.value })} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label small fw-bold">Graduation Year</label>
+                      <input type="number" min="1950" max="2100" className="form-control"
+                        value={profile.graduation_year ?? ''}
+                        onChange={(e) => setProfile({ ...profile, graduation_year: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-light rounded-3 mb-3 border">
+                    <div className="fw-bold small mb-2">What are you currently doing?</div>
+                    <div className="d-flex flex-wrap gap-2 mb-2">
+                      {['higher_study', 'job', 'other'].map((s) => (
+                        <button key={s} type="button" onClick={() => setProfile({ ...profile, current_status: s })}
+                          className={`btn btn-sm rounded-pill fw-bold px-3 ${profile.current_status === s ? 'btn-akal-primary' : 'btn-light border text-muted'}`}>
+                          {s === 'higher_study' ? 'Higher Study' : s === 'job' ? 'Job' : 'Other'}
+                        </button>
+                      ))}
+                    </div>
+                    {profile.current_status === 'higher_study' && (
+                      <div className="row g-2">
+                        <div className="col-md-4">
+                          <input type="text" className="form-control form-control-sm" placeholder="Institution"
+                            value={profile.study_institution || ''} onChange={(e) => setProfile({ ...profile, study_institution: e.target.value })} />
+                        </div>
+                        <div className="col-md-4">
+                          <input type="text" className="form-control form-control-sm" placeholder="Course"
+                            value={profile.study_course || ''} onChange={(e) => setProfile({ ...profile, study_course: e.target.value })} />
+                        </div>
+                        <div className="col-md-4">
+                          <input type="text" className="form-control form-control-sm" placeholder="City"
+                            value={profile.study_location || ''} onChange={(e) => setProfile({ ...profile, study_location: e.target.value })} />
+                        </div>
+                      </div>
+                    )}
+                    {profile.current_status === 'job' && (
+                      <div>
+                        <div className="d-flex gap-2 mb-2">
+                          {['private', 'government'].map((t) => (
+                            <button key={t} type="button" onClick={() => setProfile({ ...profile, job_type: t })}
+                              className={`btn btn-sm rounded-pill fw-bold px-3 ${profile.job_type === t ? 'btn-akal-primary' : 'btn-light border text-muted'}`}>
+                              {t === 'private' ? 'Private' : 'Government'}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="row g-2">
+                          <div className="col-md-4">
+                            <input type="text" className="form-control form-control-sm" placeholder="Organization"
+                              value={profile.job_organization || ''} onChange={(e) => setProfile({ ...profile, job_organization: e.target.value, current_company: e.target.value })} />
+                          </div>
+                          <div className="col-md-4">
+                            <input type="text" className="form-control form-control-sm" placeholder="Designation"
+                              value={profile.job_designation || ''} onChange={(e) => setProfile({ ...profile, job_designation: e.target.value, current_designation: e.target.value })} />
+                          </div>
+                          <div className="col-md-4">
+                            <input type="text" className="form-control form-control-sm" placeholder="City"
+                              value={profile.job_location || ''} onChange={(e) => setProfile({ ...profile, job_location: e.target.value })} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Mentorship Settings */}

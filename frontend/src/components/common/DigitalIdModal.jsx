@@ -38,15 +38,21 @@ const DigitalIdModal = ({ onClose }) => {
 
   const degree = profile?.degree || 'B.Tech in Computer Science & Engineering';
   const batch = profile?.batch_year || '2016-2020';
+  const photoSrc = profile?.profile_photo || null;
+  const alumniId = profile?.alumni_id || card.card_number;
+  const auid = profile?.auid || '';
 
-  const qrPayload = JSON.stringify({
-    university: 'Akal University',
-    card_id: card.card_number,
-    name: alumniName,
-    degree: degree,
-    batch: batch,
-    verification: 'OFFICIALLY_VERIFIED',
-  });
+  // QR scan -> public profile page par le jaye: /alumni/AUAAxxxxxxxxxx
+  let profileUrl = '';
+  try {
+    if (cardData?.card?.qr_payload) {
+      const parsed = JSON.parse(cardData.card.qr_payload);
+      if (parsed.profile_url) profileUrl = parsed.profile_url;
+    }
+  } catch { /* ignore */ }
+  if (!profileUrl) {
+    profileUrl = `${window.location.origin}/alumni/${alumniId}`;
+  }
 
   return (
     <div className="modal show d-block" style={{ backgroundColor: 'rgba(13, 22, 34, 0.75)', backdropFilter: 'blur(8px)', zIndex: 1050 }}>
@@ -77,12 +83,12 @@ const DigitalIdModal = ({ onClose }) => {
                     AU
                   </div>
                   <div>
-                    <div className="fw-bold text-white small" style={{ letterSpacing: '0.04em' }}>AKAL UNIVERSITY</div>
-                    <div className="text-warning small text-uppercase fw-semibold" style={{ fontSize: '0.62rem' }}>Official Alumni Card</div>
+                    <div className="fw-bold small" style={{ letterSpacing: '0.04em', color: '#FFFFFF' }}>AKAL UNIVERSITY</div>
+                    <div className="text-uppercase fw-bold" style={{ fontSize: '0.62rem', letterSpacing: '0.08em', color: '#FFD75E' }}>Official Alumni Card</div>
                   </div>
                 </div>
 
-                <span className="badge rounded-pill bg-success bg-opacity-25 text-warning border border-warning border-opacity-50 px-2 py-1 small d-flex align-items-center gap-1" style={{ fontSize: '0.68rem' }}>
+                <span className="badge rounded-pill px-2 py-1 small d-flex align-items-center gap-1 fw-bold" style={{ fontSize: '0.68rem', backgroundColor: 'rgba(25,135,84,0.9)', color: '#FFFFFF', border: '1px solid #FFD75E' }}>
                   <ShieldCheck size={12} />
                   VERIFIED
                 </span>
@@ -90,46 +96,62 @@ const DigitalIdModal = ({ onClose }) => {
 
               {/* Main Card Content */}
               <div className="row g-3 align-items-center my-1">
-                <div className="col-8">
-                  <div className="text-light text-opacity-50 small mb-0" style={{ fontSize: '0.68rem' }}>ALUMNI NAME</div>
-                  <h5 className="fw-bold text-white mb-2">{alumniName}</h5>
+                <div className="col-4 text-center">
+                  {photoSrc ? (
+                    <img src={photoSrc} alt={alumniName}
+                      className="rounded-3 border border-warning border-opacity-50"
+                      style={{ width: '104px', height: '124px', objectFit: 'cover' }} />
+                  ) : (
+                    <div className="rounded-3 bg-white bg-opacity-10 d-flex align-items-center justify-content-center fw-bold text-white mx-auto"
+                      style={{ width: '104px', height: '124px', fontSize: '30px' }}>
+                      {alumniName.split(' ').map((w) => w[0]).slice(0, 2).join('')}
+                    </div>
+                  )}
+                  <div className="fw-bold mt-1" style={{ fontSize: '0.6rem', letterSpacing: '0.06em', color: '#9FB3C8' }}>ALUMNI PHOTO</div>
+                </div>
+                <div className="col-6">
+                  <div className="text-uppercase fw-bold mb-1" style={{ fontSize: '0.62rem', letterSpacing: '0.08em', color: '#9FB3C8' }}>Alumni Name</div>
+                  <h5 className="fw-bold mb-2" style={{ color: '#FFFFFF' }}>{alumniName}</h5>
 
-                  <div className="text-light text-opacity-50 small mb-0" style={{ fontSize: '0.68rem' }}>PROGRAM & BATCH</div>
-                  <div className="small fw-semibold text-warning-emphasis mb-1" style={{ fontSize: '0.78rem' }}>{degree}</div>
-                  <div className="badge bg-primary text-white rounded-pill px-2 py-0 fw-normal small" style={{ fontSize: '0.68rem' }}>
-                    Batch {batch}
+                  <div className="text-uppercase fw-bold mb-1" style={{ fontSize: '0.62rem', letterSpacing: '0.08em', color: '#9FB3C8' }}>Program & Batch</div>
+                  <div className="small fw-semibold mb-1" style={{ fontSize: '0.8rem', color: '#FFD75E' }}>{degree}</div>
+                  <div className="d-flex flex-wrap gap-1">
+                    <div className="badge rounded-pill px-2 py-1 fw-bold small" style={{ fontSize: '0.68rem', backgroundColor: '#0B5FFF', color: '#FFFFFF' }}>
+                      Batch {batch}
+                    </div>
                   </div>
+                  <div className="font-monospace fw-bold small mt-2" style={{ fontSize: '0.72rem', color: '#FFD75E' }}>{alumniId}{auid ? ` • AUID ${auid}` : ''}</div>
                 </div>
 
                 {/* QR Code Container */}
-                <div className="col-4 text-center">
-                  <div className="p-2 bg-white rounded-3 d-inline-block shadow-sm">
+                <div className="col-2 text-center">
+                  <div className="p-1 bg-white rounded-3 d-inline-block shadow-sm">
                     <QRCodeSVG 
-                      value={qrPayload} 
-                      size={80} 
+                      value={profileUrl} 
+                      size={56} 
                       bgColor="#FFFFFF" 
                       fgColor="#087BB5" 
                       level="M" 
                     />
                   </div>
-                  <div className="text-light text-opacity-50 small mt-1" style={{ fontSize: '0.6rem' }}>SCAN TO VERIFY</div>
+                  <div className="fw-bold mt-1" style={{ fontSize: '0.58rem', letterSpacing: '0.05em', color: '#9FB3C8' }}>SCAN TO VIEW PROFILE</div>
                 </div>
               </div>
 
               {/* Card Bottom Meta */}
-              <div className="d-flex justify-content-between align-items-center pt-3 mt-2 border-top border-white border-opacity-10 small">
+              <div className="d-flex justify-content-between align-items-center pt-3 mt-2 small" style={{ borderTop: '1px solid rgba(255,255,255,0.18)' }}>
                 <div>
-                  <div className="text-light text-opacity-50" style={{ fontSize: '0.62rem' }}>CARD ID</div>
-                  <div className="font-monospace fw-bold text-warning small">{card.card_number}</div>
+                  <div className="fw-bold" style={{ fontSize: '0.62rem', letterSpacing: '0.06em', color: '#9FB3C8' }}>CARD ID</div>
+                  <div className="font-monospace fw-bold small" style={{ color: '#FFD75E' }}>{card.card_number}</div>
                 </div>
                 <div className="text-end">
-                  <div className="text-light text-opacity-50" style={{ fontSize: '0.62rem' }}>VALIDITY</div>
-                  <div className="text-light text-opacity-90 small">Official Lifetime</div>
+                  <div className="fw-bold" style={{ fontSize: '0.62rem', letterSpacing: '0.06em', color: '#9FB3C8' }}>VALIDITY</div>
+                  <div className="small fw-semibold" style={{ color: '#FFFFFF' }}>Official Lifetime</div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-3 text-light text-opacity-75 small">
+            <div className="mt-3 small" style={{ color: 'rgba(255,255,255,0.85)' }}>
               This digital alumni identity is recognized for university library, campus access, reunions, and global chapter voting rights.
             </div>
           </div>
