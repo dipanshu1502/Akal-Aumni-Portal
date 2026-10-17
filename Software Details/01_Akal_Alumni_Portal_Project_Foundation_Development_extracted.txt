@@ -1,0 +1,603 @@
+AKAL UNIVERSITY
+
+ALUMNI PORTAL
+
+DEVELOPMENT DOCUMENT — 01
+
+Project Foundation, Architecture & Development Standards
+
+Version 1.0Development approach: Feature-by-featureBackend: CodeIgniter 4 + MySQLFrontend: React + Bootstrap 5Roles: Public, Student, Alumni, Admin, Super Admin
+
+1. Purpose of This Development Document
+
+This document defines the foundation that must be completed before implementing individual functional modules of the Akal University Alumni Portal. It establishes the project architecture, technology stack, roles, coding rules, folder structure, security principles and development sequence.
+
+The goal is to create a clean, scalable and production-ready system from the beginning rather than building disconnected features and restructuring the project later.
+
+2. Final Product Definition
+
+The system will be a centralized alumni networking and university engagement platform. Public users can browse approved content without login. Authenticated students and alumni receive personalized features. Admins manage operational content and users. The Super Admin has complete control over system settings, public visibility, permissions and all modules.
+
+Role
+
+Access Level
+
+Main Purpose
+
+Public Visitor
+
+Public only
+
+Browse approved portal content without login
+
+Student
+
+Authenticated student
+
+Find alumni, mentorship, jobs, events and networking
+
+Alumni
+
+Authenticated verified alumni
+
+Profile, directory, batchmates, events, jobs, mentorship and networking
+
+Admin
+
+Operational management
+
+Manage users, content, events, jobs, verification and reports
+
+Super Admin
+
+Full control
+
+Manage everything including public visibility, modules, permissions and system settings
+
+3. Technology Stack
+
+Layer
+
+Technology
+
+Purpose
+
+Frontend
+
+React
+
+Modern responsive web interface
+
+UI Framework
+
+Bootstrap 5
+
+Responsive layout and reusable UI components
+
+Icons
+
+Bootstrap Icons
+
+Consistent icon system
+
+Styling
+
+CSS/SCSS
+
+Akal University theme and custom components
+
+Animation
+
+Framer Motion or equivalent
+
+Modern transitions and interactions
+
+Charts
+
+Chart.js or equivalent
+
+Dashboard analytics
+
+HTTP Client
+
+Axios
+
+REST API communication
+
+Routing
+
+React Router
+
+Public and authenticated route management
+
+Backend
+
+CodeIgniter 4
+
+REST API and business logic
+
+Language
+
+PHP 8.x
+
+Backend runtime
+
+Database
+
+MySQL
+
+Relational persistent data
+
+Version Control
+
+Git + GitHub
+
+Source control and collaboration
+
+4. System Architecture
+
+The system will follow a frontend/backend separation:
+
+React Frontend → REST API → CodeIgniter 4 Backend → MySQL Database
+
+The frontend must not directly connect to MySQL. All database access must happen through the CodeIgniter 4 backend/API.
+
+Component
+
+Responsibility
+
+React Application
+
+Pages, forms, dashboards, animations, validation display and API consumption
+
+API Routes
+
+Expose authenticated and public endpoints
+
+Controllers
+
+Receive requests, validate input and coordinate services/models
+
+Services
+
+Business workflows and reusable application logic
+
+Models
+
+Database queries and relationships
+
+Filters
+
+Authentication, role and permission protection
+
+MySQL
+
+Persistent relational storage
+
+File Storage
+
+Profile photos, gallery images and approved documents
+
+5. Project Folder Structure
+
+5.1 Backend — CodeIgniter 4
+
+app/├── Config/│   ├── Routes.php│   ├── Database.php│   └── ...├── Controllers/│   ├── Auth/│   ├── Admin/│   ├── SuperAdmin/│   ├── Alumni/│   ├── Student/│   └── Api/├── Models/├── Entities/├── Services/├── Filters/├── Validation/├── Database/│   ├── Migrations/│   └── Seeds/├── Views/└── Libraries/public/├── uploads/└── index.php
+
+5.2 Frontend — React
+
+src/├── assets/├── components/│   ├── common/│   ├── public/│   ├── alumni/│   ├── student/│   └── admin/├── layouts/│   ├── PublicLayout/│   ├── AuthLayout/│   ├── AlumniLayout/│   ├── StudentLayout/│   └── AdminLayout/├── pages/│   ├── public/│   ├── auth/│   ├── alumni/│   ├── student/│   ├── admin/│   └── superadmin/├── services/├── hooks/├── context/├── routes/├── utils/├── theme/└── App.jsx
+
+6. Akal University Design System
+
+Token
+
+Value
+
+Use
+
+Primary Yellow
+
+#F9B900
+
+Primary CTA, highlights, statistics
+
+Bright Yellow
+
+#FFC928
+
+Hover and gradient accents
+
+Primary Blue
+
+#087BB5
+
+Buttons, links and primary UI
+
+Light Blue
+
+#29A9E0
+
+Secondary accents and charts
+
+Deep Blue
+
+#075985
+
+Hero and dark gradient areas
+
+Dark Navy
+
+#172333
+
+Sidebar, footer and headings
+
+White
+
+#FFFFFF
+
+Cards and clean surfaces
+
+Light Background
+
+#F5F8FC
+
+Main application background
+
+Animations, gradients, rounded cards, hover effects and modern visual treatments are explicitly allowed. They must remain consistent with the Akal University color identity.
+
+7. Public Website Architecture
+
+Public pages must work without login. Public data is controlled by the Super Admin.
+
+/
+
+/about
+
+/alumni
+
+/alumni/:id
+
+/events
+
+/events/:id
+
+/jobs
+
+/jobs/:id
+
+/mentorship
+
+/stories
+
+/stories/:id
+
+/distinguished-alumni
+
+/chapters
+
+/gallery
+
+/news
+
+/contact
+
+/login
+
+/register
+
+8. Super Admin Control Model
+
+Super Admin must have database-driven control over what is visible on the public portal and which features are enabled. This should not depend on hard-coded frontend conditions.
+
+Enable/disable public modules.
+
+Show/hide navigation menu items.
+
+Manage homepage sections.
+
+Control public alumni profile fields.
+
+Publish/unpublish news, stories, gallery, events and other content.
+
+Manage public content order where required.
+
+Manage Admin accounts and permissions.
+
+Manage system settings.
+
+View audit logs.
+
+Enable/disable future modules such as messaging or donations.
+
+9. Role-Based Access Strategy
+
+Role checks must be enforced on the backend. Hiding a menu item in React is not considered security.
+
+Role
+
+Backend Protection
+
+Frontend
+
+Public
+
+Public endpoints only
+
+Public layout
+
+Student
+
+Student filter/authorization
+
+Student dashboard
+
+Alumni
+
+Alumni filter/authorization
+
+Alumni dashboard
+
+Admin
+
+Admin authorization
+
+Admin dashboard
+
+Super Admin
+
+Super Admin authorization
+
+Super Admin dashboard
+
+10. Database Foundation Principles
+
+Use migrations instead of manually creating production tables.
+
+Use foreign keys where appropriate.
+
+Use created_at and updated_at consistently.
+
+Use status fields for activation workflows.
+
+Prefer soft deletion for important records.
+
+Use indexed columns for search/filter operations.
+
+Do not store plain-text passwords.
+
+Keep authentication users separate from profile-specific data.
+
+Keep public visibility and system settings in database-driven configuration where appropriate.
+
+11. API Standards
+
+Use RESTful URL structure.
+
+Return consistent JSON responses.
+
+Use HTTP status codes correctly.
+
+Validate all request data on the backend.
+
+Never trust role/user IDs sent by the frontend.
+
+Derive the authenticated user identity from the authenticated session/token.
+
+Use pagination for large lists.
+
+Return only fields permitted for the requesting role.
+
+Keep API versioning available for future mobile applications.
+
+11.1 Standard API Response
+
+{  "status": true,  "message": "Request successful",  "data": {},  "errors": []}
+
+12. Security Foundation
+
+HTTPS in production.
+
+Strong password hashing.
+
+Authentication filters on protected routes.
+
+Role and permission checks on backend.
+
+Input validation.
+
+SQL injection protection through CodeIgniter query builder/parameterized queries.
+
+CSRF protection where applicable.
+
+Secure file upload validation.
+
+Rate limiting for authentication endpoints.
+
+Audit logging for critical administrative operations.
+
+Do not expose internal server errors, SQL queries or credentials.
+
+Do not expose private alumni fields through public API responses.
+
+13. Development Rules
+
+Develop one feature at a time.
+
+Explain the feature flow before implementation.
+
+Do not start the next feature until the current feature is tested/confirmed.
+
+When a file changes, provide the complete file code during implementation.
+
+Do not overwrite or break existing functionality.
+
+Follow CodeIgniter 4 MVC/API standards.
+
+Use reusable React components instead of duplicating UI code.
+
+Keep business logic out of React components where it belongs in the backend.
+
+Use database migrations and seeders.
+
+Keep production-ready validation and error handling from the beginning.
+
+Use consistent naming conventions.
+
+Do not hard-code public visibility rules that Super Admin should control.
+
+14. Initial Development Sequence
+
+Step
+
+Development File / Phase
+
+Main Deliverable
+
+01
+
+Project Foundation & Architecture
+
+This document; project standards and architecture
+
+02
+
+Database Architecture
+
+ERD, tables, relationships, migrations plan
+
+03
+
+CI4 Backend Setup
+
+Fresh CI4 project, environment and database connection
+
+04
+
+React Frontend Setup
+
+React project, routing and Akal design system
+
+05
+
+Authentication
+
+Login, register, logout, password handling and roles
+
+06
+
+Super Admin Foundation
+
+Super Admin dashboard, settings and permissions
+
+07
+
+Alumni Verification
+
+Registration approval workflow
+
+08
+
+Alumni Profile
+
+Profile and privacy controls
+
+09
+
+Public Website
+
+Homepage and public content management
+
+10
+
+Alumni Directory
+
+Search, filters and public profiles
+
+11
+
+Student Module
+
+Student dashboard and alumni discovery
+
+12
+
+Events
+
+Events and registrations
+
+13
+
+Jobs & Internships
+
+Career opportunities
+
+14
+
+Mentorship
+
+Mentors and requests
+
+15
+
+Chapters & Networking
+
+Chapters, connections and networking
+
+16
+
+Digital Alumni ID
+
+ID card and QR verification
+
+17
+
+Notifications
+
+System notifications and email
+
+18
+
+Reports & Analytics
+
+Admin reports and charts
+
+19
+
+Testing & Security
+
+Functional, API, security and responsive testing
+
+20
+
+Deployment
+
+Production deployment and documentation
+
+15. Definition of Done for Each Feature
+
+Database changes are implemented through migrations.
+
+Backend model/controller/service/validation is implemented as required.
+
+API endpoint is tested.
+
+Authentication/authorization is verified.
+
+Frontend page/component is implemented.
+
+Loading, empty and error states are handled.
+
+Responsive design is checked.
+
+Akam University theme is applied.
+
+No existing feature is broken.
+
+User confirms the feature is working before the next phase starts.
+
+16. Immediate Next Development Document
+
+The next document should be '02 — Database Architecture & ERD'. It will define every core table, field, primary key, foreign key, relationship, status field, indexes and migration order before any backend module is coded.
+
+Important: Do not create controllers, APIs or frontend modules before the database foundation is approved.

@@ -1,0 +1,415 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  /* Akal University Official Brand Palette */
+  --akal-yellow: #F9B900;
+  --akal-yellow-bright: #FFC928;
+  --akal-yellow-soft: #FFF8E7;
+  --akal-blue: #087BB5;
+  --akal-blue-light: #29A9E0;
+  --akal-blue-deep: #075985;
+  --akal-navy: #172333;
+  --akal-navy-dark: #0D1622;
+  --akal-bg-light: #F5F8FC;
+  --akal-blue-soft: #EAF6FC;
+  --akal-white: #FFFFFF;
+  --akal-gray-100: #F1F5F9;
+  --akal-gray-200: #E2E8F0;
+  --akal-gray-400: #94A3B8;
+  --akal-gray-600: #475569;
+  --akal-gray-800: #1E293B;
+
+  /* Typography */
+  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Gradients */
+  --grad-primary: linear-gradient(135deg, #087BB5 0%, #075985 100%);
+  --grad-yellow: linear-gradient(135deg, #FFC928 0%, #F9B900 100%);
+  --grad-hero: linear-gradient(135deg, #075985 0%, #087BB5 60%, #172333 100%);
+  --grad-card-glow: linear-gradient(145deg, rgba(255, 255, 255, 0.9) 0%, rgba(245, 248, 252, 0.9) 100%);
+  --grad-gold-foil: linear-gradient(135deg, #FFDF78 0%, #F9B900 50%, #D49800 100%);
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(23, 35, 51, 0.04);
+  --shadow-md: 0 8px 24px rgba(23, 35, 51, 0.08);
+  --shadow-lg: 0 16px 40px rgba(8, 123, 181, 0.12);
+  --shadow-glow: 0 0 25px rgba(249, 185, 0, 0.35);
+  --shadow-card-hover: 0 20px 35px rgba(7, 89, 133, 0.15);
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+
+  --transition-normal: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--akal-bg-light);
+  color: var(--akal-gray-800);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6, .brand-font {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--akal-navy);
+}
+
+/* Akal Button System */
+.btn-akal-primary {
+  background: var(--grad-primary);
+  color: #FFFFFF !important;
+  border: none;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: 10px 22px;
+  box-shadow: 0 4px 14px rgba(8, 123, 181, 0.25);
+  transition: var(--transition-normal);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-akal-primary:hover {
+  background: linear-gradient(135deg, #075985 0%, #087BB5 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(8, 123, 181, 0.35);
+  color: #FFFFFF !important;
+}
+
+.btn-akal-yellow {
+  background: var(--grad-yellow);
+  color: var(--akal-navy) !important;
+  border: none;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  padding: 10px 22px;
+  box-shadow: 0 4px 14px rgba(249, 185, 0, 0.3);
+  transition: var(--transition-normal);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-akal-yellow:hover {
+  background: linear-gradient(135deg, #FFC928 0%, #FFDF78 100%);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+  color: var(--akal-navy-dark) !important;
+}
+
+.btn-akal-outline {
+  border: 1.5px solid var(--akal-blue);
+  color: var(--akal-blue) !important;
+  background: transparent;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: 9px 20px;
+  transition: var(--transition-normal);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-akal-outline:hover {
+  background: var(--akal-blue);
+  color: #FFFFFF !important;
+  transform: translateY(-2px);
+}
+
+.btn-akal-outline-white {
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  color: #FFFFFF !important;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  padding: 9px 20px;
+  transition: var(--transition-normal);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-akal-outline-white:hover {
+  background: #FFFFFF;
+  color: var(--akal-navy) !important;
+  transform: translateY(-2px);
+}
+
+/* Glassmorphism Card System */
+.akal-card {
+  background: var(--akal-white);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(8, 123, 181, 0.08);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.akal-card:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-4px);
+  border-color: rgba(8, 123, 181, 0.2);
+}
+
+.akal-card-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.akal-card-dark {
+  background: linear-gradient(145deg, #172333 0%, #0D1622 100%);
+  color: #FFFFFF;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Badges */
+.badge-akal-verified {
+  background: linear-gradient(135deg, #087BB5 0%, #29A9E0 100%);
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-akal-distinguished {
+  background: var(--grad-gold-foil);
+  color: var(--akal-navy);
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 2px 10px rgba(249, 185, 0, 0.35);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.badge-akal-mentor {
+  background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-akal-soft {
+  background: var(--akal-blue-soft);
+  color: var(--akal-blue-deep);
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+}
+
+.badge-akal-yellow-soft {
+  background: var(--akal-yellow-soft);
+  color: #9A6B00;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+}
+
+/* Stat KPI Cards */
+.stat-kpi-card {
+  background: #FFFFFF;
+  border-radius: var(--radius-md);
+  padding: 24px;
+  border: 1px solid rgba(8, 123, 181, 0.08);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-normal);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.stat-kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(41, 169, 224, 0.3);
+}
+
+.stat-icon-wrapper {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  flex-shrink: 0;
+}
+
+.stat-icon-blue {
+  background: var(--akal-blue-soft);
+  color: var(--akal-blue);
+}
+
+.stat-icon-yellow {
+  background: var(--akal-yellow-soft);
+  color: #D49800;
+}
+
+.stat-icon-green {
+  background: #ECFDF5;
+  color: #059669;
+}
+
+.stat-icon-purple {
+  background: #F3E8FF;
+  color: #7C3AED;
+}
+
+/* University Emblem / Logo Style */
+.university-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.university-crest {
+  width: 44px;
+  height: 44px;
+  background: var(--grad-hero);
+  border: 2px solid var(--akal-yellow);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-weight: 900;
+  font-size: 20px;
+  box-shadow: 0 4px 10px rgba(8, 123, 181, 0.3);
+}
+
+.university-title-text {
+  line-height: 1.15;
+}
+
+.university-title-main {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+  color: var(--akal-navy);
+}
+
+.university-title-sub {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--akal-blue);
+}
+
+/* Filter Chips */
+.filter-chip {
+  padding: 7px 16px;
+  border-radius: var(--radius-full);
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #FFFFFF;
+  border: 1px solid var(--akal-gray-200);
+  color: var(--akal-gray-600);
+  cursor: pointer;
+  transition: var(--transition-normal);
+}
+
+.filter-chip:hover {
+  border-color: var(--akal-blue);
+  color: var(--akal-blue);
+  background: var(--akal-blue-soft);
+}
+
+.filter-chip.active {
+  background: var(--akal-blue);
+  color: #FFFFFF;
+  border-color: var(--akal-blue);
+  box-shadow: 0 2px 10px rgba(8, 123, 181, 0.25);
+}
+
+/* Digital ID Card Styling */
+.digital-id-card {
+  width: 100%;
+  max-width: 440px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #172333 0%, #075985 60%, #087BB5 100%);
+  color: #FFFFFF;
+  padding: 24px;
+  box-shadow: 0 20px 45px rgba(7, 89, 133, 0.35);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 201, 40, 0.4);
+}
+
+.digital-id-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 201, 40, 0.15) 0%, transparent 65%);
+  pointer-events: none;
+}
+
+.id-card-foil-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: var(--grad-gold-foil);
+}
+
+/* Animations */
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.03); }
+}
+
+.animate-pulse-subtle {
+  animation: pulseSubtle 3s infinite ease-in-out;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}

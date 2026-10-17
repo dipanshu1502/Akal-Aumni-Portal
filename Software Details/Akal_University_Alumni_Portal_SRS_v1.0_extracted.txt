@@ -1,0 +1,1365 @@
+AKAL UNIVERSITY
+
+SOFTWARE REQUIREMENTS SPECIFICATION
+
+Akal University Alumni Portal
+
+Version 1.0
+
+Prepared for: Akal UniversityDocument Type: Software Requirements Specification (SRS)Technology Direction: React / Bootstrap Frontend + CodeIgniter 4 REST API + MySQLStatus: Proposed
+
+Table of Contents
+
+1. Introduction
+
+2. Purpose
+
+3. Scope of the System
+
+4. Product Perspective
+
+5. Stakeholders and User Roles
+
+6. Overall System Workflow
+
+7. Public Website Requirements
+
+8. Alumni Module Requirements
+
+9. Student Module Requirements
+
+10. Admin Module Requirements
+
+11. Super Admin Module Requirements
+
+12. Functional Requirements
+
+13. Non-Functional Requirements
+
+14. Business Rules
+
+15. Data Requirements and Database Design
+
+16. API Requirements
+
+17. Security Requirements
+
+18. Notification Requirements
+
+19. Reports and Analytics
+
+20. UI/UX Requirements
+
+21. System Architecture
+
+22. Testing Requirements
+
+23. Deployment and Maintenance
+
+24. Future Enhancements
+
+25. Acceptance Criteria
+
+26. Conclusion
+
+1. Introduction
+
+The Akal University Alumni Portal is a centralized web-based platform designed to connect Akal University, its alumni, current students and the university administration. The portal will provide a professional public-facing alumni website as well as authenticated dashboards for alumni, students, administrators and super administrators.
+
+The system is intended to transform alumni management from scattered/manual communication into a structured digital network. It will support alumni registration and verification, profiles, alumni directory, batchmates, events, reunions, jobs, internships, mentorship, chapters, alumni stories, digital alumni identification, notifications and analytics.
+
+2. Purpose
+
+The primary purposes of the system are:
+
+Create a verified digital database of Akal University alumni.
+
+Allow visitors to discover the university's alumni community without mandatory login.
+
+Provide secure personalized services after alumni/student login.
+
+Help alumni reconnect with batchmates, classmates and professional contacts.
+
+Provide career opportunities, internships, mentorship and networking.
+
+Manage alumni events, reunions and registrations digitally.
+
+Showcase distinguished alumni and alumni achievements.
+
+Enable the university to publish announcements, stories, galleries and opportunities.
+
+Provide administrators with dashboards, verification tools, reports and audit logs.
+
+Create a foundation for future mobile applications and advanced integrations.
+
+3. Scope of the System
+
+3.1 In Scope
+
+Public alumni website and information pages.
+
+Alumni registration, login, profile and verification.
+
+Alumni directory and public profile viewing with privacy controls.
+
+Batchmate discovery and alumni networking.
+
+Events, reunions and event registration.
+
+Jobs and internship opportunities.
+
+Mentorship management.
+
+Alumni chapters and communities.
+
+Alumni stories, achievements and distinguished alumni.
+
+News, announcements and media gallery.
+
+Digital alumni ID card and QR-based verification.
+
+Student access to alumni networking and mentorship.
+
+Admin and super-admin dashboards.
+
+Reports, analytics, notifications and activity logs.
+
+REST APIs for future mobile applications.
+
+3.2 Out of Scope for Initial Release
+
+Full payment gateway implementation for donations unless separately approved.
+
+Real-time video calling.
+
+Built-in social media platform at the scale of a commercial social network.
+
+Advanced AI recommendations in the first release.
+
+Automatic verification from external government databases.
+
+4. Product Perspective
+
+The portal will operate as a centralized university alumni information and engagement system. The public website will expose approved, privacy-safe information, while authenticated dashboards will provide role-specific functionality.
+
+Layer
+
+Technology / Responsibility
+
+Presentation Layer
+
+React or server-rendered Bootstrap-based responsive UI
+
+Application Layer
+
+CodeIgniter 4 REST API, business logic, validation, authentication
+
+Database Layer
+
+MySQL relational database
+
+Authentication
+
+Session/JWT-based authentication depending on web/API deployment
+
+File Storage
+
+Server storage or approved cloud/object storage for photos/documents
+
+Notifications
+
+Email initially; push notifications in future mobile app
+
+Deployment
+
+Apache/Nginx hosting with PHP 8.x and MySQL
+
+5. Stakeholders and User Roles
+
+Role
+
+Description
+
+Primary Responsibilities
+
+Public Visitor
+
+Unauthenticated user
+
+Browse public content, alumni profiles, events, jobs, stories and contact information
+
+Alumni
+
+Verified former student
+
+Manage profile, connect, attend events, apply for jobs, mentor, post opportunities
+
+Student
+
+Current university student
+
+Discover alumni, request mentorship, view jobs/events and network
+
+Admin
+
+Authorized university staff
+
+Manage alumni, events, jobs, content, verification and reports
+
+Super Admin
+
+Highest system role
+
+Manage admins, permissions, settings, audit logs and complete system control
+
+6. Overall System Workflow
+
+The high-level workflow is:
+
+Public visitor opens the Alumni Portal.
+
+Visitor can browse public content without creating an account.
+
+An alumni candidate selects Join Alumni / Register.
+
+Candidate submits academic and professional information.
+
+System validates required fields and creates a pending account.
+
+Admin verifies the alumni record using university information.
+
+Approved alumni can log in and access the personalized dashboard.
+
+Alumni can complete their profile, connect with batchmates, register for events, apply for jobs and participate in mentorship.
+
+Students can log in and use student-specific networking and mentorship features.
+
+Admins manage content, users, events, jobs and verification.
+
+Super Admin controls administrators, permissions, settings and audit activities.
+
+7. Public Website Requirements
+
+The public website must remain useful even when a visitor is not logged in.
+
+Section
+
+Public Access
+
+Login Required for Action
+
+Home
+
+Yes
+
+No
+
+About Alumni Association
+
+Yes
+
+No
+
+Alumni Directory
+
+Yes, privacy-filtered
+
+Connect / message
+
+Public Alumni Profile
+
+Yes, approved fields only
+
+Connect / message
+
+Events
+
+Yes
+
+Registration
+
+Jobs / Internships
+
+Yes
+
+Application where applicable
+
+Mentors
+
+Yes, approved profile information
+
+Mentorship request
+
+Alumni Stories
+
+Yes
+
+No
+
+Distinguished Alumni
+
+Yes
+
+No
+
+Chapters
+
+Yes
+
+Join chapter
+
+Gallery
+
+Yes
+
+No
+
+News / Announcements
+
+Yes
+
+No
+
+Contact
+
+Yes
+
+No
+
+7.1 Home Page
+
+University branding, logo and hero section.
+
+Call-to-action buttons: Join Alumni Network and Explore Alumni.
+
+Alumni statistics such as total alumni, batches, events and geographic presence.
+
+Upcoming events.
+
+Featured/distinguished alumni.
+
+Latest alumni stories.
+
+Career opportunities.
+
+University announcements.
+
+Footer with contact information, social links and policies.
+
+8. Alumni Module Requirements
+
+8.1 Registration
+
+Personal details: name, email, mobile, profile photo and optional demographic fields.
+
+Academic details: enrollment/roll number, department, course, batch and passing year.
+
+Professional details: company, designation, industry, experience, city and country.
+
+Password creation and email/mobile verification.
+
+Consent to privacy policy and alumni data usage.
+
+Account status must initially be Pending until verification.
+
+8.2 Login and Account
+
+Secure login and logout.
+
+Forgot/reset password.
+
+Session timeout and secure session handling.
+
+Account status checks on login.
+
+Inactive/rejected users must not access authenticated features.
+
+8.3 Alumni Profile
+
+View and edit permitted profile fields.
+
+Profile photo and cover image.
+
+Education, employment, skills, achievements and social links.
+
+Profile completion percentage.
+
+Privacy controls for selected fields.
+
+Verified Alumni badge after approval.
+
+8.4 Alumni Directory
+
+Search by name, company and keyword.
+
+Filter by department, course, batch, passing year, city, country and industry.
+
+Pagination and sorting.
+
+Only approved/active alumni should appear.
+
+Private fields must never be exposed in public search.
+
+8.5 Batchmates
+
+Show alumni from the same batch and optionally same department/course.
+
+Allow profile viewing and connection requests.
+
+Allow privacy settings to control visibility.
+
+8.6 Networking and Connections
+
+Send connection request.
+
+Accept/reject request.
+
+List accepted connections.
+
+Optional block/report mechanism.
+
+Messaging can be introduced as an advanced feature.
+
+8.7 Events
+
+Browse upcoming and past events.
+
+View event details, venue, date, time, description and organizer.
+
+Register/unregister according to event rules.
+
+View registration status.
+
+QR-based event check-in can be supported.
+
+8.8 Jobs and Internships
+
+Browse approved jobs/internships.
+
+Search and filter opportunities.
+
+View job details and application method.
+
+Alumni may submit opportunities subject to admin approval.
+
+Application tracking can be enabled for portal-based applications.
+
+8.9 Mentorship
+
+Alumni may opt in as mentors.
+
+Specify expertise, industry, experience and mentoring topics.
+
+Students/alumni can search mentors.
+
+Send mentorship request.
+
+Mentor can accept/reject request.
+
+Mentorship status should be trackable.
+
+8.10 Chapters
+
+Browse city/region-based alumni chapters.
+
+View chapter information and members where privacy permits.
+
+Request to join a chapter.
+
+Chapter admins can manage approved chapter activities.
+
+8.11 Digital Alumni ID
+
+Generate unique Alumni ID for verified alumni.
+
+Show name, photo, program, batch and unique ID.
+
+Generate QR code.
+
+QR scan should open a verification page without exposing private data.
+
+9. Student Module Requirements
+
+Secure student login using university credentials or approved student account.
+
+Student profile with department, course, batch and interests.
+
+Search and browse alumni profiles with privacy-safe information.
+
+Find mentors based on expertise, industry and career goal.
+
+Send mentorship requests.
+
+Browse jobs and internships.
+
+View alumni events and approved student-accessible events.
+
+Receive announcements and notifications.
+
+Optionally save/bookmark mentors and opportunities.
+
+10. Admin Module Requirements
+
+10.1 Dashboard
+
+Total alumni, active alumni, pending verification and inactive accounts.
+
+Total events, registrations, jobs, mentors and chapters.
+
+Alumni growth chart.
+
+Department/batch/city distribution.
+
+Recent registrations and activities.
+
+10.2 Alumni Management
+
+View, search and filter alumni.
+
+Approve/reject registrations.
+
+Edit approved data where authorized.
+
+Deactivate/reactivate accounts.
+
+View verification history.
+
+Manage privacy-sensitive information according to policy.
+
+10.3 Event Management
+
+Create, edit, publish, close and archive events.
+
+Set capacity, date, time, venue and eligibility.
+
+View registrations.
+
+Export attendee lists.
+
+Manage event gallery and check-in where enabled.
+
+10.4 Job Management
+
+Create or review job/internship posts.
+
+Approve/reject alumni-submitted opportunities.
+
+Set expiry date.
+
+Manage categories and visibility.
+
+10.5 Mentorship Management
+
+Review mentor profiles.
+
+View mentorship requests/status.
+
+Handle reports/complaints.
+
+Deactivate inappropriate mentor profiles.
+
+10.6 Content Management
+
+News and announcements.
+
+Alumni stories.
+
+Distinguished alumni.
+
+Gallery and media.
+
+Static pages such as About and Contact.
+
+10.7 Reports
+
+Alumni registration report.
+
+Department-wise alumni report.
+
+Batch-wise alumni report.
+
+Location-wise alumni report.
+
+Event registration report.
+
+Job opportunity report.
+
+Mentorship activity report.
+
+11. Super Admin Module Requirements
+
+Create, edit, activate and deactivate admin accounts.
+
+Assign administrative permissions/roles.
+
+View system-wide activity logs.
+
+Manage system settings.
+
+Configure email/notification settings.
+
+Manage reference data such as departments, courses and batches.
+
+Access all reports.
+
+Review security/audit activities.
+
+Control critical system configuration.
+
+12. Functional Requirements
+
+ID
+
+Requirement
+
+Description
+
+FR-01
+
+User Registration
+
+System shall allow eligible alumni to submit registration details.
+
+FR-02
+
+Verification
+
+System shall support admin approval/rejection of alumni registrations.
+
+FR-03
+
+Authentication
+
+System shall authenticate users using secure credentials.
+
+FR-04
+
+Role-Based Access
+
+System shall restrict features according to user role.
+
+FR-05
+
+Public Directory
+
+System shall display approved privacy-safe alumni information to visitors.
+
+FR-06
+
+Profile Management
+
+Alumni shall be able to manage their permitted profile fields.
+
+FR-07
+
+Search and Filter
+
+System shall support directory search and filters.
+
+FR-08
+
+Events
+
+Admin shall be able to create and manage alumni events.
+
+FR-09
+
+Event Registration
+
+Authenticated eligible users shall be able to register for events.
+
+FR-10
+
+Jobs
+
+System shall display approved jobs/internships.
+
+FR-11
+
+Mentorship
+
+System shall support mentor discovery and mentorship requests.
+
+FR-12
+
+Chapters
+
+System shall support alumni chapters and membership.
+
+FR-13
+
+Content
+
+Admin shall manage news, stories, gallery and distinguished alumni.
+
+FR-14
+
+Notifications
+
+System shall generate relevant notifications for users.
+
+FR-15
+
+Digital ID
+
+System shall generate a unique digital alumni ID for verified alumni.
+
+FR-16
+
+QR Verification
+
+System shall allow public verification of an alumni ID without exposing private data.
+
+FR-17
+
+Reports
+
+Admin shall be able to view/export approved reports.
+
+FR-18
+
+Audit Logs
+
+System shall record critical administrative actions.
+
+FR-19
+
+Privacy
+
+System shall enforce field-level visibility rules.
+
+FR-20
+
+API
+
+System shall expose documented REST APIs for approved client applications.
+
+13. Non-Functional Requirements
+
+ID
+
+Category
+
+Requirement
+
+NFR-01
+
+Performance
+
+Normal public pages should load quickly under expected university traffic; API queries must use pagination and indexed database fields.
+
+NFR-02
+
+Availability
+
+The production system should target high availability and regular backups.
+
+NFR-03
+
+Security
+
+Passwords must be hashed; authentication, authorization and input validation must be enforced.
+
+NFR-04
+
+Scalability
+
+Architecture should support increasing alumni records, events and users without major redesign.
+
+NFR-05
+
+Usability
+
+UI should be simple, professional, responsive and easy for non-technical users.
+
+NFR-06
+
+Accessibility
+
+Forms, buttons, contrast and navigation should follow reasonable accessibility practices.
+
+NFR-07
+
+Maintainability
+
+CI4 code should follow modular MVC/API conventions and documented coding standards.
+
+NFR-08
+
+Compatibility
+
+System should work on modern Chrome, Edge, Firefox and mobile browsers.
+
+NFR-09
+
+Data Integrity
+
+Foreign keys, validation and transaction handling should protect relational consistency.
+
+NFR-10
+
+Auditability
+
+Important administrative changes should be logged with actor, action, timestamp and relevant record.
+
+NFR-11
+
+Privacy
+
+Personal information must only be displayed according to role and user privacy settings.
+
+14. Business Rules
+
+Only approved alumni accounts are considered verified alumni.
+
+Inactive/rejected users cannot log in to restricted areas.
+
+Only active approved alumni should appear in the public directory.
+
+Public profiles must never expose private contact information unless explicitly configured as public.
+
+Only authorized admins can approve alumni registrations.
+
+Jobs and events submitted by alumni may require admin approval before publication.
+
+Event registration must respect event capacity and eligibility rules.
+
+A user should not register twice for the same event.
+
+Only eligible verified mentors can receive mentorship requests.
+
+Only Super Admin can create or modify high-privilege admin accounts unless delegated.
+
+Deleted records should preferably be soft-deleted when historical/audit information is important.
+
+Critical actions must be recorded in activity logs.
+
+15. Data Requirements and Database Design
+
+The following is the proposed logical database structure. Exact columns may be refined during database design.
+
+Table
+
+Main Fields / Purpose
+
+users
+
+id, name, email, mobile, password_hash, role, status, last_login_at, created_at, updated_at
+
+alumni
+
+id, user_id, enrollment_no, department_id, course_id, batch_id, passing_year, bio, city, country, company, designation, profile_photo, verification_status
+
+students
+
+id, user_id, enrollment_no, department_id, course_id, batch_id, interests, profile_photo
+
+departments
+
+id, name, code, status
+
+courses
+
+id, department_id, name, code, duration, status
+
+batches
+
+id, year, program/course reference, status
+
+alumni_experiences
+
+id, alumni_id, company, designation, start_date, end_date, description
+
+alumni_education
+
+id, alumni_id, institution, program, start_year, end_year, description
+
+skills
+
+id, name
+
+alumni_skills
+
+id, alumni_id, skill_id
+
+events
+
+id, title, description, event_type, date, start_time, end_time, venue, capacity, status, created_by
+
+event_registrations
+
+id, event_id, user_id, registration_status, registered_at, checkin_at
+
+jobs
+
+id, title, company, description, location, employment_type, experience, apply_url/email, posted_by, status, expires_at
+
+job_applications
+
+id, job_id, user_id, resume_id, status, applied_at
+
+mentors
+
+id, alumni_id, expertise, bio, availability, status
+
+mentorship_requests
+
+id, mentor_id, requester_id, message, status, created_at, responded_at
+
+chapters
+
+id, name, city, country, description, contact_email, status
+
+chapter_members
+
+id, chapter_id, alumni_id, role, status, joined_at
+
+connections
+
+id, requester_id, receiver_id, status, created_at
+
+messages
+
+id, sender_id, receiver_id, message, read_at, created_at
+
+news
+
+id, title, content, image, status, published_at, created_by
+
+success_stories
+
+id, alumni_id, title, content, image, status, published_at
+
+distinguished_alumni
+
+id, alumni_id, title, description, display_order, status
+
+gallery
+
+id, title, description, event_id, status
+
+gallery_images
+
+id, gallery_id, image_path, caption
+
+notifications
+
+id, user_id, title, message, type, read_at, created_at
+
+alumni_id_cards
+
+id, alumni_id, alumni_number, qr_token, issued_at, status
+
+feedback
+
+id, user_id/null, name, email, subject, message, status, created_at
+
+activity_logs
+
+id, user_id, action, module, record_id, ip_address, user_agent, created_at
+
+16. API Requirements
+
+The backend should expose RESTful endpoints for the React web client and future mobile applications.
+
+Module
+
+Example Endpoints
+
+Authentication
+
+/api/auth/register, /api/auth/login, /api/auth/logout, /api/auth/forgot-password
+
+Public
+
+/api/public/alumni, /api/public/alumni/{id}, /api/public/events, /api/public/jobs, /api/public/stories, /api/public/news
+
+Alumni
+
+/api/alumni/profile, /api/alumni/profile/update, /api/alumni/batchmates, /api/alumni/connections
+
+Events
+
+/api/events, /api/events/{id}/register, /api/events/my-registrations
+
+Jobs
+
+/api/jobs, /api/jobs/{id}, /api/jobs/{id}/apply, /api/jobs/my-applications
+
+Mentorship
+
+/api/mentors, /api/mentorship/requests, /api/mentorship/requests/{id}/status
+
+Chapters
+
+/api/chapters, /api/chapters/{id}/join
+
+Notifications
+
+/api/notifications, /api/notifications/{id}/read
+
+Admin
+
+/api/admin/dashboard, /api/admin/alumni, /api/admin/events, /api/admin/jobs, /api/admin/reports
+
+Verification
+
+/api/public/alumni-id/{alumni_number} or QR token based verification endpoint
+
+17. Security Requirements
+
+Passwords must be stored using a strong one-way password hashing mechanism.
+
+HTTPS must be used in production.
+
+All authenticated endpoints must verify authentication and role permissions.
+
+Input validation and sanitization must be applied to all user-controlled data.
+
+Protection against SQL injection must be provided through CodeIgniter query builder/parameterized queries.
+
+CSRF protection should be enabled where applicable for cookie/session-based web forms.
+
+File uploads must validate file type, size and safe filename/path.
+
+Authentication sessions/tokens must expire appropriately.
+
+Rate limiting should be applied to login and sensitive endpoints.
+
+Private profile fields must not be returned through public APIs.
+
+Administrative actions must be logged.
+
+Regular database and uploaded-file backups must be maintained.
+
+Error responses must not expose database credentials, stack traces or sensitive server information.
+
+18. Notification Requirements
+
+Trigger
+
+Recipient
+
+Notification
+
+Alumni registration submitted
+
+Admin
+
+New verification request
+
+Registration approved
+
+Alumni
+
+Account approved
+
+Registration rejected
+
+Alumni
+
+Account status/update
+
+Event registration
+
+Alumni/Admin
+
+Registration confirmation
+
+Event reminder
+
+Registered users
+
+Upcoming event reminder
+
+Connection request
+
+Alumni
+
+New connection request
+
+Mentorship request
+
+Mentor
+
+New mentorship request
+
+Mentorship response
+
+Requester
+
+Request accepted/rejected
+
+New job
+
+Relevant users
+
+New opportunity
+
+Admin announcement
+
+Selected users/all
+
+Announcement notification
+
+19. Reports and Analytics
+
+Total registered alumni.
+
+Verified, pending, rejected and inactive alumni.
+
+Alumni by department.
+
+Alumni by course/program.
+
+Alumni by passing year/batch.
+
+Alumni by city/country.
+
+Industry/company distribution.
+
+Event registration and attendance.
+
+Job and internship opportunity statistics.
+
+Mentorship activity.
+
+Chapter membership.
+
+Monthly/annual alumni registration trends.
+
+20. UI/UX Requirements
+
+Use Akal University branding, logo and approved colors.
+
+Design should be clean, modern, premium and professional.
+
+Responsive layout for desktop, tablet and mobile.
+
+Use Bootstrap 5 or equivalent responsive design system.
+
+Use consistent cards, tables, forms, buttons and alerts.
+
+Navigation should clearly separate public and authenticated areas.
+
+Search/filter interfaces should be simple and easy to understand.
+
+Dashboard cards should be clickable where logically useful.
+
+Forms should display clear validation messages.
+
+Loading, empty and error states should be designed for major screens.
+
+Accessibility and readable typography should be considered.
+
+Avoid unnecessary animations and visual clutter.
+
+21. System Architecture
+
+Recommended architecture:
+
+Browser / Mobile Client → React/Bootstrap UI → CodeIgniter 4 REST API → Authentication & Business Logic → MySQL Database. File uploads are stored in controlled server/cloud storage and referenced from the database.
+
+Component
+
+Responsibility
+
+Frontend
+
+Pages, forms, dashboards, search, filters, client-side validation and API consumption
+
+CI4 Controllers
+
+Receive API requests and return structured responses
+
+CI4 Services/Business Logic
+
+Verification, registration, event, mentorship and workflow logic
+
+Models
+
+Database interaction and query logic
+
+Filters/Middleware
+
+Authentication, role and permission checks
+
+MySQL
+
+Persistent relational data
+
+File Storage
+
+Profile photos, gallery images and approved documents
+
+Notification Service
+
+Email and future push notifications
+
+22. Testing Requirements
+
+Unit testing for important business logic and services.
+
+API testing for authentication, permissions and CRUD operations.
+
+Form validation testing.
+
+Role-based authorization testing.
+
+Alumni verification workflow testing.
+
+Event capacity and duplicate-registration testing.
+
+Privacy testing to ensure private fields are not exposed publicly.
+
+File upload security testing.
+
+Responsive UI testing on desktop and mobile.
+
+Cross-browser testing.
+
+Performance testing for directory/search endpoints.
+
+Backup and restore testing.
+
+User acceptance testing with university representatives.
+
+23. Deployment and Maintenance
+
+Production server must support PHP 8.x, MySQL and the selected web server.
+
+Environment-specific configuration must be stored outside source code where possible.
+
+Database migrations/seeds should be maintained.
+
+HTTPS/SSL must be configured.
+
+Production error display must be disabled while logging errors securely.
+
+Automated or scheduled database backups should be configured.
+
+Uploaded files should be backed up.
+
+Source code should be maintained in Git.
+
+Deployment should use separate development, testing and production environments where feasible.
+
+System logs and activity logs should be reviewed periodically.
+
+24. Future Enhancements
+
+Dedicated Flutter/Android/iOS alumni mobile application.
+
+Push notifications.
+
+Real-time alumni messaging.
+
+AI-based mentor recommendations.
+
+AI-based career/job recommendations.
+
+Alumni referral system.
+
+Advanced event QR check-in.
+
+Digital certificates and participation badges.
+
+Online donations and scholarship sponsorship.
+
+Alumni volunteering management.
+
+LinkedIn/social profile integration.
+
+Advanced geographic alumni map.
+
+University ERP/SIS integration.
+
+Single Sign-On (SSO).
+
+Alumni engagement score and analytics.
+
+25. Acceptance Criteria
+
+A visitor can browse the public portal without logging in.
+
+A visitor cannot access private alumni information.
+
+An alumni candidate can register successfully.
+
+Admin can approve/reject alumni registrations.
+
+Approved alumni can log in and manage their profile.
+
+Alumni directory supports required search/filter operations.
+
+Batchmates can be discovered based on batch/course/department.
+
+Events can be created and users can register according to eligibility/capacity.
+
+Approved jobs/internships can be displayed and applications handled as designed.
+
+Mentors can be registered and mentorship requests can be managed.
+
+Admin can manage news, stories, gallery and distinguished alumni.
+
+Digital Alumni ID can be generated for verified alumni.
+
+QR verification exposes only approved verification information.
+
+Role-based access prevents unauthorized module access.
+
+Critical admin actions are recorded in activity logs.
+
+The system is responsive and usable on desktop and mobile browsers.
+
+The database can be backed up and restored successfully.
+
+APIs return consistent authenticated/unauthenticated responses.
+
+26. Conclusion
+
+The proposed Akal University Alumni Portal will provide a centralized, secure and scalable digital ecosystem for alumni engagement. The portal will keep important public information accessible without login while reserving personalized actions such as networking, event registration, mentorship and applications for authenticated users. The architecture is designed to support future expansion into a mobile application, university integrations, advanced analytics and AI-assisted alumni services.
+
+The recommended implementation approach is to build the backend as a CodeIgniter 4 REST API with MySQL and a responsive React/Bootstrap frontend. Development should be carried out module-by-module, with authentication, alumni verification and core directory functionality implemented before advanced engagement features.
+
+Appendix A — Suggested Main Navigation
+
+Home | About | Alumni | Events | Careers | Mentorship | Stories | Chapters | Gallery | Contact | Login | Join Alumni
+
+Appendix B — Suggested Authenticated Navigation
+
+Dashboard | My Profile | Directory | Batchmates | Connections | Events | Jobs | Mentorship | Chapters | Digital ID | Notifications | Settings
+
+Appendix C — Recommended Development Phases
+
+Phase
+
+Major Deliverables
+
+Phase 1
+
+Project setup, database foundation, authentication, public website, alumni registration and verification
+
+Phase 2
+
+Alumni profiles, directory, batchmates, privacy and networking
+
+Phase 3
+
+Events, registrations, news, stories, gallery and chapters
+
+Phase 4
+
+Jobs, internships, mentorship and notifications
+
+Phase 5
+
+Digital alumni ID, QR verification, reports, analytics and audit logs
+
+Phase 6
+
+Testing, security hardening, deployment and documentation
+
+Future
+
+Mobile app, push notifications, messaging, AI recommendations and integrations

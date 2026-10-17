@@ -1,0 +1,515 @@
+AKAL UNIVERSITY
+
+ALUMNI PORTAL — UI/UX & DESIGN GUIDELINES
+
+Modern • Attractive • Animated • Akal University Branded
+
+Visual reference: Akal University Prospectus 2026–27
+
+1. Design Objective
+
+The Akal University Alumni Portal should look like a modern premium digital university platform. The Prospectus 2026–27 is the primary visual branding reference. The website should retain the recognizable Akal University yellow, blue and dark navy identity while using modern UI patterns, animations, gradients, rounded cards and interactive dashboard components.
+
+2. Core Design Direction
+
+Principle
+
+Decision
+
+Overall style
+
+Modern, premium, attractive, energetic and institutional
+
+Brand inspiration
+
+Akal University Prospectus 2026–27
+
+Primary colors
+
+Akal Yellow + Akal Blue
+
+Supporting colors
+
+Deep Blue, Navy, White, light blue and carefully matched accent colors
+
+Animation
+
+Allowed and encouraged where it improves interaction
+
+Gradients
+
+Allowed; primarily blue/yellow branded gradients
+
+Cards
+
+Rounded, elevated and visually rich
+
+Dashboard
+
+Highly visual with charts, stats, activity and quick actions
+
+Typography
+
+Modern, clean and highly readable
+
+Responsive
+
+Desktop-first but fully responsive for tablet/mobile
+
+3. Color System
+
+The following palette should be used as the initial design system. Exact shades can be tuned after final logo/brand assets are supplied.
+
+Color
+
+Hex
+
+Primary Use
+
+Akal Yellow
+
+#F9B900
+
+Primary CTA, highlights, active accents, statistics
+
+Bright Yellow
+
+#FFC928
+
+Hover states, gradients, decorative accents
+
+Akal Blue
+
+#087BB5
+
+Primary buttons, links, navigation accents
+
+Light Blue
+
+#29A9E0
+
+Secondary accents, charts, backgrounds
+
+Deep Blue
+
+#075985
+
+Headers, strong gradients, important UI
+
+Dark Navy
+
+#172333
+
+Sidebar, footer, headings, dark sections
+
+White
+
+#FFFFFF
+
+Cards, surfaces, text on dark backgrounds
+
+Light Background
+
+#F5F8FC
+
+Main page background
+
+Soft Blue
+
+#EAF6FC
+
+Panels, filters, informational areas
+
+4. Gradient System
+
+Gradients are allowed and should be used intentionally.
+
+Akal Blue → Deep Blue for hero sections and major dashboard headers.
+
+Akal Yellow → Bright Yellow for CTA/highlight areas.
+
+Blue → Light Blue for analytics cards and decorative backgrounds.
+
+Navy → Deep Blue for dark dashboard/sidebar sections.
+
+Blue + subtle yellow glow for premium hero/dashboard visuals.
+
+5. Typography
+
+Element
+
+Recommended Style
+
+Main heading
+
+Bold / Extra Bold, large, modern sans-serif
+
+Section heading
+
+Bold, strong hierarchy
+
+Body
+
+Regular, high readability
+
+Numbers / statistics
+
+Bold or Extra Bold
+
+Buttons
+
+Semi-bold
+
+Labels
+
+Medium / uppercase only where useful
+
+Recommended font family: Poppins, Inter, or another modern sans-serif. Poppins is especially suitable for matching the energetic university branding.
+
+6. Public Website Design
+
+The public portal must be attractive even when the visitor is not logged in.
+
+Modern top navigation with Akal University logo.
+
+Large animated hero section using campus imagery.
+
+Blue/yellow gradient overlays without hiding the campus image.
+
+Animated alumni statistics.
+
+Featured alumni cards.
+
+Upcoming events with interactive hover effects.
+
+Jobs and mentorship highlights.
+
+Alumni success stories with image-led cards.
+
+Distinguished alumni showcase.
+
+Modern gallery with hover/zoom interactions.
+
+Strong footer with university identity and contact information.
+
+7. Hero Section
+
+Recommended concept:
+
+AKAL UNIVERSITY ALUMNI NETWORK
+
+Connecting Our Past. Inspiring Our Future.
+
+Primary actions: Explore Alumni | Join Alumni Network
+
+Use the campus photograph as a major visual.
+
+Add animated blue/yellow abstract shapes or waves inspired by the prospectus.
+
+Use subtle entrance animation for headline and CTA.
+
+Add a gentle image/parallax effect if performance remains acceptable.
+
+Keep the logo visible and consistent.
+
+8. Modern Dashboard Design
+
+The dashboard should be one of the strongest visual parts of the application.
+
+Dashboard Area
+
+Design Treatment
+
+Welcome header
+
+Gradient blue background with profile and quick actions
+
+Statistic cards
+
+Large numbers, icons, subtle gradient/glow and hover animation
+
+Charts
+
+Animated line/bar/doughnut charts using branded colors
+
+Upcoming events
+
+Image/card layout with date badge
+
+Recent activity
+
+Timeline or modern activity list
+
+Recommended alumni
+
+Profile cards with company/designation
+
+Jobs
+
+Compact opportunity cards with company branding
+
+Mentorship
+
+Mentor cards and pending request status
+
+Notifications
+
+Clean notification center with unread indicators
+
+Quick actions
+
+Large icon buttons for Profile, Directory, Events, Jobs etc.
+
+9. Dashboard Animation Guidelines
+
+Animation is explicitly allowed for this project.
+
+Cards can animate upward/fade-in on dashboard load.
+
+Statistics can count up from zero to the final value.
+
+Charts can animate when entering the viewport.
+
+Buttons can have smooth hover/press effects.
+
+Sidebar items can have active-state transitions.
+
+Profile cards can slightly lift on hover.
+
+Hero elements can use staggered entrance animation.
+
+Page transitions can use short fade/slide effects.
+
+Notifications can use subtle slide-in effects.
+
+Avoid animations that delay usability or make forms difficult to operate.
+
+10. Rounded Cards & Components
+
+Rounded cards are encouraged.
+
+Use medium-to-large border radius for dashboard cards.
+
+Use larger radius for hero CTA panels and profile cards.
+
+Use consistent radius across buttons, inputs, cards and modals.
+
+Use soft shadows and occasional gradient borders.
+
+Avoid making every small element excessively rounded; hierarchy should remain clear.
+
+11. Login / Registration UI
+
+Split-screen or centered premium login layout.
+
+Akal University campus image on one side.
+
+Blue/yellow gradient panel on the other.
+
+University logo and Alumni Network title.
+
+Animated form entrance.
+
+Clear Login / Register / Forgot Password actions.
+
+Registration should visually communicate alumni verification.
+
+12. Alumni Directory UI
+
+Large search bar with icon.
+
+Modern filter chips/dropdowns.
+
+Grid/list view toggle.
+
+Profile cards with photo, name, batch, department, designation and location.
+
+Hover animation revealing additional public information.
+
+Pagination or lazy loading.
+
+Verified badge using Akal blue/yellow.
+
+13. Event UI
+
+Large event cover image.
+
+Date badge.
+
+Event category badge.
+
+Animated registration CTA.
+
+Event detail page with venue/map section.
+
+Registration status and QR check-in support.
+
+14. Alumni Profile UI
+
+Large profile header/cover section.
+
+Profile photo with verified badge.
+
+Education and professional timeline.
+
+Skills as clean tags/chips.
+
+Achievements section.
+
+Connections and mentorship CTA.
+
+Privacy-controlled contact information.
+
+Digital Alumni ID access.
+
+15. Admin Dashboard
+
+Admin dashboard should feel like a modern analytics/control center, not a basic CRUD panel.
+
+Animated KPI cards for alumni, verification requests, events, jobs and mentors.
+
+Interactive charts for alumni growth and demographics.
+
+Pending verification queue with approve/reject actions.
+
+Recent registrations.
+
+Upcoming events.
+
+Content publishing shortcuts.
+
+System activity timeline.
+
+Quick action panel.
+
+Responsive data tables with filters.
+
+16. Super Admin Dashboard
+
+All Admin dashboard features.
+
+Admin management.
+
+Role/permission overview.
+
+System activity and audit logs.
+
+System settings.
+
+Database/backup status indicators where technically available.
+
+Security and login activity overview.
+
+17. Additional Accent Colors
+
+Additional colors may be used when required, but they should support the Akal palette.
+
+Use Case
+
+Suggested Color Family
+
+Success
+
+Green family
+
+Warning
+
+Amber/yellow family
+
+Error
+
+Red family
+
+Information
+
+Blue/cyan family
+
+Mentorship
+
+Purple/blue accent if needed
+
+Jobs
+
+Blue/teal accent if needed
+
+Events
+
+Yellow/orange accent if needed
+
+Rule: additional colors should appear mainly as semantic/status colors, not as random decorative colors.
+
+18. Responsive Design
+
+Desktop: full sidebar, multi-column dashboards and large charts.
+
+Tablet: collapsible navigation and two-column content where appropriate.
+
+Mobile: bottom/slide navigation, single-column cards and horizontally scrollable filters.
+
+Tables should become cards or horizontally scrollable layouts on small screens.
+
+Charts must remain readable on mobile.
+
+19. Design Consistency Rules
+
+Akal University logo must use the approved asset without distortion.
+
+Yellow and blue should remain the recognizable visual identity throughout the portal.
+
+Buttons, badges, cards and forms should follow a reusable component system.
+
+Do not use unrelated visual themes on different modules.
+
+Animation timing should remain consistent.
+
+Dark and light sections can both be used, but branding must remain obvious.
+
+Images should be high-quality and optimized for web performance.
+
+20. Recommended Frontend Stack
+
+Technology
+
+Purpose
+
+React
+
+Frontend application and reusable UI components
+
+Bootstrap 5 / Bootstrap Icons
+
+Responsive layout and UI foundation
+
+CSS / SCSS
+
+Akal University design system and custom styling
+
+Chart library
+
+Dashboard analytics and animated charts
+
+React Router
+
+Public/authenticated route handling
+
+Axios / Fetch
+
+REST API communication
+
+CodeIgniter 4
+
+Backend REST API
+
+MySQL
+
+Database
+
+21. Final Visual Target
+
+The final product should feel like a combination of Akal University's official visual identity and a modern premium alumni networking platform. It should be visually rich, animated and engaging, while remaining professional enough for official university use.
+
+Target: Akal University branding + premium modern dashboard + engaging animations + responsive UX.
+
+22. Implementation Note
+
+This document is a UI/UX and visual design addendum to the previously prepared Software Requirements Specification. The functional requirements in the SRS remain applicable; this document defines how those requirements should look and feel in the final product.
