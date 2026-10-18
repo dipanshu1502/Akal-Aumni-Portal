@@ -23,7 +23,9 @@ class PermissionFilter implements FilterInterface
 {
     public const AVAILABLE = [
         'verify_alumni'    => 'Verify alumni accounts (approve / reject)',
-        'manage_users'     => 'Manage user accounts & roles',
+        'manage_alumni'    => 'Manage alumni accounts (view, activate / deactivate)',
+        'manage_students'  => 'Manage student accounts (view, activate / deactivate)',
+        'manage_users'     => 'Manage all user accounts & roles',
         'manage_admins'    => 'Add / remove admins & edit permissions (superadmin only)',
         'manage_events'    => 'Create / delete events',
         'manage_jobs'      => 'Approve / manage job board',
@@ -71,19 +73,26 @@ class PermissionFilter implements FilterInterface
 
         $granted = self::getPermissionsForUser((int) ($authUser['id'] ?? 0));
 
+        // Check if user has ANY of the specified permissions (OR matching)
+        $hasAny = false;
         foreach ($required as $perm) {
             if ($perm === '') {
                 continue;
             }
-            if (empty($granted[$perm])) {
-                $response = Services::response();
-                return $response->setStatusCode(403)->setJSON([
-                    'status'  => false,
-                    'message' => "Forbidden: missing permission '{$perm}'",
-                    'data'    => null,
-                    'errors'  => ["Requires permission: {$perm}"],
-                ]);
+            if (!empty($granted[$perm])) {
+                $hasAny = true;
+                break;
             }
+        }
+
+        if (!$hasAny) {
+            $response = Services::response();
+            return $response->setStatusCode(403)->setJSON([
+                'status'  => false,
+                'message' => 'Forbidden: missing required permission (' . implode(' or ', $required) . ')',
+                'data'    => null,
+                'errors'  => ['Requires at least one permission: ' . implode(', ', $required)],
+            ]);
         }
 
         return $request;

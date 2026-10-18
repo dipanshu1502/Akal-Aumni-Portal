@@ -40,6 +40,38 @@ class AuthFilter implements FilterInterface
         // Attach authenticated user to request context or global
         $request->authUser = $payload;
 
+        // Alumni accounts are gated by admin approval — check the LIVE status on every
+        // request so a pending/rejected alumni can never use the API, even with an old token.
+        if (($payload['role'] ?? '') === 'alumni' && !empty($payload['id'])) {
+            $row = \Config\Database::connect()
+                ->table('users')
+                ->select('status, verification_status')
+                ->where('id', $payload['id'])
+                ->get()
+                ->getRowArray();
+
+            $isPending = !$row
+                || $row['status'] === 'pending'
+                || $row['verification_status'] === 'pending';
+            $isBlocked = $row && (
+                in_array($row['status'], ['rejected', 'suspended'], true)
+                || $row['verification_status'] === 'rejected'
+            );
+
+            if ($isPending || $isBlocked) {
+                $message = $isPending
+                    ? 'Your registration request is awaiting admin approval. Access will be enabled once an administrator approves your alumni account.'
+                    : 'Your alumni account is not active. Please contact the Alumni Office.';
+
+                return Services::response()->setStatusCode(403)->setJSON([
+                    'status'  => false,
+                    'message' => $message,
+                    'data'    => null,
+                    'errors'  => [$message],
+                ]);
+            }
+        }
+
         // Check role arguments if provided
         if (!empty($arguments)) {
             $allowedRoles = is_array($arguments) ? $arguments : explode(',', $arguments);

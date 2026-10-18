@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { ShieldCheck, PlusCircle, Search, Lock, UserPlus, KeyRound } from 'lucide-react';
 const PERM_FALLBACK = {
-  verify_alumni: 'Verify alumni accounts',
-  manage_users: 'Manage user accounts',
+  verify_alumni: 'Verify alumni accounts (approve / reject)',
+  manage_alumni: 'Manage alumni accounts (view, activate / deactivate)',
+  manage_students: 'Manage student accounts (view, activate / deactivate)',
+  manage_users: 'Manage all user accounts & roles',
   manage_events: 'Manage events',
   manage_jobs: 'Manage jobs board',
   manage_stories: 'Manage stories',

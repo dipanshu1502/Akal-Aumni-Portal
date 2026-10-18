@@ -55,13 +55,16 @@ $routes->group('api', function ($routes) {
     // Admin & Super Admin Authenticated Routes
     $routes->group('admin', ['filter' => 'auth:admin,superadmin'], function ($routes) {
         $routes->get('dashboard', 'Api\AdminController::getDashboard');
-        $routes->get('verifications', 'Api\AdminController::getPendingVerifications', ['filter' => 'permission:verify_alumni']);
-        $routes->post('verifications/(:num)/approve', 'Api\AdminController::approveVerification/$1', ['filter' => 'permission:verify_alumni']);
-        $routes->post('verifications/(:num)/reject', 'Api\AdminController::rejectVerification/$1', ['filter' => 'permission:verify_alumni']);
+        $routes->get('verifications', 'Api\AdminController::getPendingVerifications', ['filter' => 'permission:verify_alumni,manage_alumni,manage_users']);
+        $routes->post('verifications/(:num)/approve', 'Api\AdminController::approveVerification/$1', ['filter' => 'permission:verify_alumni,manage_alumni,manage_users']);
+        $routes->post('verifications/(:num)/reject', 'Api\AdminController::rejectVerification/$1', ['filter' => 'permission:verify_alumni,manage_alumni,manage_users']);
         
-        // Users Management (requires manage_users)
-        $routes->get('users', 'Api\AdminController::getAllUsers', ['filter' => 'permission:manage_users']);
-        // Role / status changes are superadmin-only (checked inside controller)
+        // Users Management (requires manage_users OR manage_alumni OR manage_students)
+        $routes->get('users', 'Api\AdminController::getAllUsers', ['filter' => 'permission:manage_users,manage_alumni,manage_students']);
+        // Full profile of any user (alumni / student / admin) — Manage tabs ke "Full Info" modal ke liye
+        $routes->get('users/(:num)/detail', 'Api\AdminController::getUserDetail/$1', ['filter' => 'permission:manage_users,manage_alumni,manage_students']);
+        // Role changes are superadmin-only (checked inside controller);
+        // status changes: superadmin OR admin with appropriate permission (checked inside controller)
         $routes->put('users/(:num)/role', 'Api\AdminController::updateUserRole/$1');
         $routes->put('users/(:num)/status', 'Api\AdminController::updateUserStatus/$1');
 

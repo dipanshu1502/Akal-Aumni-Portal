@@ -40,6 +40,31 @@ class AuthController extends BaseController
             return $this->respondError('Account has been suspended. Please contact the Alumni Office.', 403);
         }
 
+        // Alumni registration sirf admin approval ke baad usable hoti hai (FR-02)
+        $awaitingApproval = $user['status'] === 'pending'
+            || ($user['role'] === 'alumni' && $user['verification_status'] === 'pending');
+        if ($awaitingApproval) {
+            return $this->respondError(
+                'Your registration request is awaiting admin approval. You will be able to log in once an administrator approves your alumni account.',
+                403
+            );
+        }
+
+        $rejectedAccount = $user['status'] === 'rejected'
+            || ($user['role'] === 'alumni' && $user['verification_status'] === 'rejected');
+        if ($rejectedAccount) {
+            $reason = '';
+            if ($user['role'] === 'alumni') {
+                $alumniRow = $this->db->table('alumni_profiles')->where('user_id', $user['id'])->get()->getRowArray();
+                $reason = trim((string) ($alumniRow['admin_notes'] ?? ''));
+            }
+            return $this->respondError(
+                'Your alumni registration was rejected by the admin.'
+                . ($reason !== '' ? ' Reason: ' . $reason : ' Please contact the Alumni Office for details.'),
+                403
+            );
+        }
+
         // Fetch profile details
         $profile = null;
         $permissions = [];
@@ -193,7 +218,8 @@ class AuthController extends BaseController
         $requireVerification = $settingsCheck ? ($settingsCheck->setting_value === '1') : true;
 
         $verificationStatus = ($role === 'alumni' && $requireVerification) ? 'pending' : 'verified';
-        $userStatus = 'active';
+        // Alumni account sirf admin approval ke baad active hota hai (FR-02)
+        $userStatus = $verificationStatus === 'pending' ? 'pending' : 'active';
 
         $this->db->transBegin();
 
@@ -323,20 +349,34 @@ class AuthController extends BaseController
             'verification_status' => $verificationStatus
         ];
 
+        $userPayload = [
+            'id'                  => (int)$userId,
+            'email'               => $email,
+            'role'                => $role === 'student' ? 'student' : 'alumni',
+            'status'              => $userStatus,
+            'verification_status' => $verificationStatus,
+        ];
+
+        // Pending alumni: NO token issued — session sirf admin approval ke baad banega
+        if ($verificationStatus === 'pending') {
+            return $this->respondSuccess([
+                'token'               => null,
+                'user'                => $userPayload,
+                'educations'          => $educations,
+                'verification_status' => $verificationStatus,
+                'requires_approval'   => true,
+            ], 'Your registration request has been sent to the admin team for approval. Your alumni account will be created and activated once an administrator approves it.');
+        }
+
         $token = JwtService::generateToken($tokenPayload);
 
         return $this->respondSuccess([
             'token'               => $token,
-            'user'                => [
-                'id'                  => (int)$userId,
-                'email'               => $email,
-                'role'                => $role === 'student' ? 'student' : 'alumni',
-                'status'              => $userStatus,
-                'verification_status' => $verificationStatus,
-            ],
+            'user'                => $userPayload,
             'educations'          => $educations,
-            'verification_status' => $verificationStatus
-        ], 'Registration completed successfully' . ($verificationStatus === 'pending' ? ' (Pending verification by admin)' : ''));
+            'verification_status' => $verificationStatus,
+            'requires_approval'   => false,
+        ], 'Registration completed successfully');
     }
 
     /**

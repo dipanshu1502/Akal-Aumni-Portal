@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { UserPlus, ShieldCheck, GraduationCap, AlertCircle, CheckCircle2, Plus, Trash2, BookOpen, Camera, Briefcase, Building2, Landmark } from 'lucide-react';
+import { UserPlus, ShieldCheck, GraduationCap, AlertCircle, CheckCircle2, Plus, Trash2, BookOpen, Camera, Briefcase, Building2, Landmark, Clock, LogIn } from 'lucide-react';
 
 const DEPARTMENTS = [
   'Computer Science & Engineering',
@@ -92,6 +92,8 @@ const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  // Alumni registration ke baad "admin approval pending" screen dikhane ke liye
+  const [pendingRequest, setPendingRequest] = useState(null);
 
   // Switching Alumni <-> Student tab resets only the untouched (blank) education rows
   const handleRoleChange = (nextRole) => {
@@ -289,6 +291,11 @@ const RegisterPage = () => {
     setLoading(false);
 
     if (res.success) {
+      // Alumni: request admins ke paas chali gayi — account sirf approve hone par banega
+      if (res.pending) {
+        setPendingRequest({ email, firstName, lastName });
+        return;
+      }
       setSuccessMsg(res.message);
       setTimeout(() => {
         if (role === 'alumni') navigate('/alumni/dashboard');
@@ -304,6 +311,103 @@ const RegisterPage = () => {
       );
     }
   };
+
+  // Alumni registration submitted — sirf tab tak pending jab tak admin approve na kare
+  if (pendingRequest) {
+    const steps = [
+      {
+        title: 'Request Received',
+        text: 'Your details are now in the admin verification queue.',
+        done: true,
+      },
+      {
+        title: 'Admin Verification',
+        text: 'An administrator reviews your AUID and education details.',
+        done: false,
+      },
+      {
+        title: 'Account Activated',
+        text: 'Login, alumni dashboard and digital ID card are enabled.',
+        done: false,
+      },
+    ];
+
+    return (
+      <div className="register-page py-5">
+        <div className="container">
+          <div className="row justify-content-center">
+            <div className="col-lg-8">
+              <div className="bg-white rounded-4 shadow-lg border p-4 p-md-5 text-center">
+                <div
+                  className="rounded-circle d-inline-flex align-items-center justify-content-center bg-warning bg-opacity-25 mb-3"
+                  style={{ width: '76px', height: '76px' }}
+                >
+                  <Clock size={34} className="text-warning" />
+                </div>
+
+                <h4 className="fw-bold text-dark mb-2">Registration Request Sent for Approval!</h4>
+                <p className="text-muted mb-1">
+                  Thank you{' '}
+                  <span className="fw-bold text-dark">
+                    {pendingRequest.firstName}
+                    {pendingRequest.lastName ? ` ${pendingRequest.lastName}` : ''}
+                  </span>
+                  !
+                </p>
+                <p className="text-muted small mb-4" style={{ maxWidth: '560px', margin: '0 auto' }}>
+                  Your alumni registration request has been sent to the{' '}
+                  <strong>Akal University Admin Team</strong>. Your alumni account will be{' '}
+                  <strong>created and activated only after an administrator approves</strong> your request.
+                </p>
+
+                <div className="text-start mx-auto mb-4" style={{ maxWidth: '480px' }}>
+                  {steps.map((step, i) => (
+                    <div className="d-flex gap-3 mb-3" key={i}>
+                      <span
+                        className={`badge rounded-pill px-3 py-2 align-self-start ${
+                          step.done ? 'bg-success' : 'bg-light border text-muted'
+                        }`}
+                        style={{ minWidth: '34px' }}
+                      >
+                        {step.done ? <CheckCircle2 size={14} /> : i + 1}
+                      </span>
+                      <div>
+                        <div className="fw-bold small text-dark">{step.title}</div>
+                        <div className="text-muted" style={{ fontSize: '0.8rem' }}>
+                          {step.text}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="alert alert-light border small text-start mb-4">
+                  <div className="d-flex gap-2">
+                    <AlertCircle size={16} className="text-warning mt-1" />
+                    <div>
+                      Until your request is approved you <strong>cannot log in</strong> with{' '}
+                      <span className="fw-bold">{pendingRequest.email}</span>. After approval, sign in to access your
+                      alumni dashboard and digital ID card.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="d-flex gap-2 justify-content-center flex-wrap">
+                  <Link to="/login" className="btn btn-akal-yellow px-4 fw-bold d-flex align-items-center justify-content-center gap-1">
+                    <LogIn size={16} />
+                    <span>Go to Login</span>
+                  </Link>
+                  <Link to="/" className="btn btn-outline-dark px-4 fw-bold">
+                    Back to Home
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="register-page py-5">

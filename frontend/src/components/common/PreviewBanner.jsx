@@ -41,11 +41,11 @@ const PreviewBanner = () => {
               <Eye size={15} />
             </span>
             <span>
-              PREVIEW MODE — aap unpublished changes dekh rahe hain
+              PREVIEW MODE — you are viewing unpublished changes
               <span className="fw-normal ms-1">
                 ({previewChanges > 0
                   ? `${previewChanges} change${previewChanges > 1 ? 's' : ''} pending`
-                  : 'koi naya change nahi'})
+                  : 'no new changes'})
               </span>
             </span>
           </div>
@@ -60,7 +60,7 @@ const PreviewBanner = () => {
 
             {!isAdmin && (
               <span className="small text-dark d-flex align-items-center gap-1">
-                <AlertTriangle size={14} /> Publish karne ke liye Admin login chahiye
+                <AlertTriangle size={14} /> Admin login required to publish
               </span>
             )}
 

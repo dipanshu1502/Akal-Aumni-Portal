@@ -74,8 +74,16 @@ class AdminController extends BaseController
      */
     public function getPendingVerifications()
     {
+        // NOTE: select explicit columns — `alumni_profiles.*` must NOT be selected together
+        // with `users.id` (both are named `id`, the profile id would overwrite the user id
+        // and Approve/Reject would then act on the WRONG account).
         $queue = $this->db->table('users')
-            ->select('users.id, users.email, users.role, users.verification_status, users.created_at, alumni_profiles.*')
+            ->select('users.id, users.email, users.role, users.verification_status, users.created_at,
+                      alumni_profiles.first_name, alumni_profiles.last_name, alumni_profiles.auid,
+                      alumni_profiles.alumni_id, alumni_profiles.phone, alumni_profiles.degree,
+                      alumni_profiles.department, alumni_profiles.batch_year, alumni_profiles.graduation_year,
+                      alumni_profiles.current_company, alumni_profiles.current_designation,
+                      alumni_profiles.profile_photo, alumni_profiles.admin_notes')
             ->join('alumni_profiles', 'alumni_profiles.user_id = users.id')
             ->where('users.verification_status', 'pending')
             ->orderBy('users.created_at', 'ASC')
@@ -107,20 +115,39 @@ class AdminController extends BaseController
                 'updated_at'  => date('Y-m-d H:i:s'),
             ]);
 
-        // Generate or ensure ID card
+        // Generate or ensure ID card (card_number = Alumni ID = AUAA + AUID, same as register path)
         $existingCard = $this->db->table('alumni_id_cards')->where('user_id', $userId)->get()->getRow();
         if (!$existingCard) {
-            $profile = $this->db->table('alumni_profiles')->where('user_id', $userId)->get()->getRowArray();
+            $profile  = $this->db->table('alumni_profiles')->where('user_id', $userId)->get()->getRowArray();
+            $alumniId = $profile['alumni_id'] ?? null;
+
+            if (empty($alumniId) && !empty($profile['auid'])) {
+                $alumniId = 'AUAA' . $profile['auid'];
+                $this->db->table('alumni_profiles')->where('user_id', $userId)->update([
+                    'alumni_id'  => $alumniId,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+            if (empty($alumniId)) {
+                $alumniId = 'AU-AID-' . ($profile['graduation_year'] ?? date('Y')) . '-00' . $userId;
+            }
+
+            $baseUrl   = rtrim((string)($_ENV['FRONTEND_URL'] ?? getenv('FRONTEND_URL') ?: 'http://localhost:5173'), '/');
             $this->db->table('alumni_id_cards')->insert([
                 'user_id'     => $userId,
-                'card_number' => 'AU-AID-' . ($profile['graduation_year'] ?? date('Y')) . '-00' . $userId,
+                'card_number' => $alumniId,
                 'issue_date'  => date('Y-m-d'),
                 'expiry_date' => date('Y-m-d', strtotime('+5 years')),
                 'qr_payload'  => json_encode([
-                    'card_number' => 'AU-AID-' . ($profile['graduation_year'] ?? date('Y')) . '-00' . $userId,
+                    'alumni_id'   => $alumniId,
+                    'auid'        => $profile['auid'] ?? '',
+                    'card_number' => $alumniId,
                     'name'        => ($profile['first_name'] ?? '') . ' ' . ($profile['last_name'] ?? ''),
                     'degree'      => $profile['degree'] ?? '',
-                    'status'      => 'OFFICIAL_VERIFIED'
+                    'batch'       => $profile['batch_year'] ?? '',
+                    'status'      => 'OFFICIAL_VERIFIED',
+                    // QR scan -> public profile page
+                    'profile_url' => $baseUrl . '/alumni/' . $alumniId,
                 ]),
                 'status'      => 'active',
                 'created_at'  => date('Y-m-d H:i:s'),
@@ -167,6 +194,7 @@ class AdminController extends BaseController
             ->where('id', $userId)
             ->update([
                 'verification_status' => 'rejected',
+                'status'              => 'rejected',
                 'updated_at'          => date('Y-m-d H:i:s'),
             ]);
 
@@ -194,22 +222,64 @@ class AdminController extends BaseController
     }
 
     /**
-     * Get All Users List (with role and search filter)
-     * Includes admin profile designation + decoded granular permissions.
+     * Get All Users List (role / status / search filter).
+     * Used by User Management + Manage Alumni / Manage Students tabs.
+     * NOTE: profile columns are aliased (a_*, s_*, adm_*) — never select two tables'
+     * same-named columns together, later ones would silently overwrite earlier ones.
      */
     public function getAllUsers()
     {
+        $authUser = $this->request->authUser ?? null;
+        $actorRole = $authUser['role'] ?? '';
+        $perms = ($actorRole === 'admin') ? \App\Filters\PermissionFilter::getPermissionsForUser((int) ($authUser['id'] ?? 0)) : [];
+
         $role = $this->request->getGet('role');
+        $status = $this->request->getGet('status');
         $search = $this->request->getGet('search');
 
         $builder = $this->db->table('users')
-            ->select('users.id, users.email, users.role, users.status, users.verification_status, users.created_at, alumni_profiles.first_name as a_fname, alumni_profiles.last_name as a_lname, alumni_profiles.degree as a_degree, alumni_profiles.batch_year as a_batch, student_profiles.first_name as s_fname, student_profiles.last_name as s_lname, admin_profiles.full_name as adm_name, admin_profiles.designation as adm_designation, admin_profiles.permissions as adm_permissions')
+            ->select('users.id, users.email, users.role, users.status, users.verification_status, users.created_at,
+                      alumni_profiles.first_name as a_fname, alumni_profiles.last_name as a_lname,
+                      alumni_profiles.auid as a_auid, alumni_profiles.alumni_id as a_alumni_id,
+                      alumni_profiles.degree as a_degree, alumni_profiles.department as a_department,
+                      alumni_profiles.batch_year as a_batch, alumni_profiles.phone as a_phone,
+                      alumni_profiles.current_company as a_company, alumni_profiles.current_designation as a_designation,
+                      alumni_profiles.admin_notes as a_admin_notes,
+                      student_profiles.first_name as s_fname, student_profiles.last_name as s_lname,
+                      student_profiles.enrollment_no as s_enrollment, student_profiles.degree as s_degree,
+                      student_profiles.department as s_department, student_profiles.phone as s_phone,
+                      admin_profiles.full_name as adm_name, admin_profiles.designation as adm_designation,
+                      admin_profiles.permissions as adm_permissions')
             ->join('alumni_profiles', 'alumni_profiles.user_id = users.id', 'left')
             ->join('student_profiles', 'student_profiles.user_id = users.id', 'left')
             ->join('admin_profiles', 'admin_profiles.user_id = users.id', 'left');
 
-        if (!empty($role)) {
+        // Role-based scoping for admins without full `manage_users` permission:
+        if ($actorRole === 'admin' && empty($perms['manage_users'])) {
+            $allowedRoles = [];
+            if (!empty($perms['manage_alumni']) || !empty($perms['verify_alumni'])) {
+                $allowedRoles[] = 'alumni';
+            }
+            if (!empty($perms['manage_students'])) {
+                $allowedRoles[] = 'student';
+            }
+            if (empty($allowedRoles)) {
+                return $this->respondError('Forbidden: missing user management permission', 403);
+            }
+            if (!empty($role)) {
+                if (!in_array($role, $allowedRoles, true)) {
+                    return $this->respondError('Forbidden: not permitted to view ' . $role . ' accounts', 403);
+                }
+                $builder->where('users.role', $role);
+            } else {
+                $builder->whereIn('users.role', $allowedRoles);
+            }
+        } elseif (!empty($role)) {
             $builder->where('users.role', $role);
+        }
+
+        if (!empty($status) && in_array($status, ['active', 'pending', 'rejected', 'suspended'], true)) {
+            $builder->where('users.status', $status);
         }
 
         if (!empty($search)) {
@@ -217,7 +287,11 @@ class AdminController extends BaseController
                 ->like('users.email', $search)
                 ->orLike('alumni_profiles.first_name', $search)
                 ->orLike('alumni_profiles.last_name', $search)
+                ->orLike('alumni_profiles.auid', $search)
+                ->orLike('alumni_profiles.alumni_id', $search)
                 ->orLike('student_profiles.first_name', $search)
+                ->orLike('student_profiles.last_name', $search)
+                ->orLike('student_profiles.enrollment_no', $search)
                 ->orLike('admin_profiles.full_name', $search)
                 ->groupEnd();
         }
@@ -239,6 +313,86 @@ class AdminController extends BaseController
         unset($u);
 
         return $this->respondSuccess($users, 'Users retrieved');
+    }
+
+    /**
+     * Full profile of any user account (alumni / student / admin) for the admin
+     * "Full Info" modal — profile + academic history + ID card + recent activity.
+     */
+    public function getUserDetail($userId)
+    {
+        $authUser = $this->request->authUser ?? null;
+        $actorRole = $authUser['role'] ?? '';
+
+        $user = $this->db->table('users')->where('id', $userId)->get()->getRowArray();
+        if (!$user) {
+            return $this->respondError('User not found', 404);
+        }
+        unset($user['password_hash'], $user['remember_token']);
+
+        $role = $user['role'] ?? '';
+
+        // Role-based permission check for admins without manage_users:
+        if ($actorRole === 'admin') {
+            $perms = \App\Filters\PermissionFilter::getPermissionsForUser((int) ($authUser['id'] ?? 0));
+            if (empty($perms['manage_users'])) {
+                if ($role === 'alumni' && empty($perms['manage_alumni']) && empty($perms['verify_alumni'])) {
+                    return $this->respondError('Forbidden: missing permission to view alumni details', 403);
+                }
+                if ($role === 'student' && empty($perms['manage_students'])) {
+                    return $this->respondError('Forbidden: missing permission to view student details', 403);
+                }
+                if (in_array($role, ['admin', 'superadmin'], true)) {
+                    return $this->respondError('Forbidden: only Super Admin can view admin details', 403);
+                }
+            }
+        }
+
+        $alumni = null;
+        $student = null;
+        $adminProfile = null;
+        $educations = [];
+        $idCard = null;
+
+        if ($role === 'alumni') {
+            $alumni = $this->db->table('alumni_profiles')->where('user_id', $userId)->get()->getRowArray();
+            $idCard = $this->db->table('alumni_id_cards')->where('user_id', $userId)->get()->getRowArray();
+            if (isset($idCard['qr_payload'])) {
+                $idCard['qr_payload'] = json_decode($idCard['qr_payload'], true);
+            }
+        } elseif ($role === 'student') {
+            $student = $this->db->table('student_profiles')->where('user_id', $userId)->get()->getRowArray();
+        } elseif (in_array($role, ['admin', 'superadmin'], true)) {
+            $adminProfile = $this->db->table('admin_profiles')->where('user_id', $userId)->get()->getRowArray();
+            if ($adminProfile) {
+                $adminProfile['permissions'] = $role === 'superadmin'
+                    ? ['all' => true]
+                    : \App\Filters\PermissionFilter::normalize($adminProfile['permissions'] ?? '');
+            }
+        }
+
+        if ($this->db->tableExists('user_educations')) {
+            $educations = $this->db->table('user_educations')
+                ->where('user_id', $userId)
+                ->orderBy('id', 'ASC')
+                ->get()->getResultArray();
+        }
+
+        $recentActivity = $this->db->table('audit_logs')
+            ->where('target_id', (string) $userId)
+            ->orderBy('id', 'DESC')
+            ->limit(10)
+            ->get()->getResultArray();
+
+        return $this->respondSuccess([
+            'user'            => $user,
+            'alumni'          => $alumni,
+            'student'         => $student,
+            'admin_profile'   => $adminProfile,
+            'educations'      => $educations,
+            'id_card'         => $idCard,
+            'recent_activity' => $recentActivity,
+        ], 'User detail retrieved');
     }
 
     /**
@@ -300,6 +454,40 @@ class AdminController extends BaseController
         $authUser = $this->request->authUser;
         $json = $this->request->getJSON(true);
 
+        // Group mapping for CMS-managed pages so bulk save keeps the right tab.
+        $groupMap = [
+            'about_' => 'about',
+            'auaa_'  => 'auaa',
+            'hero_'  => 'hero',
+            'stat_'  => 'stats',
+            'total_alumni_count'   => 'stats',
+            'global_chapters_count' => 'stats',
+            'career_mentors_count' => 'stats',
+            'top_banner_'   => 'banner',
+            'enable_top_banner' => 'banner',
+            'contact_'      => 'contact',
+            'campus_address' => 'contact',
+            'office_hours'  => 'contact',
+            'social_'       => 'social',
+            'copyright_text' => 'footer',
+            'footer_description' => 'footer',
+            'accreditation_line1' => 'footer',
+            'university_website' => 'social',
+            'site_title'    => 'general',
+            'university_name' => 'general',
+            'tagline'       => 'general',
+            'logo_'         => 'general',
+            'primary_color' => 'general',
+            'accent_color'  => 'general',
+        ];
+        $guessGroup = function ($key) use ($groupMap) {
+            foreach ($groupMap as $prefix => $grp) {
+                if (strpos($key, $prefix) === 0) return $grp;
+            }
+            if (strpos($key, 'enable_') === 0 || strpos($key, 'allow_') === 0 || strpos($key, 'require_') === 0) return 'features';
+            return 'custom';
+        };
+
         if (is_array($json)) {
             foreach ($json as $key => $value) {
                 // If setting exists, update it. If not, insert it!
@@ -316,7 +504,7 @@ class AdminController extends BaseController
                     $this->db->table('system_settings')->insert([
                         'setting_key'   => $key,
                         'setting_value' => (string)$value,
-                        'setting_group' => 'custom',
+                        'setting_group' => $guessGroup($key),
                         'description'   => 'Custom configured site parameter',
                         'updated_by'    => $authUser['id'] ?? 1,
                         'updated_at'    => date('Y-m-d H:i:s'),
@@ -431,20 +619,63 @@ class AdminController extends BaseController
         return $this->respondSuccess([], 'User role updated to ' . $newRole);
     }
 
+    /**
+     * User Status Management (active / deactivate).
+     * - Super Admin: any status.
+     * - Admin with `manage_users` permission: only active / suspended (cannot touch
+     *   Super Admin accounts).
+     */
     public function updateUserStatus($userId)
     {
         $authUser = $this->request->authUser ?? null;
-        if (!$authUser || ($authUser['role'] ?? '') !== 'superadmin') {
-            return $this->respondError('Forbidden: only Super Admin can change account status', 403);
+        if (!$authUser) {
+            return $this->respondError('Unauthorized', 401);
         }
+        $actorRole = $authUser['role'] ?? '';
+
         $json = $this->request->getJSON(true);
         $newStatus = $json['status'] ?? 'active';
 
         if (!in_array($newStatus, ['active', 'pending', 'rejected', 'suspended'])) {
             return $this->respondError('Invalid status specified', 400);
         }
+
+        $target = $this->db->table('users')->where('id', $userId)->get()->getRowArray();
+        if (!$target) {
+            return $this->respondError('User not found', 404);
+        }
+
+        // --- Authorization ---
+        if ($actorRole === 'superadmin') {
+            // full access
+        } elseif ($actorRole === 'admin') {
+            $perms = \App\Filters\PermissionFilter::getPermissionsForUser((int) $authUser['id']);
+            $targetRole = $target['role'] ?? '';
+
+            $allowed = false;
+            if (!empty($perms['manage_users'])) {
+                $allowed = true; // manage_users has broad permission
+            } elseif ($targetRole === 'alumni' && (!empty($perms['manage_alumni']) || !empty($perms['verify_alumni']))) {
+                $allowed = true; // manage_alumni can activate/deactivate alumni
+            } elseif ($targetRole === 'student' && !empty($perms['manage_students'])) {
+                $allowed = true; // manage_students can activate/deactivate students
+            }
+
+            if (!$allowed) {
+                return $this->respondError('Forbidden: missing permission to manage ' . $targetRole . ' account status', 403);
+            }
+            if (!in_array($newStatus, ['active', 'suspended'], true)) {
+                return $this->respondError('Admins can only activate or deactivate accounts (active / suspended)', 400);
+            }
+            if (($target['role'] ?? '') === 'superadmin') {
+                return $this->respondError('Forbidden: only Super Admin can change a Super Admin account status', 403);
+            }
+        } else {
+            return $this->respondError('Forbidden: admin access required', 403);
+        }
+
         if ((int) $userId === (int) ($authUser['id'] ?? 0) && $newStatus !== 'active') {
-            return $this->respondError('You cannot suspend your own Super Admin account', 403);
+            return $this->respondError('You cannot deactivate your own account', 403);
         }
 
         $this->db->table('users')->where('id', $userId)->update([

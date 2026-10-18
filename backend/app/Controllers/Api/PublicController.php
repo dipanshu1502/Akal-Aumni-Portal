@@ -39,7 +39,8 @@ class PublicController extends BaseController
             ->select('alumni_profiles.id, alumni_profiles.user_id, alumni_profiles.first_name, alumni_profiles.last_name, alumni_profiles.degree, alumni_profiles.department, alumni_profiles.batch_year, alumni_profiles.graduation_year, alumni_profiles.current_company, alumni_profiles.current_designation, alumni_profiles.location_city, alumni_profiles.location_country, alumni_profiles.bio, alumni_profiles.skills, alumni_profiles.is_distinguished, alumni_profiles.distinguished_title, alumni_profiles.is_mentor, alumni_profiles.mentorship_topics, alumni_profiles.linkedin_url, alumni_profiles.profile_photo, alumni_profiles.show_email_public, IF(alumni_profiles.show_email_public = 1, users.email, NULL) as public_email, users.verification_status')
             ->join('users', 'users.id = alumni_profiles.user_id')
             ->where('alumni_profiles.is_public_profile', 1)
-            ->where('users.status', 'active');
+            ->where('users.status', 'active')
+            ->whereNotIn('users.verification_status', ['pending', 'rejected']);
 
         // Filters
         $search = $this->request->getGet('search');
@@ -91,7 +92,9 @@ class PublicController extends BaseController
         $builder = $this->db->table('alumni_profiles')
             ->select('alumni_profiles.*, IF(alumni_profiles.show_email_public = 1, users.email, NULL) as public_email, users.verification_status')
             ->join('users', 'users.id = alumni_profiles.user_id')
-            ->where('alumni_profiles.is_public_profile', 1);
+            ->where('alumni_profiles.is_public_profile', 1)
+            ->where('users.status', 'active')
+            ->whereNotIn('users.verification_status', ['pending', 'rejected']);
 
         // /api/public/alumni/AUAAxxxxxxxxxx  (QR scan)
         if (!is_numeric($id)) {
@@ -196,7 +199,7 @@ class PublicController extends BaseController
      */
     public function getStats()
     {
-        $totalAlumni = $this->db->table('users')->where('role', 'alumni')->countAllResults();
+        $totalAlumni = $this->db->table('users')->where('role', 'alumni')->where('status', 'active')->countAllResults();
         $verifiedAlumni = $this->db->table('users')->where('role', 'alumni')->where('verification_status', 'verified')->countAllResults();
         $totalStudents = $this->db->table('users')->where('role', 'student')->countAllResults();
         $totalEvents = $this->db->table('events')->where('is_published', 1)->where('deleted_at IS NULL')->countAllResults();

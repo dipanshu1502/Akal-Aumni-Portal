@@ -63,7 +63,20 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await api.post('/auth/register', formData);
       if (res.status && res.data) {
-        const { token: newToken, user: userData } = res.data;
+        const { token: newToken, user: userData, verification_status: verificationStatus } = res.data;
+
+        // Alumni registration stays PENDING until an admin approves it —
+        // no session is created, the account activates only after approval (FR-02).
+        if (verificationStatus === 'pending' || !newToken) {
+          return {
+            success: true,
+            pending: true,
+            requiresApproval: true,
+            message: res.message,
+            user: userData,
+          };
+        }
+
         setToken(newToken);
         setUser(userData);
         localStorage.setItem('akal_token', newToken);

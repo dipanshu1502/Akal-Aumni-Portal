@@ -1,81 +1,188 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useSettings } from '../../context/SettingsContext';
-import { BookOpen, MapPin, ShieldCheck, GraduationCap, Users, Sparkles, ArrowRight } from 'lucide-react';
+import { BookOpen, MapPin, ShieldCheck, GraduationCap, Users, Sparkles, ArrowRight, Award, Globe, HeartHandshake, Target, ExternalLink } from 'lucide-react';
 
 const DEFAULT_ABOUT_HTML = `
   <p><strong>Akal University</strong> is a premier institution dedicated to academic excellence, research innovation, and value-based global leadership.</p>
   <p>Established under Punjab Act No. 25 of 2015 and NAAC Accredited Grade "A", the university is located at Talwandi Sabo, Bathinda, Punjab 151302, India.</p>
   <p>The Akal University Alumni Portal connects thousands of proud graduates across continents — enabling alumni to reconnect with batchmates, mentor students, explore career opportunities, and celebrate institutional pride.</p>
-  <p><em>This content is managed by the Super Admin from Admin Dashboard → System Settings → About University.</em></p>
 `;
+
+const DEFAULT_FACTS = `Established | Punjab Act No. 25 of 2015 | State Private University
+Accreditation | NAAC Grade "A" | Quality Assured Academics
+Campus | Talwandi Sabo, Bathinda | Punjab 151302, India
+Alumni Network | Global Community | Chapters, Mentors & Careers`;
+
+const DEFAULT_VALUES = `Academic Excellence | Research-driven learning that prepares graduates to lead in industry, academia and social change.
+Value-Based Leadership | Seva, integrity and compassion — values every Akal graduate carries across the globe.
+Global Community | Chapters, mentorship and careers connecting alumni across India and worldwide.`;
+
+/** Parse "Title | Value | Note" lines */
+const parseFacts = (raw) => String(raw || '')
+  .split('\n').map((l) => l.trim()).filter(Boolean)
+  .map((line) => {
+    const [title = '', value = '', note = ''] = line.split('|').map((p) => p.trim());
+    return { title, value: value || title, note };
+  }).filter((f) => f.title);
+
+/** Parse "Title | Description" lines */
+const parseValues = (raw) => String(raw || '')
+  .split('\n').map((l) => l.trim()).filter(Boolean)
+  .map((line) => {
+    const idx = line.indexOf('|');
+    if (idx === -1) return { title: line, desc: '' };
+    return { title: line.slice(0, idx).trim(), desc: line.slice(idx + 1).trim() };
+  }).filter((v) => v.title);
+
+// Single source of truth — Admin Site Customizer inhe pre-fill karta hai.
+export const ABOUT_PAGE_DEFAULTS = {
+  about_akal_university: DEFAULT_ABOUT_HTML.trim(),
+  about_hero_badge: 'ABOUT US',
+  about_hero_title: 'About Akal University',
+  about_hero_subtitle: 'Excellence in education, research, and value-based leadership — and the alumni network that carries it across the globe.',
+  about_facts: DEFAULT_FACTS,
+  about_values: DEFAULT_VALUES,
+  about_side_title: 'One network. Lifelong belonging.',
+  about_side_desc: 'Reconnect with batchmates, mentor students, discover careers and celebrate pride.',
+  about_cta_title: 'Be part of the Alumni Network',
+  about_cta_desc: 'Get your verified digital alumni ID and unlock chapters, mentorship and careers.',
+  about_hero_trust1: 'NAAC Grade A',
+  about_hero_trust2: 'Estd. 2015',
+  about_hero_trust3: 'Global Alumni',
+  about_campus_short: 'Talwandi Sabo, Bathinda, Punjab',
+  about_overview_label: 'University Overview',
+  about_side_badge: 'ALUMNI PORTAL',
+  about_btn_join: 'Join Network',
+  about_btn_auaa: 'About AUAA',
+  about_btn_directory: 'Explore Directory',
+  about_btn_stories: 'Success Stories',
+};
 
 const AboutPage = () => {
   const { getSetting } = useSettings();
   const aboutContent = getSetting('about_akal_university', DEFAULT_ABOUT_HTML);
-
-  const facts = [
-    { icon: GraduationCap, title: 'Established', value: 'Punjab Act No. 25 of 2015', note: 'State Private University' },
-    { icon: ShieldCheck, title: 'Accreditation', value: 'NAAC Grade "A"', note: 'Quality Assured Academics' },
-    { icon: MapPin, title: 'Campus', value: 'Talwandi Sabo, Bathinda', note: 'Punjab 151302, India' },
-    { icon: Users, title: 'Alumni Network', value: 'Global Community', note: 'Chapters, Mentors & Careers' },
-  ];
+  const heroBadge = getSetting('about_hero_badge', 'ABOUT US');
+  const heroTitle = getSetting('about_hero_title', 'About Akal University');
+  const heroSubtitle = getSetting('about_hero_subtitle', 'Excellence in education, research, and value-based leadership — and the alumni network that carries it across the globe.');
+  const facts = parseFacts(getSetting('about_facts', DEFAULT_FACTS)).map((f, i) => ({
+    ...f, icon: [GraduationCap, ShieldCheck, MapPin, Users][i % 4],
+  }));
+  const values = parseValues(getSetting('about_values', DEFAULT_VALUES)).map((v, i) => ({
+    ...v, icon: [Target, HeartHandshake, Globe][i % 3],
+  }));
+  const sideTitle = getSetting('about_side_title', 'One network. Lifelong belonging.');
+  const sideDesc = getSetting('about_side_desc', 'Reconnect with batchmates, mentor students, discover careers and celebrate pride.');
+  const ctaTitle = getSetting('about_cta_title', 'Be part of the Alumni Network');
+  const ctaDesc = getSetting('about_cta_desc', 'Get your verified digital alumni ID and unlock chapters, mentorship and careers.');
+  const trust1 = getSetting('about_hero_trust1', 'NAAC Grade A');
+  const trust2 = getSetting('about_hero_trust2', 'Estd. 2015');
+  const trust3 = getSetting('about_hero_trust3', 'Global Alumni');
+  const campusShort = getSetting('about_campus_short', 'Talwandi Sabo, Bathinda, Punjab');
+  const overviewLabel = getSetting('about_overview_label', 'University Overview');
+  const sideBadge = getSetting('about_side_badge', 'ALUMNI PORTAL');
+  const btnJoin = getSetting('about_btn_join', 'Join Network');
+  const btnAuaa = getSetting('about_btn_auaa', 'About AUAA');
+  const btnDirectory = getSetting('about_btn_directory', 'Explore Directory');
+  const btnStories = getSetting('about_btn_stories', 'Success Stories');
+  const cardTitle = getSetting('university_name', 'Akal University');
 
   return (
-    <div className="about-page py-4">
-      <div className="container">
-        {/* Page Header */}
-        <div className="rounded-4 p-4 p-lg-5 mb-4 text-white shadow-sm" style={{ background: 'var(--grad-primary, linear-gradient(135deg, #087BB5, #172333))' }}>
-          <div className="d-flex align-items-center gap-2 text-warning small fw-bold text-uppercase mb-2">
-            <Sparkles size={16} />
-            <span>ABOUT US</span>
-          </div>
-          <h1 className="display-6 fw-bold mb-2">About Akal University</h1>
-          <p className="mb-0" style={{ color: 'rgba(255,255,255,0.85)', maxWidth: '760px' }}>
-            Excellence in education, research, and value-based leadership — and the alumni network that carries it across the globe.
-          </p>
-        </div>
+    <div className="about-page">
 
-        {/* Admin-Editable Main Content */}
-        <div className="bg-white rounded-4 p-4 p-lg-5 mb-4 border" style={{ boxShadow: 'var(--shadow-sm)' }}>
-          <div className="d-flex align-items-center gap-2 text-warning small fw-bold text-uppercase mb-3">
-            <BookOpen size={16} />
-            <span>University Overview</span>
-          </div>
-          <div style={{ lineHeight: 1.8, color: '#2b3a4a', fontSize: '1.02rem' }} dangerouslySetInnerHTML={{ __html: aboutContent }} />
-        </div>
-
-        {/* Quick Facts */}
-        <div className="row g-4 mb-4">
-          {facts.map((fact) => (
-            <div key={fact.title} className="col-md-6 col-lg-3">
-              <div className="akal-card p-4 h-100 text-center">
-                <div className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{ width: '52px', height: '52px', background: 'rgba(8,123,181,0.12)' }}>
-                  <fact.icon size={24} className="text-primary" />
+      {/* HERO */}
+      <section className="py-5 position-relative text-white overflow-hidden" style={{ background: 'linear-gradient(135deg, #075985 0%, #087BB5 50%, #172333 100%)' }}>
+        <div className="position-absolute rounded-circle opacity-10" style={{ width: '520px', height: '520px', background: 'var(--akal-yellow)', top: '-180px', right: '-100px', filter: 'blur(80px)' }} />
+        <div className="position-absolute rounded-circle opacity-15" style={{ width: '380px', height: '380px', background: 'var(--akal-blue-light)', bottom: '-140px', left: '-60px', filter: 'blur(70px)' }} />
+        <div className="container position-relative z-1 py-3">
+          <div className="row align-items-center g-4">
+            <div className="col-lg-7">
+              <div className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-warning bg-opacity-20 border border-warning border-opacity-40 text-warning small fw-bold mb-3">
+                <Sparkles size={14} /><span>{heroBadge}</span>
+              </div>
+              <h1 className="display-5 fw-extrabold text-white mb-3">{heroTitle}</h1>
+              <p className="lead text-light text-opacity-90 mb-4" style={{ fontSize: '1.08rem', maxWidth: '640px' }}>
+                {heroSubtitle}
+              </p>
+              <div className="d-flex flex-wrap gap-3">
+                <Link to="/register" className="btn btn-akal-yellow px-4 py-2">{btnJoin} <ArrowRight size={17} /></Link>
+                <Link to="/auaa" className="btn btn-akal-outline-white px-4 py-2">{btnAuaa} <ExternalLink size={16} /></Link>
+              </div>
+              <div className="d-flex align-items-center gap-4 mt-4 pt-3 border-top border-white border-opacity-15 small text-light text-opacity-75 flex-wrap">
+                <span className="d-flex align-items-center gap-2"><ShieldCheck size={17} className="text-warning" /> {trust1}</span>
+                <span className="d-flex align-items-center gap-2"><Award size={17} className="text-warning" /> {trust2}</span>
+                <span className="d-flex align-items-center gap-2"><Globe size={17} className="text-warning" /> {trust3}</span>
+              </div>
+            </div>
+            <div className="col-lg-5">
+              <div className="akal-card-glass p-4 rounded-4 text-dark shadow-lg">
+                <div className="d-flex align-items-center gap-2 mb-3">
+                  <div className="university-crest" style={{ width: '38px', height: '38px', fontSize: '15px' }}>AU</div>
+                  <div><h6 className="mb-0 fw-bold">{cardTitle}</h6><span className="text-muted small" style={{ fontSize: '0.72rem' }}>{campusShort}</span></div>
                 </div>
-                <div className="text-muted small text-uppercase fw-bold mb-1" style={{ fontSize: '0.72rem' }}>{fact.title}</div>
-                <div className="fw-bold text-dark">{fact.value}</div>
-                <div className="text-muted small mt-1">{fact.note}</div>
+                <div className="row g-2 text-center">
+                  {facts.map((f) => (
+                    <div key={f.title} className="col-6">
+                      <div className="p-2 border rounded-3 bg-white h-100">
+                        <f.icon size={20} className="text-primary mb-1" />
+                        <div className="fw-bold text-dark small">{f.value}</div>
+                        <div className="text-muted" style={{ fontSize: '0.68rem' }}>{f.title} - {f.note}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="container py-5">
+        <div className="row g-4">
+          <div className="col-lg-8">
+            <div className="akal-card p-4 p-lg-5 h-100">
+              <div className="d-flex align-items-center gap-2 text-primary small fw-bold text-uppercase mb-3">
+                <BookOpen size={16} /><span>{overviewLabel}</span>
+              </div>
+              <div style={{ lineHeight: 1.85, color: '#2b3a4a', fontSize: '1.02rem' }} dangerouslySetInnerHTML={{ __html: aboutContent }} />
+            </div>
+          </div>
+          <div className="col-lg-4">
+            <div className="akal-card-dark p-4 d-flex flex-column gap-3 position-sticky" style={{ top: '90px' }}>
+              <span className="badge bg-warning text-dark fw-bold px-3 py-1 rounded-pill align-self-start">{sideBadge}</span>
+              <h4 className="fw-bold text-white mb-0">{sideTitle}</h4>
+              <p className="text-light text-opacity-75 small mb-1">{sideDesc}</p>
+              <div className="d-flex flex-column gap-2 mt-1">
+                <Link to="/directory" className="btn btn-akal-yellow w-100 justify-content-center">{btnDirectory} <ArrowRight size={16} /></Link>
+                <Link to="/stories" className="btn btn-akal-outline-white w-100 justify-content-center">{btnStories}</Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="row g-4 mt-2">
+          {values.map((v) => (
+            <div key={v.title} className="col-md-4">
+              <div className="akal-card p-4 h-100">
+                <div className="rounded-3 d-inline-flex align-items-center justify-content-center mb-3" style={{ width: '48px', height: '48px', background: 'var(--akal-blue-soft)', color: 'var(--akal-blue)' }}>
+                  <v.icon size={22} />
+                </div>
+                <h5 className="fw-bold text-dark mb-2">{v.title}</h5>
+                <p className="text-muted small mb-0" style={{ lineHeight: 1.7 }}>{v.desc}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* CTA */}
-        <div className="bg-white rounded-4 p-4 p-lg-5 border d-flex flex-column flex-md-row align-items-center justify-content-between gap-3" style={{ boxShadow: 'var(--shadow-sm)' }}>
-          <div>
-            <h5 className="fw-bold text-dark mb-1">Be part of the Akal University Alumni Network</h5>
-            <p className="text-muted small mb-0">Reconnect with batchmates, mentor students, and explore career opportunities.</p>
+        <section className="py-4 mt-4 px-4 px-lg-5 rounded-4 text-white text-center position-relative overflow-hidden" style={{ background: 'var(--grad-primary)' }}>
+          <div className="university-crest mx-auto mb-3" style={{ width: '54px', height: '54px', fontSize: '22px' }}>AU</div>
+          <h2 className="fw-bold text-white mb-2">{ctaTitle}</h2>
+          <p className="text-light text-opacity-85 mx-auto mb-4" style={{ maxWidth: '620px' }}>{ctaDesc}</p>
+          <div className="d-flex justify-content-center flex-wrap gap-3">
+            <Link to="/register" className="btn btn-akal-yellow px-4 py-2">{btnJoin} <ArrowRight size={16} /></Link>
+            <Link to="/directory" className="btn btn-akal-outline-white px-4 py-2">{btnDirectory}</Link>
           </div>
-          <div className="d-flex gap-2 flex-wrap">
-            <Link to="/register" className="btn btn-akal-yellow fw-bold rounded-pill px-4 py-2 d-flex align-items-center gap-2">
-              Join Network <ArrowRight size={16} />
-            </Link>
-            <Link to="/directory" className="btn btn-akal-outline fw-bold rounded-pill px-4 py-2">
-              Explore Directory
-            </Link>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   );

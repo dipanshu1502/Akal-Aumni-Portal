@@ -73,8 +73,8 @@
 
 ## 3. Authentication Features (FR-01, FR-03)
 
-- **Login** (`/login`) — email + password, JWT issued on success.
-- **Registration** (`/register`) — alumni/student signup with role selection plus **every** degree/programme the user has completed or is pursuing at Akal University (UG, PG, PhD, Diploma — degree, department, specialization, enrollment no, years, CGPA, thesis title). Stored in `user_educations`; the highest degree becomes the primary profile degree; account enters *pending verification* status.
+- **Login** (`/login`) — email + password, JWT issued on success. A **pending alumni registration is blocked with a clear message until an admin approves it**; rejected accounts are blocked with the admin's rejection reason.
+- **Registration** (`/register`) — alumni/student signup with role selection plus **every** degree/programme the user has completed or is pursuing at Akal University (UG, PG, PhD, Diploma — degree, department, specialization, enrollment no, years, CGPA, thesis title). Stored in `user_educations`; the highest degree becomes the primary profile degree; the account is created in **pending** status (`status=pending`, `verification_status=pending`) and **no JWT is issued**. The registration request lands in the admin Verification Queue and the account (login, dashboard, public profile, digital ID card) is **activated only after an administrator approves it** — the success screen tells the user their request has been sent for approval.
 - **Session restore** — token persisted in `localStorage` (`akal_token`), `GET /api/auth/me` restores session.
 - **Logout** — clears token and state.
 - **Quick demo login** for all 4 seeded accounts.
@@ -121,14 +121,20 @@
 - Report views for approved data.
 
 ### 6.2 Verification Queue (FR-02)
-- Pending alumni registration list.
+- Every new alumni registration automatically arrives here as a pending approval request (`GET /api/admin/verifications`); the Dashboard KPI + queue tab badge show the live count.
 - **Approve / Reject** actions with reason.
-- Writes an approval notification to the alumni user.
+- **Approve** creates/activates the alumni account (`status=active`, `verification_status=verified`), stamps `verified_at/verified_by`, issues the Digital Alumni ID card (`card_number = AUAA + AUID`, QR with public profile URL) and writes an approval notification to the alumni user.
+- **Reject** marks the account `rejected` and keeps it out of the public directory; the stored reason is shown when the user tries to log in.
+- Until approval the alumni **cannot log in**, `AuthFilter` blocks every authenticated request against the live DB status (even with an old token), and the profile is hidden from the public directory and homepage counters.
 
 ### 6.3 User Management (FR-04)
-- Full user directory with search.
-- Change user **role** (`PUT /api/admin/users/{id}/role`).
-- Change user **status** — active/inactive/approved/rejected (`PUT /api/admin/users/{id}/status`).
+- Full user directory with search (`GET /api/admin/users?role=&status=&search=`).
+- Change user **role** (`PUT /api/admin/users/{id}/role`) — superadmin only.
+- Change user **status** (`PUT /api/admin/users/{id}/status`) — superadmin (any status) **or admin with `manage_users` permission** (only activate/deactivate; cannot touch superadmin accounts or their own).
+- **🎓 Manage Alumni** and **🎒 Manage Students** tabs (admin `manage_users`): search by name/email/AUID/enrollment no, status filter (All / Active / Pending / Rejected / Suspended), account + verification badges, rejected rows highlighted with the rejection reason.
+- **Full Info modal** (`GET /api/admin/users/{id}/detail`) for any account — alumni/student/admin profile, academic history (`user_educations`), digital ID card, rejection reason and the account's recent audit trail. Also available from the User Management tab (View button).
+- **Accept** action for rejected/pending accounts — alumni are re-approved via the verification approve endpoint (account activated + digital ID card issued); other roles are simply reactivated. Rejected users therefore stay visible and can be accepted later.
+- **Activate / Deactivate** toggle for every row (superadmin or admin with `manage_users`).
 
 ### 6.4 CMS Modules (FR-08, FR-10, FR-13)
 - **Stories CMS** — create / edit / delete success stories.
@@ -203,6 +209,14 @@ Database-driven settings editor with grouped categories:
 - Fully responsive Bootstrap 5 layout (mobile-first navbar, footer, dashboards).
 - Lucide icons, Chart.js visualizations, toast/alert feedback.
 - Common components: `Navbar.jsx`, `Footer.jsx`, `AlumniCard.jsx`, `DigitalIdModal.jsx`.
+
+## 10.1 Admin Full Info Modal (UI/UX Polish)
+
+- Premium hero header with status-ring avatar, role badge, headline (designation @ company / degree • dept), and status + verification pills.
+- Profile-detail tiles with hover lift effects, LinkedIn link tiles, skills chip grid, bio quote card, and rejection-reason banner.
+- Academic journey rendered as timeline cards (degree, department, enrollment, years, status, grade).
+- Premium gradient alumni ID card with issue/expiry dates, status chip, and QR visual.
+- Recent activity rendered as clean timeline rows.
 
 ---
 

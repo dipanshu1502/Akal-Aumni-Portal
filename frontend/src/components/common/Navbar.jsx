@@ -1,22 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { 
-  Award, 
-  Users, 
-  Calendar, 
-  Briefcase, 
-  GraduationCap, 
-  Globe, 
-  Image, 
-  Bell, 
   LogIn, 
   LogOut, 
   User, 
-  ShieldCheck, 
+  ShieldCheck,
   ChevronDown,
   CreditCard,
+  GraduationCap,
   Zap
 } from 'lucide-react';
 import DigitalIdModal from './DigitalIdModal';
@@ -26,12 +19,82 @@ const Navbar = () => {
   const { getSetting, isFeatureEnabled } = useSettings();
   const [showDemoMenu, setShowDemoMenu] = useState(false);
   const [showIdModal, setShowIdModal] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const demoMenuRef = useRef(null);
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
+
+  // Scroll par navbar compact ho jaye — content ko zyada vertical space mile
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Demo switcher: bahar click ya Escape karne par band ho
+  useEffect(() => {
+    if (!showDemoMenu) return undefined;
+    const onPointerDown = (e) => {
+      if (demoMenuRef.current && !demoMenuRef.current.contains(e.target)) {
+        setShowDemoMenu(false);
+      }
+    };
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setShowDemoMenu(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [showDemoMenu]);
+
+  // Mobile menu: kisi bhi link/button click par collapse band ho jaye
+  const closeMobileMenu = () => {
+    const el = document.getElementById('navbarContent');
+    if (el && el.classList.contains('show') && window.bootstrap) {
+      window.bootstrap.Collapse.getOrCreateInstance(el).hide();
+    }
+  };
+
+  // Enabled public links — single source of truth for desktop rows + mobile list
+  const navLinks = [
+    { to: '/', label: 'Home', end: true },
+    { to: '/about', label: 'About' },
+    { to: '/auaa', label: 'AUAA', end: true, title: 'Akal University Alumni Association' },
+    isFeatureEnabled('enable_public_directory', true) && { to: '/directory', label: 'Directory' },
+    isFeatureEnabled('enable_public_events', true) && { to: '/events', label: 'Events' },
+    isFeatureEnabled('enable_public_jobs', true) && { to: '/jobs', label: 'Jobs & Internships' },
+    isFeatureEnabled('enable_public_mentorship', true) && { to: '/mentorship', label: 'Mentorship' },
+    isFeatureEnabled('enable_public_chapters', true) && { to: '/chapters', label: 'Chapters' },
+    isFeatureEnabled('enable_public_stories', true) && { to: '/stories', label: 'Stories' },
+    isFeatureEnabled('enable_public_gallery', true) && { to: '/news-gallery', label: 'Gallery & News' },
+  ].filter(Boolean);
+
+  // Desktop: links ko 2 rows me split (5 + 5)
+  const mid = Math.ceil(navLinks.length / 2);
+  const linksTop = navLinks.slice(0, mid);
+  const linksBottom = navLinks.slice(mid);
+
+  const renderLink = (link) => (
+    <li className="nav-item" key={link.to}>
+      <NavLink
+        to={link.to}
+        end={link.end}
+        title={link.title}
+        onClick={closeMobileMenu}
+        className={({ isActive }) => `nav-link px-2 akal-nav-link ${isActive ? 'active-nav' : ''}`}
+      >
+        {link.label}
+      </NavLink>
+    </li>
+  );
 
   const showTopBanner = isFeatureEnabled('enable_top_banner', true);
   const bannerBadge = getSetting('top_banner_badge', 'OFFICIAL PORTAL');
@@ -51,7 +114,7 @@ const Navbar = () => {
             </div>
 
             {/* Quick Demo Switcher */}
-            <div className="d-flex align-items-center gap-2 position-relative">
+            <div ref={demoMenuRef} className="d-flex align-items-center gap-2 position-relative">
               <span className="small d-none d-sm-inline" style={{ color: 'rgba(255,255,255,0.7)' }}>Quick Role Test:</span>
               <button 
                 className="btn btn-sm py-0 px-2 d-flex align-items-center gap-1 text-nowrap fw-bold"
@@ -92,11 +155,11 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* Main Navbar */}
-      <nav className="navbar navbar-expand-lg sticky-top py-2 akal-navbar">
+      {/* Main Navbar — single row on desktop: brand | links | actions */}
+      <nav id="akal-main-navbar" className={`navbar navbar-expand-xl sticky-top py-1 akal-navbar${isScrolled ? ' akal-nav-scrolled' : ''}`}>
         <div className="container-fluid px-lg-4">
           {/* Brand Logo */}
-          <Link to="/" className="university-logo-container">
+          <Link to="/" className="university-logo-container" aria-label="Akal University Alumni Portal — Home">
             <div className="university-crest">
               <span>AU</span>
             </div>
@@ -108,25 +171,53 @@ const Navbar = () => {
 
           {/* Mobile toggle */}
           <button 
-            className="navbar-toggler border-0" 
+            className="navbar-toggler border-0 ms-auto" 
             type="button" 
             data-bs-toggle="collapse" 
             data-bs-target="#navbarContent"
+            aria-controls="navbarContent"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
           >
             <span className="navbar-toggler-icon"></span>
           </button>
 
-          {/* Navigation Links */}
+          {/* Navigation Links + Actions — collapsible on mobile, inline on desktop */}
           <div className="collapse navbar-collapse" id="navbarContent">
-            <ul className="navbar-nav mx-auto mb-2 mb-lg-0 fw-semibold flex-wrap justify-content-center align-items-center">
+            <ul className="navbar-nav mx-auto mb-2 mb-xl-0 fw-semibold justify-content-center align-items-center">
+
+              <li className="nav-item d-xl-none">
+                <div className="d-flex gap-2 py-2">
+                  {!isAuthenticated ? (
+                    <>
+                      <Link to="/login" onClick={closeMobileMenu} className="btn btn-akal-outline btn-sm rounded-pill px-3 flex-fill text-center">
+                        <LogIn size={15} />
+                        <span>Login</span>
+                      </Link>
+                      <Link to="/register" onClick={closeMobileMenu} className="btn btn-akal-yellow btn-sm rounded-pill px-3 akal-join-btn flex-fill text-center">
+                        <span>Join Network</span>
+                      </Link>
+                    </>
+                  ) : (
+                    <button onClick={() => { closeMobileMenu(); handleLogout(); }} className="btn btn-outline-danger btn-sm rounded-pill px-3 flex-fill">
+                      <LogOut size={15} /> Logout ({user?.role})
+                    </button>
+                  )}
+                </div>
+              </li>
               <li className="nav-item">
-                <NavLink to="/" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
+                <NavLink to="/" onClick={closeMobileMenu} className={({ isActive }) => `nav-link px-2 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
                   Home
                 </NavLink>
               </li>
               <li className="nav-item">
-                <NavLink to="/about" className={({ isActive }) => `nav-link px-3 akal-nav-link text-nowrap ${isActive ? 'active-nav' : ''}`}>
+                <NavLink to="/about" onClick={closeMobileMenu} className={({ isActive }) => `nav-link px-2 akal-nav-link text-nowrap ${isActive ? 'active-nav' : ''}`}>
                   About
+                </NavLink>
+              </li>
+              <li className="nav-item">
+                <NavLink to="/auaa" end title="Akal University Alumni Association" className={({ isActive }) => `nav-link px-3 akal-nav-link text-nowrap ${isActive ? 'active-nav' : ''}`}>
+                  AUAA
                 </NavLink>
               </li>
               {isFeatureEnabled('enable_public_directory', true) && (
@@ -263,7 +354,7 @@ const Navbar = () => {
                   </ul>
                 </div>
               ) : (
-                <div className="d-flex align-items-center gap-2">
+                <div className="d-none d-lg-flex align-items-center gap-2">
                   <Link to="/login" className="btn btn-akal-outline btn-sm rounded-pill px-3 text-nowrap">
                     <LogIn size={15} />
                     <span>Login</span>

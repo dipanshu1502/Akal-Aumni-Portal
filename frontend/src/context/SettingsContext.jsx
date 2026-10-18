@@ -109,7 +109,7 @@ export const SettingsProvider = ({ children }) => {
         setDraft({});
         setIsPreview(false);
         await fetchSettings();
-        return { success: true, message: 'Changes published — ab ye site par live hain!' };
+        return { success: true, message: 'Changes published — now live on the site!' };
       }
       return { success: false, message: res.message || 'Publish failed' };
     } catch (err) {

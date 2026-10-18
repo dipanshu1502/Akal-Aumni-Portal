@@ -8,6 +8,7 @@ import PreviewBanner from './components/common/PreviewBanner';
 
 // Pages
 import HomePage from './pages/public/HomePage';
+import AUAAPage from './pages/public/AUAAPage';
 import AlumniDirectoryPage from './pages/public/AlumniDirectoryPage';
 import EventsPage from './pages/public/EventsPage';
 import JobsPage from './pages/public/JobsPage';
@@ -44,6 +45,7 @@ function App() {
                 <Route path="/stories" element={<StoriesPage />} />
                 <Route path="/news-gallery" element={<NewsGalleryPage />} />
                 <Route path="/about" element={<AboutPage />} />
+                <Route path="/auaa" element={<AUAAPage />} />
 
                 {/* Authentication Routes */}
                 <Route path="/login" element={<LoginPage />} />

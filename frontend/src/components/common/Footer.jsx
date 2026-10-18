@@ -22,7 +22,7 @@ const Footer = () => {
   const facebook = getSetting('social_facebook', '');
 
   return (
-    <footer className="text-white pt-5 pb-4 mt-5" style={{ backgroundColor: 'var(--akal-navy-dark)', borderTop: '3px solid var(--akal-yellow)' }}>
+    <footer id="akal-main-footer" className="text-white pt-5 pb-4 mt-5" style={{ backgroundColor: 'var(--akal-navy-dark)', borderTop: '3px solid var(--akal-yellow)' }}>
       <div className="container">
         <div className="row g-4 mb-4">
           {/* Col 1: University Identity */}

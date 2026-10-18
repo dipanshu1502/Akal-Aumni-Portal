@@ -14,6 +14,8 @@ import {
   ArcElement
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
+import { ABOUT_PAGE_DEFAULTS } from '../public/AboutPage';
+import { AUAA_PAGE_DEFAULTS } from '../public/AUAAPage';
 import {
   ShieldCheck,
   Users,
@@ -44,10 +46,43 @@ import {
   Layers,
   CheckCircle2,
   AlertCircle,
-  LogIn
+  LogIn,
+  Mail,
+  MapPin,
+  Link2,
+  Building2,
+  Hash,
+  CreditCard,
+  GraduationCap,
+  Landmark,
+  Award,
+  QrCode
 } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
+
+// ── Plain-text editor helpers for rich-text (HTML) fields ─────────────────
+// These fields render as HTML on the site, but admins only see paragraphs —
+// <p>/<strong> tags are auto-converted in both directions.
+const HTML_TEXT_KEYS = new Set(['about_akal_university', 'auaa_overview_html']);
+const htmlToPlain = (html) => String(html || '')
+  .replace(/<\s*br\s*\/?>/gi, '\n')
+  .replace(/<\/\s*p\s*>/gi, '\n\n')
+  .replace(/<\s*p[^>]*>/gi, '')
+  .replace(/<\s*strong[^>]*>/gi, '**')
+  .replace(/<\/\s*strong\s*>/gi, '**')
+  .replace(/<[^>]+>/g, '')
+  .replace(/[ \t]+\n/g, '\n')
+  .replace(/\n{3,}/g, '\n\n')
+  .trim();
+const plainToHtml = (text) => String(text || '')
+  .split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
+  .map((para) => {
+    const withStrong = para
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br/>');
+    return `<p>${withStrong}</p>`;
+  }).join('');
 
 // Complete metadata dictionary for all University System Settings
 const DEFAULT_SETTINGS_METADATA = {
@@ -57,8 +92,67 @@ const DEFAULT_SETTINGS_METADATA = {
   tagline: { group: 'general', description: 'Portal Tagline / Subtitle' },
   logo_text: { group: 'general', description: 'Navbar Brand Title' },
   logo_subtext: { group: 'general', description: 'Navbar Brand Subtitle' },
-  // About University Content (Navbar "About")
-  about_akal_university: { group: 'about', description: 'About page content (Navbar → About)' },
+  // About University Content (Navbar "About") — full page customizer
+  about_akal_university: { group: 'about', description: 'About Overview Paragraphs (simple text — no tags needed)' },
+  about_hero_badge: { group: 'about', description: 'About Hero Pill Badge' },
+  about_hero_title: { group: 'about', description: 'About Hero Main Title' },
+  about_hero_subtitle: { group: 'about', description: 'About Hero Subtitle Paragraph' },
+  about_facts: { group: 'about', description: 'About Quick Facts — 1 per line as: Title | Value | Note' },
+  about_values: { group: 'about', description: 'About Value Cards — 1 per line as: Title | Description' },
+  about_side_title: { group: 'about', description: 'About Side Panel Heading' },
+  about_side_desc: { group: 'about', description: 'About Side Panel Paragraph' },
+  about_cta_title: { group: 'about', description: 'About Bottom CTA Heading' },
+  about_cta_desc: { group: 'about', description: 'About Bottom CTA Paragraph' },
+  about_hero_trust1: { group: 'about', description: 'Hero Trust Marker 1 (e.g. NAAC Grade A)' },
+  about_hero_trust2: { group: 'about', description: 'Hero Trust Marker 2 (e.g. Estd. 2015)' },
+  about_hero_trust3: { group: 'about', description: 'Hero Trust Marker 3 (e.g. Global Alumni)' },
+  about_campus_short: { group: 'about', description: 'Hero Card Campus Line (short)' },
+  about_overview_label: { group: 'about', description: 'Overview Section Label' },
+  about_side_badge: { group: 'about', description: 'Side Panel Badge Text' },
+  about_btn_join: { group: 'about', description: 'Join Network Button Label (hero + bottom CTA)' },
+  about_btn_auaa: { group: 'about', description: 'About AUAA Button Label (hero)' },
+  about_btn_directory: { group: 'about', description: 'Explore Directory Button Label (side + bottom CTA)' },
+  about_btn_stories: { group: 'about', description: 'Success Stories Button Label (side panel)' },
+  // AUAA Page Content (Navbar "AUAA") — full page customizer
+  auaa_hero_badge: { group: 'auaa', description: 'AUAA Hero Pill Badge' },
+  auaa_hero_title: { group: 'auaa', description: 'AUAA Hero Main Title' },
+  auaa_hero_subtitle: { group: 'auaa', description: 'AUAA Hero Subtitle Paragraph' },
+  auaa_official_url: { group: 'auaa', description: 'AUAA Official University Page URL' },
+  auaa_overview_html: { group: 'auaa', description: 'AUAA Overview Paragraphs (simple text — no tags needed)' },
+  auaa_objectives: { group: 'auaa', description: 'AUAA Objectives — 1 objective per line' },
+  auaa_eligibility: { group: 'auaa', description: 'AUAA Membership Rules — 1 rule per line' },
+  auaa_eligibility_note: { group: 'auaa', description: 'AUAA Membership Note Box' },
+  auaa_fees: { group: 'auaa', description: 'AUAA Fees — 1 per line as: Title | Fee | Detail' },
+  auaa_fee_note: { group: 'auaa', description: 'AUAA Fee Disclaimer Line' },
+  auaa_bearers: { group: 'auaa', description: 'AUAA Office Bearers — 1 per line as: Title || Duty || Duty...' },
+  auaa_accounts: { group: 'auaa', description: 'AUAA Accounts Rules — 1 rule per line' },
+  auaa_cta_title: { group: 'auaa', description: 'AUAA Bottom CTA Heading' },
+  auaa_cta_desc: { group: 'auaa', description: 'AUAA Bottom CTA Paragraph' },
+  auaa_trust1: { group: 'auaa', description: 'Hero Trust Marker 1 (e.g. Registered Association)' },
+  auaa_trust2: { group: 'auaa', description: 'Hero Trust Marker 2 (e.g. 700+ Graduates)' },
+  auaa_trust3: { group: 'auaa', description: 'Hero Trust Marker 3 (e.g. Global Network)' },
+  auaa_nav_overview: { group: 'auaa', description: 'Quick Nav Pill: Overview' },
+  auaa_nav_objectives: { group: 'auaa', description: 'Quick Nav Pill: Objectives' },
+  auaa_nav_membership: { group: 'auaa', description: 'Quick Nav Pill: Membership' },
+  auaa_nav_fees: { group: 'auaa', description: 'Quick Nav Pill: Fees' },
+  auaa_nav_bearers: { group: 'auaa', description: 'Quick Nav Pill: Office Bearers' },
+  auaa_label_overview: { group: 'auaa', description: 'Section Label: Overview' },
+  auaa_label_objectives: { group: 'auaa', description: 'Section Label: Aims and Objectives' },
+  auaa_label_membership: { group: 'auaa', description: 'Section Label: Membership' },
+  auaa_label_categories: { group: 'auaa', description: 'Section Label: Categories of Membership' },
+  auaa_label_feedetails: { group: 'auaa', description: 'Section Label: Membership Fee Details' },
+  auaa_label_bearers: { group: 'auaa', description: 'Section Label: Office Bearers' },
+  auaa_label_accounts: { group: 'auaa', description: 'Section Label: Accounts' },
+  auaa_membership_intro: { group: 'auaa', description: 'Membership Section Intro Line' },
+  auaa_note_label: { group: 'auaa', description: 'Membership Note Box Label (e.g. Note:)' },
+  auaa_cat1: { group: 'auaa', description: 'Category Badge 1 (e.g. Patron)' },
+  auaa_cat2: { group: 'auaa', description: 'Category Badge 2 (e.g. Donor Members)' },
+  auaa_cat3: { group: 'auaa', description: 'Category Badge 3 (e.g. Life Members)' },
+  auaa_btn_member: { group: 'auaa', description: 'Become a Member Button Label (hero)' },
+  auaa_btn_official: { group: 'auaa', description: 'Official Page Button Label (hero)' },
+  auaa_btn_membership: { group: 'auaa', description: 'Official Membership Page Button Label' },
+  auaa_btn_visit: { group: 'auaa', description: 'Visit Official Website Button Label (CTA)' },
+  auaa_btn_join: { group: 'auaa', description: 'Join Network Button Label (CTA)' },
   primary_color: { group: 'general', description: 'Primary Brand Color (Hex)' },
   accent_color: { group: 'general', description: 'Accent Yellow Color (Hex)' },
 
@@ -124,6 +218,69 @@ const DEFAULT_SETTINGS_METADATA = {
   allow_student_mentorship: { group: 'features', description: 'Allow enrolled students to request 1-on-1 mentorship' },
 };
 
+// ── Full Info modal helpers (premium profile view) ─────────────────────────
+const akalSectionHead = (Icon, title, count = null) => (
+  <div className="d-flex align-items-center gap-2 mb-3">
+    <div
+      className="d-flex align-items-center justify-content-center flex-shrink-0"
+      style={{ width: '30px', height: '30px', borderRadius: '10px', background: 'var(--grad-primary)', boxShadow: '0 4px 10px rgba(8,123,181,0.3)' }}
+    >
+      <Icon size={15} className="text-white" />
+    </div>
+    <h6 className="fw-bold mb-0" style={{ color: 'var(--akal-navy)', fontSize: '0.92rem', fontFamily: 'var(--font-heading)' }}>{title}</h6>
+    {count !== null && (
+      <span className="badge rounded-pill px-2" style={{ background: 'var(--akal-blue-soft)', color: 'var(--akal-blue-deep)', fontSize: '0.68rem' }}>{count}</span>
+    )}
+    <div className="flex-grow-1" style={{ height: '1px', background: 'linear-gradient(90deg, var(--akal-gray-200), transparent)' }}></div>
+  </div>
+);
+
+const statusRingColor = (status) => (
+  status === 'active' ? '#22C55E' : (status === 'pending' ? '#F59E0B' : (status === 'rejected' ? '#EF4444' : '#94A3B8'))
+);
+
+const InfoTile = ({ icon: Icon, label, value, full = false, tone = 'default', link = false }) => {
+  const isDanger = tone === 'danger';
+  const display = value || '—';
+  const isUrl = link && value && /^https?:\/\//i.test(String(value));
+  return (
+    <div className={`${full ? 'col-12' : 'col-md-6'} col-12`}>
+      <div
+        className="d-flex align-items-center gap-2 p-2 rounded-3 h-100"
+        style={{
+          background: isDanger ? 'linear-gradient(135deg,#FEF2F2,#FFF7F7)' : 'var(--akal-bg-light)',
+          border: `1px solid ${isDanger ? '#FECACA' : 'var(--akal-gray-200)'}`,
+          transition: 'var(--transition-normal)',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-md)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; }}
+      >
+        <div
+          className="d-flex align-items-center justify-content-center flex-shrink-0"
+          style={{
+            width: '34px', height: '34px', borderRadius: '11px',
+            background: isDanger ? '#fff' : 'var(--akal-white)',
+            border: `1px solid ${isDanger ? '#FECACA' : 'var(--akal-gray-200)'}`,
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          <Icon size={15} style={{ color: isDanger ? '#DC2626' : 'var(--akal-blue)' }} />
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="text-uppercase fw-bold" style={{ fontSize: '0.6rem', color: 'var(--akal-gray-400)', letterSpacing: '0.06em' }}>{label}</div>
+          <div className="fw-semibold text-break" style={{ fontSize: '0.84rem', color: isDanger ? '#B91C1C' : 'var(--akal-gray-800)', lineHeight: 1.35 }}>
+            {isUrl ? (
+              <a href={String(value)} target="_blank" rel="noreferrer" style={{ color: 'var(--akal-blue-deep)', textDecoration: 'none', borderBottom: '1px dotted var(--akal-blue)' }}>
+                {String(value).replace(/^https?:\/\/(www\.)?/, '').slice(0, 42)}
+              </a>
+            ) : display}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const AdminDashboard = () => {
   const { user, isSuperAdmin, isAdmin, isAuthenticated, quickDemoLogin, token, loading: authLoading, permissions, hasPermission } = useAuth();
   const { refreshSettings } = useSettings();
@@ -135,6 +292,8 @@ const AdminDashboard = () => {
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('analytics');
+  const [navbarHeight, setNavbarHeight] = useState(100);
+  const [footerHeight, setFooterHeight] = useState(80);
 
   // Sub-tab inside System Settings for granular control
   const [settingsGroupTab, setSettingsGroupTab] = useState('general');
@@ -169,9 +328,39 @@ const AdminDashboard = () => {
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('');
 
+  // Manage Alumni / Manage Students tabs
+  const [manageSearch, setManageSearch] = useState('');
+  const [manageStatusFilter, setManageStatusFilter] = useState('');
+  const [detailUserId, setDetailUserId] = useState(null);
+  const [detailData, setDetailData] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Merge DB settings with page defaults so keys (e.g. about_*/auaa_*)
+  // always appear in Site Customizer pre-filled with live site content —
+  // admins can edit directly, no empty boxes.
+  const PAGE_DEFAULTS = { ...ABOUT_PAGE_DEFAULTS, ...AUAA_PAGE_DEFAULTS };
+  const mergeWithMetadataDefaults = (dbList) => {
+    const seen = new Set((dbList || []).map((s) => s.setting_key));
+    // A key exists in DB but its value is empty → fill with site default content
+    const filled = (dbList || []).map((s) => (
+      (s.setting_value === '' || s.setting_value === null || s.setting_value === undefined) && PAGE_DEFAULTS[s.setting_key] !== undefined
+        ? { ...s, setting_value: PAGE_DEFAULTS[s.setting_key] }
+        : s
+    ));
+    const missing = Object.entries(DEFAULT_SETTINGS_METADATA)
+      .filter(([key]) => !seen.has(key))
+      .map(([key, meta]) => ({
+        setting_key: key,
+        setting_value: PAGE_DEFAULTS[key] ?? '',
+        setting_group: meta.group,
+        description: meta.description,
+      }));
+    return [...filled, ...missing];
   };
 
   // Gracefully load public settings as fallback so edit fields are never empty
@@ -188,9 +377,10 @@ const AdminDashboard = () => {
             description: meta.description
           };
         });
-        setSettings(fallbackList);
+        const merged = mergeWithMetadataDefaults(fallbackList);
+        setSettings(merged);
         const snapshot = {};
-        fallbackList.forEach(s => { snapshot[s.setting_key] = s.setting_value; });
+        merged.forEach(s => { snapshot[s.setting_key] = s.setting_value; });
         setSavedSettings(snapshot);
       }
     } catch (pubErr) {
@@ -220,9 +410,10 @@ const AdminDashboard = () => {
         setUsersList(usersRes.value.data);
       }
       if (settRes.status === 'fulfilled' && settRes.value?.status && Array.isArray(settRes.value.data) && settRes.value.data.length > 0) {
-        setSettings(settRes.value.data);
+        const merged = mergeWithMetadataDefaults(settRes.value.data);
+        setSettings(merged);
         const snapshot = {};
-        settRes.value.data.forEach(s => { snapshot[s.setting_key] = s.setting_value; });
+        merged.forEach(s => { snapshot[s.setting_key] = s.setting_value; });
         setSavedSettings(snapshot);
       } else {
         // Fallback: If not logged in as admin yet, load public settings with metadata so edit options are visible!
@@ -266,9 +457,29 @@ const AdminDashboard = () => {
     fetchCMSContent();
   }, [token, user?.id, user?.role]);
 
+  // Measure navbar and footer height so the Site Customizer sidebar stays within viewport bounds
+  useEffect(() => {
+    const measureLayout = () => {
+      const navbar = document.getElementById('akal-main-navbar');
+      const footer = document.getElementById('akal-main-footer');
+      if (navbar) {
+        setNavbarHeight(navbar.offsetHeight);
+      }
+      if (footer) {
+        setFooterHeight(footer.offsetHeight);
+      }
+    };
+    measureLayout();
+    window.addEventListener('resize', measureLayout);
+    return () => window.removeEventListener('resize', measureLayout);
+  }, []);
+
   // Verification approvals
   const handleApprove = async (userId) => {
-    if (!hasPermission('verify_alumni')) { alert('You do not have verification permission'); return; }
+    if (!hasPermission('verify_alumni') && !hasPermission('manage_alumni') && !hasPermission('manage_users')) {
+      alert('You do not have verification permission');
+      return;
+    }
     try {
       const res = await api.post(`/admin/verifications/${userId}/approve`);
       if (res.status) {
@@ -282,7 +493,10 @@ const AdminDashboard = () => {
   };
 
   const handleReject = async (userId) => {
-    if (!hasPermission('verify_alumni')) { alert('You do not have verification permission'); return; }
+    if (!hasPermission('verify_alumni') && !hasPermission('manage_alumni') && !hasPermission('manage_users')) {
+      alert('You do not have verification permission');
+      return;
+    }
     const reason = prompt('Please provide reason for verification rejection:');
     if (!reason) return;
 
@@ -312,18 +526,215 @@ const AdminDashboard = () => {
     }
   };
 
+  const canManageTargetUser = (targetRole) => {
+    if (isSuperAdmin) return true;
+    if (targetRole === 'alumni') {
+      return hasPermission('manage_alumni') || hasPermission('manage_users') || hasPermission('verify_alumni');
+    }
+    if (targetRole === 'student') {
+      return hasPermission('manage_students') || hasPermission('manage_users');
+    }
+    return hasPermission('manage_users');
+  };
+
   const handleStatusChange = async (userId, newStatus) => {
-    if (!isSuperAdmin) { alert('Only Super Admin can change account status'); return; }
+    const target = usersList.find(u => u.id === userId) || (detailData?.user?.id === userId ? detailData.user : null);
+    const targetRole = target?.role || '';
+    if (!canManageTargetUser(targetRole)) {
+      alert(`You do not have permission to manage ${targetRole || 'user'} accounts`);
+      return;
+    }
     try {
       const res = await api.put(`/admin/users/${userId}/status`, { status: newStatus });
       if (res.status) {
         showToast(`User account set to ${newStatus.toUpperCase()}!`);
+        if (detailUserId === userId) openUserDetail(userId);
         fetchDashboard();
       }
     } catch (err) {
       alert(err.message || 'Failed to update user status');
     }
   };
+
+  // Manage Alumni / Manage Students — reject users to accept later
+  const handleAcceptUser = async (u) => {
+    if (!canManageTargetUser(u.role)) {
+      alert(`You do not have permission to manage ${u.role} accounts`);
+      return;
+    }
+    const name = u.a_fname ? `${u.a_fname} ${u.a_lname || ''}` : (u.s_fname ? `${u.s_fname} ${u.s_lname || ''}` : u.email);
+    if (!window.confirm(`Accept & activate the account of ${name}?`)) return;
+    try {
+      let res;
+      if (u.role === 'alumni') {
+        // Alumni: verification approve → account active + digital ID card issued
+        res = await api.post(`/admin/verifications/${u.id}/approve`);
+      } else {
+        // Non-alumni (e.g. rejected student): sirf account activate
+        res = await api.put(`/admin/users/${u.id}/status`, { status: 'active' });
+      }
+      if (res.status) {
+        showToast(`${name} accepted & activated successfully!`);
+        if (detailUserId === u.id) openUserDetail(u.id);
+        fetchDashboard();
+      }
+    } catch (err) {
+      alert(err.message || 'Accept failed');
+    }
+  };
+
+  // Full Info modal — poori profile (profile + education + ID card + recent activity)
+  const openUserDetail = async (userId) => {
+    setDetailUserId(userId);
+    setDetailData(null);
+    setDetailLoading(true);
+    try {
+      const res = await api.get(`/admin/users/${userId}/detail`);
+      if (res.status) setDetailData(res.data);
+    } catch (err) {
+      alert(err.message || 'Failed to load user detail');
+      setDetailUserId(null);
+    }
+    setDetailLoading(false);
+  };
+
+  const closeUserDetail = () => {
+    setDetailUserId(null);
+    setDetailData(null);
+  };
+
+  // Shared badges + Manage tab table (alumni & students dono ke liye)
+  const statusBadge = (status) => {
+    const map = { active: 'bg-success', pending: 'bg-warning text-dark', rejected: 'bg-danger', suspended: 'bg-secondary' };
+    return <span className={`badge ${map[status] || 'bg-secondary'}`}>{status}</span>;
+  };
+
+  const verifBadge = (vs) => {
+    if (!vs) return null;
+    const map = { verified: 'bg-success', pending: 'bg-warning text-dark', rejected: 'bg-danger', unverified: 'bg-secondary' };
+    return <span className={`badge ${map[vs] || 'bg-secondary'}`}>ID: {vs}</span>;
+  };
+
+  const renderManageTab = (roleKey, list) => (
+    <div className="akal-card p-4">
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h5 className="fw-bold text-dark mb-0">
+          {roleKey === 'alumni' ? '🎓 Manage Alumni Accounts' : '🎒 Manage Student Accounts'}
+        </h5>
+        <div className="d-flex align-items-center gap-2 flex-wrap">
+          <div className="input-group input-group-sm" style={{ width: '230px' }}>
+            <span className="input-group-text bg-white"><Search size={14} /></span>
+            <input
+              type="text"
+              className="form-control"
+              placeholder={roleKey === 'alumni' ? 'Name / email / AUID...' : 'Name / email / enrollment no...'}
+              value={manageSearch}
+              onChange={(e) => setManageSearch(e.target.value)}
+            />
+          </div>
+          <select
+            className="form-select form-select-sm"
+            style={{ width: '150px' }}
+            value={manageStatusFilter}
+            onChange={(e) => setManageStatusFilter(e.target.value)}
+          >
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="rejected">Rejected</option>
+            <option value="suspended">Suspended</option>
+          </select>
+        </div>
+      </div>
+
+      {list.length === 0 ? (
+        <div className="text-center py-5 text-muted">
+          <Users size={44} className="mb-2 opacity-50" />
+          <p className="mb-0 fw-semibold">No {roleKey} accounts found.</p>
+        </div>
+      ) : (
+        <div className="table-responsive">
+          <table className="table table-hover align-middle small">
+            <thead className="table-light">
+              <tr>
+                <th>User</th>
+                <th>{roleKey === 'alumni' ? 'AUID' : 'Enrollment No'}</th>
+                <th>{roleKey === 'alumni' ? 'Degree & Batch' : 'Programme'}</th>
+                <th>Status</th>
+                <th>Registered On</th>
+                <th className="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((u) => {
+                const flagged = needsAction(u);
+                return (
+                  <tr key={u.id} className={u.status === 'rejected' ? 'table-danger' : (flagged ? 'table-warning' : '')}>
+                    <td>
+                      <div className="fw-bold text-dark">{userDisplayName(u)}</div>
+                      <div className="text-muted font-monospace" style={{ fontSize: '0.75rem' }}>{u.email}</div>
+                      {(u.a_phone || u.s_phone) && <div className="text-muted" style={{ fontSize: '0.75rem' }}>{u.a_phone || u.s_phone}</div>}
+                    </td>
+                    <td className="font-monospace">{roleKey === 'alumni' ? (u.a_auid || '—') : (u.s_enrollment || '—')}</td>
+                    <td>
+                      {roleKey === 'alumni' ? (
+                        <>
+                          <div className="fw-semibold">{u.a_degree || '—'}</div>
+                          <div className="text-muted" style={{ fontSize: '0.75rem' }}>{u.a_department}{u.a_batch ? ` • ${u.a_batch}` : ''}</div>
+                          {u.a_designation && <div className="text-muted" style={{ fontSize: '0.75rem' }}>{u.a_designation}{u.a_company ? ` @ ${u.a_company}` : ''}</div>}
+                        </>
+                      ) : (
+                        <>
+                          <div className="fw-semibold">{u.s_degree || '—'}</div>
+                          <div className="text-muted" style={{ fontSize: '0.75rem' }}>{u.s_department}</div>
+                        </>
+                      )}
+                    </td>
+                    <td>
+                      <div className="d-flex gap-1 flex-wrap">
+                        {statusBadge(u.status)}
+                        {verifBadge(u.verification_status)}
+                      </div>
+                      {u.status === 'rejected' && u.a_admin_notes && (
+                        <div className="text-danger mt-1" style={{ fontSize: '0.72rem' }}>Reason: {u.a_admin_notes}</div>
+                      )}
+                    </td>
+                    <td className="text-muted">{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
+                    <td className="text-end">
+                      <div className="btn-group">
+                        <button
+                          className="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+                          onClick={() => openUserDetail(u.id)}
+                          title="Full profile dekhein"
+                        >
+                          <Eye size={13} /> Full Info
+                        </button>
+                        {flagged && (
+                          <button
+                            className="btn btn-sm btn-success d-flex align-items-center gap-1"
+                            onClick={() => handleAcceptUser(u)}
+                            title={u.role === 'alumni' ? 'Approve & activate alumni account + ID card' : 'Activate account'}
+                          >
+                            <UserCheck size={13} /> Accept
+                          </button>
+                        )}
+                        <button
+                          className={`btn btn-sm ${u.status === 'active' ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                          onClick={() => handleStatusChange(u.id, u.status === 'active' ? 'suspended' : 'active')}
+                        >
+                          {u.status === 'active' ? 'Deactivate' : 'Activate'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 
   // System Settings Management
   const handleSettingChange = (key, value) => {
@@ -344,7 +755,7 @@ const AdminDashboard = () => {
         setSavedSettings({ ...payload });
         // Published -> any preview draft is now the live site, drop it
         try { localStorage.removeItem('akal_settings_draft'); } catch { /* ignore */ }
-        showToast('All site details saved — ab ye website par LIVE hain!');
+        showToast('All site details saved — now LIVE on the website!');
         refreshSettings();
       }
     } catch (err) {
@@ -359,7 +770,7 @@ const AdminDashboard = () => {
     try {
       localStorage.setItem('akal_settings_draft', JSON.stringify({ savedAt: Date.now(), settings: payload }));
       window.open('/?preview=1', '_blank');
-      showToast('Preview naye tab me khul gaya — changes abhi publish nahi hue.');
+      showToast('Preview opened in a new tab — changes are not published yet.');
     } catch (err) {
       alert('Could not open preview: ' + err.message);
     }
@@ -621,19 +1032,65 @@ const AdminDashboard = () => {
     return matchSearch && matchRole;
   });
 
-  // Settings group categories
+  // Manage Alumni / Manage Students — search + status filter (pending / rejected also shown)
+  const userDisplayName = (u) =>
+    u.a_fname ? `${u.a_fname} ${u.a_lname || ''}`
+      : (u.s_fname ? `${u.s_fname} ${u.s_lname || ''}`
+        : (u.adm_name || u.email));
+
+  const filteredManageUsers = (roleKey) => usersList.filter(u => {
+    if (u.role !== roleKey) return false;
+    const q = manageSearch.trim().toLowerCase();
+    const matchSearch = !q ||
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.a_fname && `${u.a_fname} ${u.a_lname || ''}`.toLowerCase().includes(q)) ||
+      (u.s_fname && `${u.s_fname} ${u.s_lname || ''}`.toLowerCase().includes(q)) ||
+      (u.a_auid && u.a_auid.includes(manageSearch.trim())) ||
+      (u.a_alumni_id && u.a_alumni_id.toLowerCase().includes(q)) ||
+      (u.s_enrollment && u.s_enrollment.toLowerCase().includes(q));
+    const matchStatus = !manageStatusFilter || u.status === manageStatusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  const manageAlumniList = filteredManageUsers('alumni');
+  const manageStudentsList = filteredManageUsers('student');
+
+  // Rejected/pending accounts that admin can accept later
+  const needsAction = (u) =>
+    u.status === 'rejected' || u.verification_status === 'rejected' ||
+    u.status === 'pending' || u.verification_status === 'pending';
+
+  const alumniNeedsAction = usersList.filter(u => u.role === 'alumni' && needsAction(u)).length;
+  const studentsNeedsAction = usersList.filter(u => u.role === 'student' && needsAction(u)).length;
+
+  // Settings group categories with sections for visual grouping
   const settingsCategories = [
-    { key: 'general', label: '🎨 Branding & Identity', icon: Palette },
-    { key: 'banner', label: '📢 Announcement Banner', icon: Bell },
-    { key: 'hero', label: '🚀 Homepage Hero Customizer', icon: Sparkles },
-    { key: 'stats', label: '📊 Key Statistics & Counters', icon: Activity },
-    { key: 'contact', label: '📞 Contacts & Campus Info', icon: Phone },
-    { key: 'social', label: '🌐 Social Links & Handles', icon: Share2 },
-    { key: 'footer', label: '🏛️ Footer & Accreditation', icon: ShieldCheck },
-    { key: 'features', label: '⚙️ Module Visibility & Rules', icon: Sliders },
-    { key: 'about', label: '\ud83d\udcda About University', icon: BookOpen },
-    { key: 'custom', label: '➕ Custom Parameters', icon: PlusCircle },
+    { key: 'general', label: 'Branding & Identity', icon: Palette, section: 'appearance' },
+    { key: 'banner', label: 'Announcement Banner', icon: Bell, section: 'appearance' },
+    { key: 'hero', label: 'Homepage Hero', icon: Sparkles, section: 'appearance' },
+    { key: 'stats', label: 'Stats & Counters', icon: Activity, section: 'content' },
+    { key: 'contact', label: 'Contact & Campus', icon: Phone, section: 'content' },
+    { key: 'social', label: 'Social Links', icon: Share2, section: 'content' },
+    { key: 'footer', label: 'Footer & Credits', icon: ShieldCheck, section: 'content' },
+    { key: 'about', label: 'About University', icon: BookOpen, section: 'content' },
+    { key: 'auaa', label: 'AUAA (Association)', icon: Landmark, section: 'content' },
+    { key: 'features', label: 'Module Toggles', icon: Sliders, section: 'advanced' },
+    { key: 'custom', label: 'Custom Parameters', icon: PlusCircle, section: 'advanced' },
   ];
+
+  // Count of settings per group for sidebar badges
+  const settingsCountByGroup = {};
+  settings.forEach(s => {
+    const grp = s.setting_group || 'general';
+    settingsCountByGroup[grp] = (settingsCountByGroup[grp] || 0) + 1;
+  });
+
+  // Section labels for sidebar grouping
+  const sectionLabels = {
+    appearance: 'Appearance',
+    content: 'Content & Info',
+    advanced: 'Advanced',
+  };
 
   const filteredSettings = settings.filter(s => {
     if (settingsGroupTab === 'all') return true;
@@ -698,7 +1155,7 @@ const AdminDashboard = () => {
               <button
                 onClick={async () => {
                   await quickDemoLogin('superadmin@akaluniversity.ac.in', 'Admin@12345');
-                  showToast('⚡ Logged in as Super Admin! Sabhi edit options unlock ho gaye.');
+                  showToast('⚡ Logged in as Super Admin! All edit options unlocked.');
                 }}
                 className="btn btn-sm btn-danger fw-bold d-flex align-items-center gap-1 shadow-sm"
               >
@@ -729,10 +1186,10 @@ const AdminDashboard = () => {
               </div>
               <div>
                 <h6 className="alert-heading fw-bold mb-1 text-dark">
-                  🔐 Administrator Authentication Required / एडिट ऑप्शन्स अनलॉक करें
+                  🔐 Administrator Authentication Required — edit options locked
                 </h6>
                 <p className="mb-0 text-muted small">
-                  Aap abhi Super Admin account se login nahi hain. Database settings, verification queue aur user permissions edit karke live save karne ke liye kripya <strong>1-Click Super Admin Login</strong> karein:
+                  You are not logged in as a Super Admin account. To edit database settings, verification queue and user permissions and save live, please <strong>1-Click Super Admin Login</strong>:
                 </p>
               </div>
             </div>
@@ -740,7 +1197,7 @@ const AdminDashboard = () => {
               <button
                 onClick={async () => {
                   await quickDemoLogin('superadmin@akaluniversity.ac.in', 'Admin@12345');
-                  showToast('⚡ Logged in as Super Admin! Sabhi edit options unlock ho gaye.');
+                  showToast('⚡ Logged in as Super Admin! All edit options unlocked.');
                 }}
                 className="btn btn-primary fw-bold d-flex align-items-center gap-2 shadow-sm"
               >
@@ -768,7 +1225,7 @@ const AdminDashboard = () => {
             Analytics & Reports
           </button>
 
-          {hasPermission('verify_alumni') && (
+          {(hasPermission('verify_alumni') || hasPermission('manage_alumni') || hasPermission('manage_users')) && (
             <button
               className={`btn btn-sm px-3 rounded-pill fw-semibold ${activeTab === 'verifications' ? 'btn-primary' : 'btn-light border'}`}
               onClick={() => setActiveTab('verifications')}
@@ -783,6 +1240,26 @@ const AdminDashboard = () => {
               onClick={() => setActiveTab('users')}
             >
               User Management ({usersList.length})
+            </button>
+          )}
+
+          {(hasPermission('manage_users') || hasPermission('manage_alumni')) && (
+            <button
+              className={`btn btn-sm px-3 rounded-pill fw-semibold ${activeTab === 'manage-alumni' ? 'btn-primary' : 'btn-light border'}`}
+              onClick={() => setActiveTab('manage-alumni')}
+            >
+              🎓 Manage Alumni ({usersList.filter(u => u.role === 'alumni').length})
+              {alumniNeedsAction > 0 && <span className="badge bg-warning text-dark ms-1">{alumniNeedsAction}</span>}
+            </button>
+          )}
+
+          {(hasPermission('manage_users') || hasPermission('manage_students')) && (
+            <button
+              className={`btn btn-sm px-3 rounded-pill fw-semibold ${activeTab === 'manage-students' ? 'btn-primary' : 'btn-light border'}`}
+              onClick={() => setActiveTab('manage-students')}
+            >
+              🎒 Manage Students ({usersList.filter(u => u.role === 'student').length})
+              {studentsNeedsAction > 0 && <span className="badge bg-warning text-dark ms-1">{studentsNeedsAction}</span>}
             </button>
           )}
 
@@ -1120,6 +1597,7 @@ const AdminDashboard = () => {
                     <th>Status</th>
                     <th>Change Role</th>
                     <th>Account Status</th>
+                    <th className="text-end">Full Info</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1162,11 +1640,20 @@ const AdminDashboard = () => {
                           {u.status === 'active' ? 'Suspend' : 'Activate'}
                         </button>
                       </td>
+                      <td className="text-end">
+                        <button
+                          className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                          onClick={() => openUserDetail(u.id)}
+                          title="View full profile"
+                        >
+                          <Eye size={14} /> View
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {filteredUsers.length === 0 && (
                     <tr>
-                      <td colSpan="6" className="text-center py-4 text-muted">
+                      <td colSpan="7" className="text-center py-4 text-muted">
                         No users found. {!isAdmin && '(Admin login required to view all user accounts)'}
                       </td>
                     </tr>
@@ -1177,6 +1664,12 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* TAB: Manage Alumni — full info, activate/deactivate, rejected ko accept */}
+        {activeTab === 'manage-alumni' && (hasPermission('manage_users') || hasPermission('manage_alumni')) && renderManageTab('alumni', manageAlumniList)}
+
+        {/* TAB: Manage Students — full info, activate/deactivate, rejected ko accept */}
+        {activeTab === 'manage-students' && (hasPermission('manage_users') || hasPermission('manage_students')) && renderManageTab('student', manageStudentsList)}
+
         {/* TAB: Admin Accounts & Permissions (superadmin only) */}
         {activeTab === 'admins' && isSuperAdmin && (
           <AdminManagement showToast={showToast} />
@@ -1185,51 +1678,217 @@ const AdminDashboard = () => {
         {/* TAB 4: MASTER SITE CUSTOMIZER & SYSTEM SETTINGS */}
         {activeTab === 'settings' && (
           <div className="row g-4">
-            {/* Left Category Sub-Tabs */}
+            {/* Left Category Sub-Tabs — Optimized Sidebar */}
             <div className="col-lg-3">
-              <div className="akal-card p-3 sticky-top" style={{ top: '80px' }}>
-                <div className="fw-bold text-dark small text-uppercase mb-2 px-2" style={{ letterSpacing: '0.05em' }}>Site Customizer</div>
-                <div className="d-flex flex-column gap-1">
-                  {settingsCategories.map((cat) => {
-                    const IconComponent = cat.icon;
+              <div
+                className="akal-card sticky-top overflow-y-auto"
+                style={{
+                  top: `${navbarHeight + 8}px`,
+                  maxHeight: `calc(100vh - ${navbarHeight + 8}px - 12px)`,
+                  zIndex: 10,
+                  borderRadius: '14px',
+                  border: '1px solid rgba(8, 123, 181, 0.06)',
+                }}
+              >
+                {/* Header */}
+                <div
+                  className="d-flex align-items-center justify-content-between px-3 pt-3 pb-2"
+                  style={{ borderBottom: '1px solid var(--akal-gray-200)' }}
+                >
+                  <div className="d-flex align-items-center gap-2">
+                    <div
+                      className="d-flex align-items-center justify-content-center"
+                      style={{
+                        width: '28px', height: '28px', borderRadius: '8px',
+                        background: 'var(--grad-primary)',
+                        boxShadow: '0 2px 8px rgba(8,123,181,0.25)',
+                      }}
+                    >
+                      <Sliders size={13} className="text-white" />
+                    </div>
+                    <span className="fw-bold text-dark" style={{ fontSize: '0.82rem', fontFamily: 'var(--font-heading)', letterSpacing: '0.02em' }}>
+                      Site Customizer
+                    </span>
+                  </div>
+                  {unsavedCount > 0 && (
+                    <span
+                      className="badge rounded-pill fw-bold"
+                      style={{
+                        background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                        color: '#fff',
+                        fontSize: '0.62rem',
+                        padding: '3px 8px',
+                        animation: 'pulse 2s infinite',
+                      }}
+                    >
+                      {unsavedCount} unsaved
+                    </span>
+                  )}
+                </div>
+
+                {/* Grouped Navigation Items */}
+                <div className="px-2 pt-2 pb-1">
+                  {['appearance', 'content', 'advanced'].map((section, sIdx) => {
+                    const sectionCats = settingsCategories.filter(c => c.section === section);
+                    if (sectionCats.length === 0) return null;
                     return (
-                      <button
-                        key={cat.key}
-                        className={`btn btn-sm text-start py-2 px-3 rounded-3 d-flex align-items-center gap-2 border-0 ${settingsGroupTab === cat.key ? 'btn-akal-primary text-white fw-bold' : 'btn-light text-dark'}`}
-                        onClick={() => setSettingsGroupTab(cat.key)}
-                      >
-                        <IconComponent size={16} />
-                        <span>{cat.label}</span>
-                      </button>
+                      <div key={section} className={sIdx > 0 ? 'mt-1' : ''}>
+                        {/* Section Label */}
+                        <div
+                          className="d-flex align-items-center gap-2 px-2 mb-1"
+                          style={{ paddingTop: sIdx > 0 ? '6px' : '2px' }}
+                        >
+                          {sIdx > 0 && (
+                            <div className="flex-grow-1" style={{ height: '1px', background: 'linear-gradient(90deg, var(--akal-gray-200), transparent)' }} />
+                          )}
+                          <span
+                            className="text-uppercase fw-bold flex-shrink-0"
+                            style={{
+                              fontSize: '0.6rem',
+                              color: 'var(--akal-gray-400)',
+                              letterSpacing: '0.1em',
+                            }}
+                          >
+                            {sectionLabels[section]}
+                          </span>
+                          <div className="flex-grow-1" style={{ height: '1px', background: 'linear-gradient(90deg, transparent, var(--akal-gray-200), transparent)' }} />
+                        </div>
+
+                        {/* Category Buttons */}
+                        <div className="d-flex flex-column gap-0">
+                          {sectionCats.map((cat) => {
+                            const IconComponent = cat.icon;
+                            const isActive = settingsGroupTab === cat.key;
+                            const count = settingsCountByGroup[cat.key] || 0;
+                            return (
+                              <button
+                                key={cat.key}
+                                className="btn btn-sm text-start border-0 d-flex align-items-center w-100 position-relative"
+                                onClick={() => setSettingsGroupTab(cat.key)}
+                                style={{
+                                  padding: '7px 10px 7px 12px',
+                                  borderRadius: '8px',
+                                  gap: '9px',
+                                  background: isActive ? 'linear-gradient(135deg, rgba(8,123,181,0.08), rgba(41,169,224,0.06))' : 'transparent',
+                                  color: isActive ? 'var(--akal-blue-deep)' : 'var(--akal-gray-600)',
+                                  fontWeight: isActive ? 700 : 500,
+                                  fontSize: '0.78rem',
+                                  transition: 'all 0.2s ease',
+                                  borderLeft: isActive ? '3px solid var(--akal-blue)' : '3px solid transparent',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!isActive) {
+                                    e.currentTarget.style.background = 'var(--akal-gray-100)';
+                                    e.currentTarget.style.color = 'var(--akal-gray-800)';
+                                    e.currentTarget.style.borderLeftColor = 'var(--akal-gray-200)';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!isActive) {
+                                    e.currentTarget.style.background = 'transparent';
+                                    e.currentTarget.style.color = 'var(--akal-gray-600)';
+                                    e.currentTarget.style.borderLeftColor = 'transparent';
+                                  }
+                                }}
+                              >
+                                <div
+                                  className="d-flex align-items-center justify-content-center flex-shrink-0"
+                                  style={{
+                                    width: '26px', height: '26px', borderRadius: '7px',
+                                    background: isActive ? 'var(--grad-primary)' : 'var(--akal-gray-100)',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: isActive ? '0 2px 6px rgba(8,123,181,0.2)' : 'none',
+                                  }}
+                                >
+                                  <IconComponent size={13} style={{ color: isActive ? '#fff' : 'var(--akal-gray-400)' }} />
+                                </div>
+                                <span className="flex-grow-1 text-truncate">{cat.label}</span>
+                                {count > 0 && (
+                                  <span
+                                    className="badge rounded-pill flex-shrink-0"
+                                    style={{
+                                      background: isActive ? 'rgba(8,123,181,0.15)' : 'var(--akal-gray-100)',
+                                      color: isActive ? 'var(--akal-blue-deep)' : 'var(--akal-gray-400)',
+                                      fontSize: '0.6rem',
+                                      fontWeight: 600,
+                                      padding: '2px 7px',
+                                      minWidth: '22px',
+                                      textAlign: 'center',
+                                    }}
+                                  >
+                                    {count}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
 
-                <div className="mt-4 pt-3 border-top d-flex flex-column gap-2">
-                  <button
-                    onClick={handlePreviewSite}
-                    className="btn btn-akal-outline w-100 fw-bold d-flex align-items-center justify-content-center gap-2 py-2"
-                    title="Dekhiye site kaisi lagegi (kuch publish kiye bina)"
-                  >
-                    <Eye size={16} /> Preview Site
-                  </button>
-                  <button onClick={handleSaveSettings} className="btn btn-akal-yellow w-100 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm py-2">
-                    <Save size={16} /> Save & Publish
-                  </button>
+                {/* Action Buttons Section */}
+                <div className="px-3 pb-3 pt-2" style={{ borderTop: '1px solid var(--akal-gray-200)', marginTop: '4px' }}>
+                  <div className="d-flex gap-2 mb-2">
+                    <button
+                      onClick={handlePreviewSite}
+                      className="btn btn-sm flex-grow-1 fw-bold d-flex align-items-center justify-content-center gap-1"
+                      title="Preview the site (changes not yet published)"
+                      style={{
+                        padding: '8px 0',
+                        borderRadius: '8px',
+                        background: 'var(--akal-white)',
+                        border: '1.5px solid var(--akal-blue)',
+                        color: 'var(--akal-blue)',
+                        fontSize: '0.76rem',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--akal-blue-soft)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--akal-white)'; e.currentTarget.style.transform = 'none'; }}
+                    >
+                      <Eye size={14} /> Preview
+                    </button>
+                    <button
+                      onClick={handleSaveSettings}
+                      className="btn btn-sm flex-grow-1 fw-bold d-flex align-items-center justify-content-center gap-1"
+                      style={{
+                        padding: '8px 0',
+                        borderRadius: '8px',
+                        background: 'var(--grad-yellow)',
+                        border: '1.5px solid var(--akal-yellow)',
+                        color: 'var(--akal-navy)',
+                        fontSize: '0.76rem',
+                        boxShadow: '0 2px 8px rgba(249,185,0,0.3)',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(249,185,0,0.4)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(249,185,0,0.3)'; }}
+                    >
+                      <Save size={14} /> Publish
+                    </button>
+                  </div>
 
-                  {unsavedCount > 0 ? (
-                    <div className="small text-center fw-bold text-warning d-flex align-items-center justify-content-center gap-1">
-                      <AlertCircle size={13} /> {unsavedCount} change{unsavedCount > 1 ? 's' : ''} not saved yet
-                    </div>
-                  ) : (
-                    <div className="small text-center text-success fw-bold d-flex align-items-center justify-content-center gap-1">
-                      <CheckCircle2 size={13} /> Site is up to date
-                    </div>
-                  )}
-
-                  <button onClick={handleDiscardSettings} className="btn btn-link text-muted small border-0 p-0">
-                    Discard unsaved changes
-                  </button>
+                  {/* Status Indicator */}
+                  <div className="text-center">
+                    {unsavedCount > 0 ? (
+                      <div className="d-flex align-items-center justify-content-center gap-1" style={{ fontSize: '0.68rem', color: '#D97706', fontWeight: 600 }}>
+                        <AlertCircle size={11} /> {unsavedCount} change{unsavedCount > 1 ? 's' : ''} pending
+                        <span
+                          className="ms-1"
+                          role="button"
+                          onClick={handleDiscardSettings}
+                          style={{ color: 'var(--akal-gray-400)', cursor: 'pointer', textDecoration: 'underline', fontWeight: 500 }}
+                        >
+                          Discard
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="d-flex align-items-center justify-content-center gap-1" style={{ fontSize: '0.68rem', color: '#10B981', fontWeight: 600 }}>
+                        <CheckCircle2 size={11} /> All changes published
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1239,11 +1898,30 @@ const AdminDashboard = () => {
               <div className="akal-card p-4">
                 <div className="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom flex-wrap gap-2">
                   <div>
-                    <h5 className="fw-bold text-dark mb-0">
-                      {settingsCategories.find(c => c.key === settingsGroupTab)?.label || 'Portal Details'}
+                    <h5 className="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                      {(() => {
+                        const activeCat = settingsCategories.find(c => c.key === settingsGroupTab);
+                        if (!activeCat) return 'Portal Details';
+                        const ActiveIcon = activeCat.icon;
+                        return (
+                          <>
+                            <div
+                              className="d-flex align-items-center justify-content-center flex-shrink-0"
+                              style={{
+                                width: '30px', height: '30px', borderRadius: '9px',
+                                background: 'var(--grad-primary)',
+                                boxShadow: '0 2px 8px rgba(8,123,181,0.2)',
+                              }}
+                            >
+                              <ActiveIcon size={15} className="text-white" />
+                            </div>
+                            {activeCat.label}
+                          </>
+                        );
+                      })()}
                     </h5>
                     <span className="text-muted small">
-                      Pehle <strong>Preview</strong> karke dekhein site kaisi lagegi — sirf <strong>Save</strong> karne par changes live honge
+                      Preview first to see how the site will look — changes go live only after you <strong>Save</strong>
                     </span>
                     {unsavedCount > 0 && (
                       <div>
@@ -1258,7 +1936,7 @@ const AdminDashboard = () => {
                     <button
                       onClick={handlePreviewSite}
                       className="btn btn-outline-primary fw-bold d-flex align-items-center gap-2"
-                      title="Site ka preview lein (changes publish kiye bina)"
+                      title="Preview the site (changes not yet published)"
                     >
                       <Eye size={16} /> Preview
                     </button>
@@ -1345,13 +2023,21 @@ const AdminDashboard = () => {
                             {s.setting_value === '1' || s.setting_value === 1 ? 'Enabled (Active on site)' : 'Disabled (Hidden on site)'}
                           </label>
                         </div>
-                      ) : s.setting_key.includes('description') || s.setting_key.includes('address') || s.setting_key.includes('text') && s.setting_value?.length > 60 ? (
-                        <textarea
-                          className="form-control"
-                          rows="3"
-                          value={s.setting_value || ''}
-                          onChange={(e) => handleSettingChange(s.setting_key, e.target.value)}
-                        />
+                      ) : s.setting_key.includes('description') || s.setting_key.includes('address') || s.setting_key.includes('text') && s.setting_value?.length > 60 || s.setting_key.startsWith('about_') || s.setting_key.startsWith('auaa_') ? (
+                        <>
+                          {HTML_TEXT_KEYS.has(s.setting_key) && (
+                            <div className="alert alert-info py-2 px-3 mb-2 small">
+                              <strong>Simple editor:</strong> no tags needed — separate paragraphs with a blank line, use <code>**text**</code> for <strong>bold</strong>.
+                            </div>
+                          )}
+                          <textarea
+                            className="form-control"
+                            style={HTML_TEXT_KEYS.has(s.setting_key) ? { fontFamily: 'var(--font-body)' } : { fontFamily: 'monospace', fontSize: '0.82rem' }}
+                            rows={s.setting_value && String(s.setting_value).split('\n').length > 8 ? 10 : s.setting_value && String(s.setting_value).length > 300 ? 8 : 4}
+                            value={HTML_TEXT_KEYS.has(s.setting_key) ? htmlToPlain(s.setting_value) : (s.setting_value || '')}
+                            onChange={(e) => handleSettingChange(s.setting_key, HTML_TEXT_KEYS.has(s.setting_key) ? plainToHtml(e.target.value) : e.target.value)}
+                          />
+                        </>
                       ) : s.setting_key.includes('color') ? (
                         <div className="d-flex align-items-center gap-2">
                           <input
@@ -1380,7 +2066,7 @@ const AdminDashboard = () => {
 
                   {filteredSettings.length === 0 && (
                     <div className="text-center py-4 text-muted small p-4 bg-light rounded-3 border">
-                      <p className="mb-2 fw-semibold">Is category me abhi koi setting list nahi hui hai.</p>
+                      <p className="mb-2 fw-semibold">No settings added yet in this category.</p>
                       <div className="d-flex justify-content-center gap-2 flex-wrap">
                         <button
                           onClick={loadFallbackSettings}
@@ -1392,7 +2078,7 @@ const AdminDashboard = () => {
                           <button
                             onClick={async () => {
                               await quickDemoLogin('superadmin@akaluniversity.ac.in', 'Admin@12345');
-                              showToast('⚡ Logged in as Super Admin! Sabhi edit options unlock ho gaye.');
+                              showToast('⚡ Logged in as Super Admin! All edit options unlocked.');
                             }}
                             className="btn btn-sm btn-primary fw-bold"
                           >
@@ -2316,6 +3002,368 @@ const AdminDashboard = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Full Info Modal — kisi bhi user (alumni / student / admin) ki poori detail */}
+        {detailUserId && (
+          <div
+            className="modal show d-block"
+            tabIndex="-1"
+            style={{ backgroundColor: 'rgba(13,22,34,0.7)', backdropFilter: 'blur(5px)', zIndex: 1055 }}
+            onClick={(e) => { if (e.target === e.currentTarget) closeUserDetail(); }}
+          >
+            <div className="modal-dialog modal-xl modal-dialog-centered" style={{ maxWidth: '1100px', width: '96%', maxHeight: '92vh', margin: 'auto' }}>
+              <div
+                className="modal-content border-0 overflow-hidden shadow-lg"
+                style={{ borderRadius: '22px', boxShadow: '0 30px 80px rgba(13,22,34,0.5)', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+              >
+                {/* ── Premium profile header — cover art + avatar ring + headline (NEVER shrinks) ── */}
+                <div
+                  className="position-relative overflow-hidden flex-shrink-0"
+                  style={{ background: 'linear-gradient(120deg,#0D1622 0%,#075985 45%,#087BB5 75%,#29A9E0 100%)', flexShrink: 0 }}
+                >
+                  <div className="position-absolute rounded-circle" style={{ width: '220px', height: '220px', top: '-110px', right: '60px', background: 'radial-gradient(circle, rgba(249,185,0,0.35) 0%, transparent 70%)' }}></div>
+                  <div className="position-absolute rounded-circle" style={{ width: '300px', height: '300px', bottom: '-190px', left: '-80px', background: 'radial-gradient(circle, rgba(41,169,224,0.35) 0%, transparent 70%)' }}></div>
+                  <div className="position-relative d-flex align-items-center gap-3 p-4">
+                    <div
+                      className="rounded-circle d-flex align-items-center justify-content-center overflow-hidden fw-bold flex-shrink-0"
+                      style={{
+                        width: '80px', height: '80px', fontSize: '1.55rem',
+                        background: detailData && detailData.alumni && detailData.alumni.profile_photo ? '#fff' : 'var(--grad-yellow)',
+                        color: 'var(--akal-navy)', border: `4px solid ${detailData ? statusRingColor(detailData.user.status) : '#fff'}`,
+                        boxShadow: '0 10px 28px rgba(0,0,0,0.35), 0 0 0 4px rgba(255,255,255,0.15)',
+                      }}
+                    >
+                      {detailData && detailData.alumni && detailData.alumni.profile_photo ? (
+                        <img src={detailData.alumni.profile_photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        (() => {
+                          const p = detailData && (detailData.alumni || detailData.student || detailData.admin_profile);
+                          const nm = p ? `${p.first_name || p.full_name || ''} ${p.last_name || ''}`.trim() : '';
+                          return (nm || (detailData ? detailData.user.email : 'U')).replace(/[^A-Za-z ]/g, '').split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'U';
+                        })()
+                      )}
+                    </div>
+                    <div className="flex-grow-1 text-white" style={{ minWidth: 0 }}>
+                      <div className="d-flex align-items-center gap-2 flex-wrap">
+                        <h5 className="fw-bold mb-0 text-white text-break" style={{ fontFamily: 'var(--font-heading)' }}>
+                          {detailData ? (
+                            (() => {
+                              const p = detailData.alumni || detailData.student || detailData.admin_profile;
+                              const nm = p ? `${p.first_name || p.full_name || ''} ${p.last_name || ''}`.trim() : '';
+                              return nm || detailData.user.email;
+                            })()
+                          ) : 'Loading profile…'}
+                        </h5>
+                        {detailData && (
+                          <span className="badge rounded-pill px-2 py-1" style={{ background: 'var(--grad-yellow)', color: 'var(--akal-navy)', fontSize: '0.62rem', fontWeight: 800 }}>
+                            {detailData.user.role.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      {detailData && (() => {
+                        const hd = detailData.alumni
+                          ? [detailData.alumni.current_designation, detailData.alumni.current_company].filter(Boolean).join(' @ ')
+                          : (detailData.student ? [detailData.student.degree, detailData.student.department].filter(Boolean).join(' • ') : detailData.admin_profile?.designation);
+                        return (
+                          <>
+                            {hd && <div className="fw-semibold text-truncate mt-1" style={{ fontSize: '0.84rem', color: 'rgba(255,255,255,0.9)' }}>{hd}</div>}
+                            <div className="d-flex align-items-center gap-2 flex-wrap mt-1" style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.78)' }}>
+                              <span className="d-inline-flex align-items-center gap-1"><Mail size={12} />{detailData.user.email}</span>
+                              <span style={{ opacity: 0.5 }}>•</span>
+                              <span>User #{detailData.user.id}</span>
+                            </div>
+                          </>
+                        );
+                      })()}
+                      {detailData && (
+                        <div className="d-flex gap-2 flex-wrap mt-2">
+                          <span className="badge rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.35)', color: '#fff', fontSize: '0.7rem' }}>
+                            <span className="rounded-circle d-inline-block" style={{ width: '7px', height: '7px', background: statusRingColor(detailData.user.status) }}></span>
+                            {detailData.user.status.toUpperCase()}
+                          </span>
+                          <span className="badge rounded-pill px-3 py-1" style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.35)', color: '#fff', fontSize: '0.7rem' }}>
+                            ID: {detailData.user.verification_status.toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <button type="button" className="btn-close btn-close-white flex-shrink-0 align-self-start mt-1" onClick={closeUserDetail} aria-label="Close"></button>
+                  </div>
+                  {detailData && (
+                    <div style={{ height: '4px', background: `linear-gradient(90deg, ${statusRingColor(detailData.user.status)}, var(--akal-yellow) 60%, transparent)` }}></div>
+                  )}
+                </div>
+
+                {/* ── Scrollable Body with Clean Responsive 2-Column Grid ── */}
+                <div className="modal-body p-4" style={{ background: 'linear-gradient(180deg, var(--akal-bg-light) 0%, #EDF3FA 100%)', overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
+                  {detailLoading && (
+                    <div className="text-center py-5">
+                      <div className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style={{ width: '64px', height: '64px', background: 'var(--akal-white)', boxShadow: 'var(--shadow-md)' }}>
+                        <div className="spinner-border" style={{ color: 'var(--akal-blue)' }} role="status"></div>
+                      </div>
+                      <div className="fw-bold" style={{ color: 'var(--akal-navy)' }}>Fetching full profile…</div>
+                      <div className="small" style={{ color: 'var(--akal-gray-400)' }}>Contact, academics, ID card & activity</div>
+                    </div>
+                  )}
+
+                  {!detailLoading && detailData && (
+                    (() => {
+                      const du = detailData.user;
+                      const al = detailData.alumni;
+                      const st = detailData.student;
+                      const adm = detailData.admin_profile;
+                      const hasRightCol = !!(
+                        detailData.id_card ||
+                        (detailData.educations && detailData.educations.length > 0) ||
+                        (detailData.recent_activity && detailData.recent_activity.length > 0)
+                      );
+
+                      return (
+                        <div className="row g-3">
+                          {/* ── Left Column: Personal, Contact & Career Details ── */}
+                          <div className={hasRightCol ? 'col-lg-7 col-12' : 'col-12'}>
+                            <div className="rounded-4 p-3 mb-3 bg-white" style={{ border: '1px solid var(--akal-gray-200)', boxShadow: 'var(--shadow-md)' }}>
+                              {akalSectionHead(Layers, 'Personal & Contact Details')}
+                              <div className="row g-2">
+                                <InfoTile icon={Mail} label="Email Address" value={du.email} />
+                                <InfoTile icon={Clock} label="Registered On" value={du.created_at ? new Date(du.created_at).toLocaleString() : ''} />
+                                {al && (<>
+                                  <InfoTile icon={Hash} label="AUID" value={al.auid} />
+                                  <InfoTile icon={CreditCard} label="Alumni ID" value={al.alumni_id} />
+                                  <InfoTile icon={Phone} label="Phone" value={al.phone} />
+                                  <InfoTile icon={GraduationCap} label="Degree" value={al.degree} />
+                                  <InfoTile icon={BookOpen} label="Department" value={al.department} />
+                                  <InfoTile icon={Calendar} label="Batch" value={al.batch_year} />
+                                  <InfoTile icon={MapPin} label="Location" value={[al.location_city, al.location_country].filter(Boolean).join(', ')} />
+                                  <InfoTile icon={Link2} label="LinkedIn" value={al.linkedin_url} link />
+                                  <InfoTile icon={Activity} label="Mentor" value={al.is_mentor == 1 ? '⭐ Yes — volunteering' : 'No'} />
+                                  <InfoTile icon={CheckCircle2} label="Public Profile" value={al.is_public_profile == 1 ? '👁 Visible in directory' : '🔒 Hidden'} />
+                                  <InfoTile icon={ShieldCheck} label="Verified At" value={al.verified_at ? new Date(al.verified_at).toLocaleString() : ''} />
+                                </>)}
+                                {st && (<>
+                                  <InfoTile icon={Users} label="Full Name" value={`${st.first_name || ''} ${st.last_name || ''}`.trim()} />
+                                  <InfoTile icon={Hash} label="Enrollment No" value={st.enrollment_no} />
+                                  <InfoTile icon={GraduationCap} label="Degree" value={st.degree} />
+                                  <InfoTile icon={BookOpen} label="Department" value={st.department} />
+                                  <InfoTile icon={Calendar} label="Year / Semester" value={`${st.current_year || '—'} / ${st.semester || '—'}`} />
+                                  <InfoTile icon={Phone} label="Phone" value={st.phone} />
+                                </>)}
+                                {adm && (<>
+                                  <InfoTile icon={Users} label="Full Name" value={adm.full_name} />
+                                  <InfoTile icon={Briefcase} label="Designation" value={adm.designation} />
+                                  <InfoTile icon={Phone} label="Phone" value={adm.phone} />
+                                </>)}
+                              </div>
+                            </div>
+
+                            {/* Career & Skills for Alumni */}
+                            {al && (al.current_company || al.current_designation || al.skills || al.bio || al.admin_notes) && (
+                              <div className="rounded-4 p-3 mb-3 bg-white" style={{ border: '1px solid var(--akal-gray-200)', boxShadow: 'var(--shadow-md)' }}>
+                                {akalSectionHead(Briefcase, 'Career & Professional Profile')}
+                                <div className="row g-2">
+                                  <InfoTile icon={Building2} label="Current Company" value={al.current_company} />
+                                  <InfoTile icon={Briefcase} label="Current Designation" value={al.current_designation} />
+                                  {al.skills && (
+                                    <div className="col-12 mt-2">
+                                      <div className="rounded-3 p-2" style={{ background: 'var(--akal-blue-soft)', border: '1px dashed var(--akal-blue)' }}>
+                                        <div className="text-uppercase fw-bold mb-1 d-flex align-items-center gap-1" style={{ fontSize: '0.62rem', color: 'var(--akal-blue-deep)', letterSpacing: '0.06em' }}>
+                                          <Sparkles size={12} /> Skills & Expertise
+                                        </div>
+                                        <div className="d-flex flex-wrap gap-1">
+                                          {String(al.skills).split(',').map((s, i) => (
+                                            <span key={i} className="badge rounded-pill px-2 py-1 bg-white border" style={{ color: 'var(--akal-navy)', fontSize: '0.7rem', fontWeight: 600 }}>{s.trim()}</span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {al.bio && (
+                                    <div className="col-12 mt-2">
+                                      <div className="rounded-3 p-2 ps-3" style={{ background: 'var(--akal-yellow-soft)', borderLeft: '4px solid var(--akal-yellow)' }}>
+                                        <div className="text-uppercase fw-bold" style={{ fontSize: '0.62rem', color: '#92400E', letterSpacing: '0.06em' }}>💬 Professional Bio</div>
+                                        <div className="fst-italic" style={{ fontSize: '0.84rem', color: 'var(--akal-navy)' }}>“{al.bio}”</div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {al.admin_notes && (
+                                    <div className="col-12 mt-2">
+                                      <div className="rounded-3 p-2 d-flex gap-2 align-items-start" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                                        <span className="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style={{ width: '30px', height: '30px', background: '#DC2626' }}>
+                                          <AlertCircle size={15} className="text-white" />
+                                        </span>
+                                        <div>
+                                          <div className="fw-bold" style={{ fontSize: '0.72rem', color: '#B91C1C' }}>REJECTION REASON BY ADMIN</div>
+                                          <div className="fw-semibold" style={{ fontSize: '0.84rem', color: '#7F1D1D' }}>{al.admin_notes}</div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Student Career Interests */}
+                            {st && st.career_interests && (
+                              <div className="rounded-4 p-3 mb-3 bg-white" style={{ border: '1px solid var(--akal-gray-200)', boxShadow: 'var(--shadow-md)' }}>
+                                {akalSectionHead(Briefcase, 'Career Interests')}
+                                <div className="rounded-3 p-2" style={{ background: 'var(--akal-blue-soft)', border: '1px dashed var(--akal-blue)' }}>
+                                  <div className="d-flex flex-wrap gap-1">
+                                    {String(st.career_interests).split(',').map((s, i) => (
+                                      <span key={i} className="badge rounded-pill px-2 py-1 bg-white border" style={{ color: 'var(--akal-navy)', fontSize: '0.7rem', fontWeight: 600 }}>{s.trim()}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Admin Permissions */}
+                            {adm && (
+                              <div className="rounded-4 p-3 mb-3 bg-white" style={{ border: '1px solid var(--akal-gray-200)', boxShadow: 'var(--shadow-md)' }}>
+                                {akalSectionHead(Lock, 'Access Permissions')}
+                                <div className="rounded-3 p-2" style={{ background: 'var(--akal-navy)', border: '1px solid var(--akal-navy)' }}>
+                                  <div className="d-flex flex-wrap gap-1 align-items-center">
+                                    {du.role === 'superadmin' ? (
+                                      <span className="badge rounded-pill px-3 py-1" style={{ background: 'var(--grad-yellow)', color: 'var(--akal-navy)', fontWeight: 800 }}>👑 ALL — Super Admin</span>
+                                    ) : (Object.keys(adm.permissions || {}).length > 0
+                                      ? Object.keys(adm.permissions).map((p) => (
+                                          <span key={p} className="badge rounded-pill px-2 py-1" style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.25)', color: '#fff', fontSize: '0.68rem' }}>✓ {p}</span>
+                                        ))
+                                      : <span className="badge bg-secondary rounded-pill">None granted</span>)}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* ── Right Column: Digital ID Card, Academic Journey & Recent Activity ── */}
+                          {hasRightCol && (
+                            <div className="col-lg-5 col-12">
+                              {/* Digital ID Card Preview */}
+                              {detailData.id_card && (
+                                <div className="rounded-4 p-3 mb-3 position-relative overflow-hidden text-white" style={{ background: 'linear-gradient(120deg,#0D1622 0%,#172333 45%,#075985 100%)', boxShadow: '0 14px 34px rgba(13,22,34,0.35)', border: '1px solid rgba(249,185,0,0.35)' }}>
+                                  <div className="position-absolute rounded-circle" style={{ width: '260px', height: '260px', top: '-140px', right: '-60px', background: 'radial-gradient(circle, rgba(249,185,0,0.28) 0%, transparent 70%)' }}></div>
+                                  <div className="position-absolute rounded-circle" style={{ width: '200px', height: '200px', bottom: '-120px', left: '30%', background: 'radial-gradient(circle, rgba(41,169,224,0.25) 0%, transparent 70%)' }}></div>
+                                  <div className="position-relative d-flex justify-content-between align-items-start gap-3">
+                                    <div style={{ minWidth: 0 }}>
+                                      <div className="d-flex align-items-center gap-2">
+                                        <span className="d-inline-flex align-items-center justify-content-center rounded-2" style={{ width: '28px', height: '28px', background: 'var(--grad-yellow)' }}>
+                                          <Award size={15} style={{ color: 'var(--akal-navy)' }} />
+                                        </span>
+                                        <div style={{ fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.14em', color: 'var(--akal-yellow)' }}>AKAL UNIVERSITY • ALUMNI ID</div>
+                                      </div>
+                                      <div className="fw-bold font-monospace mt-2" style={{ fontSize: '1.2rem', letterSpacing: '0.08em', color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.4)' }}>{detailData.id_card.card_number}</div>
+                                      <div className="d-flex gap-2 flex-wrap mt-1" style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.75)' }}>
+                                        <span>Issued: {detailData.id_card.issue_date}</span>
+                                        <span>Expires: {detailData.id_card.expiry_date}</span>
+                                      </div>
+                                      <div className="mt-2">
+                                        <span className="badge rounded-pill px-2 py-1" style={{ background: detailData.id_card.status === 'active' ? '#22C55E' : '#F59E0B', color: '#fff', fontSize: '0.62rem' }}>{String(detailData.id_card.status).toUpperCase()}</span>
+                                      </div>
+                                    </div>
+                                    <div className="text-end flex-shrink-0">
+                                      <div className="rounded-2 mx-auto" style={{ width: '38px', height: '28px', background: 'linear-gradient(135deg,#FFDF78,#D49800)', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.2)' }}></div>
+                                      <QrCode size={34} className="mt-2" style={{ color: 'rgba(255,255,255,0.85)' }} />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Academic Journey */}
+                              {detailData.educations && detailData.educations.length > 0 && (
+                                <div className="rounded-4 p-3 mb-3 bg-white" style={{ border: '1px solid var(--akal-gray-200)', boxShadow: 'var(--shadow-md)' }}>
+                                  {akalSectionHead(GraduationCap, 'Academic Journey', detailData.educations.length)}
+                                  <div className="d-flex flex-column gap-2">
+                                    {detailData.educations.map((ed) => (
+                                      <div key={ed.id} className="rounded-3 p-2 position-relative overflow-hidden" style={{ background: 'linear-gradient(135deg, var(--akal-blue-soft) 0%, #fff 70%)', border: '1px solid var(--akal-gray-200)' }}>
+                                        <div className="position-absolute" style={{ width: '4px', top: 0, bottom: 0, left: 0, background: ed.status === 'completed' ? '#22C55E' : 'var(--akal-blue)' }}></div>
+                                        <div className="d-flex align-items-center gap-2 mb-1 ps-1">
+                                          <span className="d-inline-flex align-items-center justify-content-center rounded-2 flex-shrink-0" style={{ width: '28px', height: '28px', background: 'var(--grad-primary)' }}>
+                                            <Landmark size={13} className="text-white" />
+                                          </span>
+                                          <div className="fw-bold text-truncate" style={{ fontSize: '0.82rem', color: 'var(--akal-navy)' }}>{ed.degree_name}</div>
+                                        </div>
+                                        <div className="ps-1" style={{ fontSize: '0.74rem', color: 'var(--akal-gray-600)' }}>
+                                          <div className="text-truncate">{ed.department} {ed.enrollment_no ? <span className="font-monospace">• {ed.enrollment_no}</span> : ''}</div>
+                                          <div className="d-flex align-items-center gap-2 flex-wrap mt-1">
+                                            <span className="badge rounded-pill px-2" style={{ background: 'var(--grad-yellow)', color: 'var(--akal-navy)', fontSize: '0.64rem' }}>{ed.education_level}</span>
+                                            <span style={{ fontSize: '0.7rem' }}>📅 {ed.start_year} – {ed.end_year || (ed.status === 'ongoing' ? 'Pursuing' : '—')}</span>
+                                            <span className={`badge rounded-pill px-2 ${ed.status === 'completed' ? 'bg-success' : 'bg-info'}`} style={{ fontSize: '0.64rem' }}>{ed.status}</span>
+                                            {ed.grade && <span className="fw-bold" style={{ color: 'var(--akal-blue-deep)', fontSize: '0.72rem' }}>🎓 {ed.grade}</span>}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Recent Activity */}
+                              {detailData.recent_activity && detailData.recent_activity.length > 0 && (
+                                <div className="rounded-4 p-3 mb-1 bg-white" style={{ border: '1px solid var(--akal-gray-200)', boxShadow: 'var(--shadow-md)' }}>
+                                  {akalSectionHead(Clock, 'Recent Activity', detailData.recent_activity.length)}
+                                  <div className="d-flex flex-column gap-2" style={{ maxHeight: '280px', overflowY: 'auto' }}>
+                                    {detailData.recent_activity.map((log) => (
+                                      <div key={log.id} className="d-flex gap-2 align-items-start rounded-3 p-2" style={{ background: 'var(--akal-bg-light)', border: '1px solid var(--akal-gray-200)' }}>
+                                        <span className="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0 mt-1" style={{ width: '8px', height: '8px', background: 'var(--akal-blue)', boxShadow: '0 0 0 3px var(--akal-blue-soft)' }}></span>
+                                        <div style={{ minWidth: 0 }}>
+                                          <div className="fw-bold" style={{ fontSize: '0.8rem', color: 'var(--akal-navy)' }}>{log.action}</div>
+                                          {log.details && <div className="text-truncate" style={{ fontSize: '0.74rem', color: 'var(--akal-gray-600)' }}>{log.details}</div>}
+                                          <div style={{ fontSize: '0.68rem', color: 'var(--akal-gray-400)' }}>🕒 {log.created_at ? new Date(log.created_at).toLocaleString() : ''}</div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+
+                {/* ── Fixed Solid Footer (flex-shrink: 0, NEVER overlaps content) ── */}
+                <div
+                  className="modal-footer px-4 py-3 flex-wrap gap-2 align-items-center flex-shrink-0"
+                  style={{ borderTop: '1px solid var(--akal-gray-200)', background: '#FFFFFF', flexShrink: 0, zIndex: 10 }}
+                >
+                  {detailData && (() => {
+                    const du = detailData.user;
+                    const flagged = needsAction(du);
+                    return (
+                      <>
+                        {flagged && (
+                          <span className="badge rounded-pill px-3 py-2 me-auto d-inline-flex align-items-center gap-1" style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A', fontSize: '0.72rem' }}>
+                            <AlertCircle size={13} />
+                            Needs approval — account is not active yet
+                          </span>
+                        )}
+                        {!flagged && <span className="me-auto" />}
+                        {flagged && (
+                          <button className="btn btn-sm fw-bold d-flex align-items-center gap-1 px-3 py-2 rounded-pill" style={{ background: 'var(--grad-yellow)', color: 'var(--akal-navy)', border: 'none', boxShadow: '0 4px 14px rgba(249,185,0,0.35)' }} onClick={() => handleAcceptUser(du)}>
+                            <UserCheck size={14} /> Accept & Activate
+                          </button>
+                        )}
+                        <button
+                          className="btn btn-sm fw-semibold d-flex align-items-center gap-1 px-3 py-2 rounded-pill text-white border-0"
+                          style={{ background: du.status === 'active' ? 'linear-gradient(135deg,#DC2626,#991B1B)' : 'linear-gradient(135deg,#16A34A,#15803D)', boxShadow: 'var(--shadow-sm)' }}
+                          onClick={() => handleStatusChange(du.id, du.status === 'active' ? 'suspended' : 'active')}
+                        >
+                          {du.status === 'active' ? <><Lock size={13} /> Deactivate</> : <><CheckCircle2 size={13} /> Activate</>}
+                        </button>
+                        <button className="btn btn-sm fw-semibold px-3 py-2 rounded-pill" style={{ background: 'var(--akal-white)', border: '1px solid var(--akal-gray-200)', color: 'var(--akal-gray-600)' }} onClick={closeUserDetail}>Close</button>
+                      </>
+                    );
+                  })()}
+                  {!detailData && (
+                    <button className="btn btn-sm btn-secondary" onClick={closeUserDetail}>Close</button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}

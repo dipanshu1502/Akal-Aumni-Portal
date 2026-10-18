@@ -378,20 +378,95 @@ h1, h2, h3, h4, h5, h6, .brand-font {
 .akal-nav-link {
   position: relative;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   white-space: nowrap;
-  padding: 0.42rem 0.7rem !important;
+  padding: 0.42rem 0.6rem !important;
   color: rgba(255, 255, 255, 0.78) !important;
   border-radius: 10px;
   transition: var(--transition-normal);
 }
 
 /* Compact nav on medium screens — sab ek line me fit rahe */
-@media (max-width: 1200px) {
+@media (max-width: 1399.98px) {
   .akal-nav-link {
-    font-size: 0.84rem;
-    padding: 0.38rem 0.52rem !important;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.48rem !important;
   }
+}
+
+/* ---------- Row 1: brand + actions ---------- */
+#akal-main-navbar .akal-nav-top-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0.75rem;
+}
+
+/* Mobile collapse full width when shown */
+#akal-main-navbar .akal-mobile-collapse {
+  width: 100%;
+}
+
+/* Desktop (xl+): hide mobile-only bits, show desktop actions */
+@media (min-width: 1200px) {
+  #akal-main-navbar .akal-mobile-only,
+  #akal-main-navbar .akal-mobile-collapse {
+    display: none !important;
+  }
+  #akal-main-navbar .akal-desktop-actions {
+    display: flex;
+  }
+
+  /* ---------- Row 2 (desktop): links in 2 centered rows ---------- */
+  #akal-main-navbar .akal-nav-links-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+    margin-top: 4px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.10);
+  }
+  #akal-main-navbar .akal-nav-links-row .navbar-nav {
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+}
+
+/* Mobile / tablet: hide desktop-only bits */
+@media (max-width: 1199.98px) {
+  #akal-main-navbar .akal-desktop-actions,
+  #akal-main-navbar .akal-nav-links-row {
+    display: none !important;
+  }
+}
+
+/* Scroll compact state — navbar sticky rahe par chhota ho jaye */
+#akal-main-navbar {
+  transition: padding 0.25s ease, box-shadow 0.25s ease;
+}
+
+#akal-main-navbar.akal-nav-scrolled {
+  padding-top: 0.15rem !important;
+  padding-bottom: 0.15rem !important;
+  box-shadow: 0 8px 30px rgba(13, 22, 34, 0.55);
+}
+
+#akal-main-navbar.akal-nav-scrolled .university-crest {
+  width: 38px;
+  height: 38px;
+  font-size: 16px;
+}
+
+#akal-main-navbar.akal-nav-scrolled .university-title-main {
+  font-size: 0.95rem;
+}
+
+.university-crest {
+  transition: width 0.25s ease, height 0.25s ease, font-size 0.25s ease;
 }
 
 .akal-nav-link:hover {
@@ -608,3 +683,15 @@ h1, h2, h3, h4, h5, h6, .brand-font {
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
 }
+
+/* Sticky sidebar should not lift on hover
+.akal-card.sticky-top:hover {
+  transform: none !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* Pulse animation for unsaved badge */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+} 
