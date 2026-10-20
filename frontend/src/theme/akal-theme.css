@@ -386,11 +386,37 @@ h1, h2, h3, h4, h5, h6, .brand-font {
   transition: var(--transition-normal);
 }
 
+/* ------- Nav link icon chips — gradient tile + hover lift ------- */
+.akal-nav-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 7px;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition: var(--transition-normal);
+}
+.akal-nav-link:hover .akal-nav-ico {
+  transform: translateY(-1px) scale(1.12);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.akal-nav-link.active-nav .akal-nav-ico {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
 /* Compact nav on medium screens — sab ek line me fit rahe */
 @media (max-width: 1399.98px) {
   .akal-nav-link {
     font-size: 0.82rem;
     padding: 0.4rem 0.48rem !important;
+  }
+  .akal-nav-ico {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
   }
 }
 
@@ -663,6 +689,23 @@ h1, h2, h3, h4, h5, h6, .brand-font {
 
 .animate-pulse-subtle {
   animation: pulseSubtle 3s infinite ease-in-out;
+}
+
+/* Floating hero visual for the public Donations page */
+@keyframes donationFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+.donation-float {
+  animation: donationFloat 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .donation-float,
+  .animate-pulse-subtle {
+    animation: none;
+  }
 }
 
 /* Custom Scrollbars */

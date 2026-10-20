@@ -1113,4 +1113,96 @@ class AdminController extends BaseController
 
         return $this->respondSuccess($logs, 'Audit logs retrieved');
     }
+
+    // ── Donation Campaigns CMS ────────────────────────────────────────────
+
+    /**
+     * Get all donation campaigns (admin view — includes unpublished)
+     */
+    public function getDonationCampaigns()
+    {
+        $campaigns = $this->db->table('donation_campaigns')
+            ->orderBy('created_at', 'DESC')
+            ->get()->getResultArray();
+
+        // Attach donation count + total raised for each campaign
+        foreach ($campaigns as &$c) {
+            $stats = $this->db->table('donations')
+                ->select('COUNT(*) as total_donors, COALESCE(SUM(amount), 0) as total_raised')
+                ->where('campaign_id', $c['id'])
+                ->where('status', 'completed')
+                ->get()->getRowArray();
+            $c['total_donors'] = (int) ($stats['total_donors'] ?? 0);
+            $c['raised_amount'] = (float) ($stats['total_raised'] ?? 0);
+        }
+
+        return $this->respondSuccess($campaigns, 'Donation campaigns retrieved');
+    }
+
+    /**
+     * Create or update a donation campaign
+     */
+    public function saveDonationCampaign()
+    {
+        $json = $this->request->getJSON(true);
+        $id = $json['id'] ?? null;
+
+        $data = [
+            'title'         => $json['title'] ?? '',
+            'description'   => $json['description'] ?? '',
+            'target_amount' => (float) ($json['target_amount'] ?? 0),
+            'cover_image'   => $json['cover_image'] ?? null,
+            'category'      => $json['category'] ?? 'General',
+            'start_date'    => !empty($json['start_date']) ? $json['start_date'] : date('Y-m-d'),
+            'end_date'      => !empty($json['end_date']) ? $json['end_date'] : null,
+            'is_published'  => isset($json['is_published']) ? (int) $json['is_published'] : 1,
+            'is_featured'   => !empty($json['is_featured']) ? 1 : 0,
+            'updated_at'    => date('Y-m-d H:i:s'),
+        ];
+
+        if ($id) {
+            $this->db->table('donation_campaigns')->where('id', $id)->update($data);
+        } else {
+            $authUser = $this->request->authUser ?? [];
+            $data['created_by'] = $authUser['id'] ?? null;
+            $data['created_at'] = date('Y-m-d H:i:s');
+            $this->db->table('donation_campaigns')->insert($data);
+            $id = $this->db->insertID();
+        }
+
+        $authUser = $this->request->authUser ?? [];
+        $this->audit((int) ($authUser['id'] ?? 0), $authUser['role'] ?? 'admin', 'donation_campaign_saved', 'donation_campaigns', (string) $id, "Campaign saved: " . ($data['title'] ?? ''));
+
+        return $this->respondSuccess(['id' => $id], 'Donation campaign saved');
+    }
+
+    /**
+     * Delete a donation campaign
+     */
+    public function deleteDonationCampaign($id)
+    {
+        $this->db->table('donation_campaigns')->where('id', $id)->delete();
+        $authUser = $this->request->authUser ?? [];
+        $this->audit((int) ($authUser['id'] ?? 0), $authUser['role'] ?? 'admin', 'donation_campaign_deleted', 'donation_campaigns', (string) $id, "Campaign deleted");
+        return $this->respondSuccess([], 'Donation campaign deleted');
+    }
+
+    /**
+     * Get all donations for admin (optionally filtered by campaign_id)
+     */
+    public function getDonations()
+    {
+        $builder = $this->db->table('donations')
+            ->select('donations.*, donation_campaigns.title as campaign_title')
+            ->join('donation_campaigns', 'donation_campaigns.id = donations.campaign_id', 'left')
+            ->orderBy('donations.created_at', 'DESC');
+
+        $campaignId = $this->request->getGet('campaign_id');
+        if (!empty($campaignId)) {
+            $builder->where('donations.campaign_id', $campaignId);
+        }
+
+        $donations = $builder->get()->getResultArray();
+        return $this->respondSuccess($donations, 'Donations retrieved');
+    }
 }

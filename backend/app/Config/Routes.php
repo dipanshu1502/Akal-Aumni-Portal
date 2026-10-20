@@ -25,6 +25,7 @@ $routes->group('api', function ($routes) {
         $routes->get('stories', 'Api\PublicController::getStories');
         $routes->get('news', 'Api\PublicController::getNews');
         $routes->get('gallery', 'Api\PublicController::getGallery');
+        $routes->get('donations', 'Api\PublicController::getDonationCampaigns');
     });
 
     // Auth Routes
@@ -32,6 +33,11 @@ $routes->group('api', function ($routes) {
         $routes->post('login', 'Api\AuthController::login');
         $routes->post('register', 'Api\AuthController::register');
         $routes->get('me', 'Api\AuthController::me', ['filter' => 'auth']);
+    });
+
+    // Authenticated user routes (any logged-in role — e.g. donate)
+    $routes->group('user', ['filter' => 'auth'], function ($routes) {
+        $routes->post('donate', 'Api\PublicController::makeDonation');
     });
 
     // Alumni Authenticated Routes
@@ -110,6 +116,12 @@ $routes->group('api', function ($routes) {
         $routes->get('gallery', 'Api\AdminController::getGallery');
         $routes->post('gallery', 'Api\AdminController::saveGallery', ['filter' => 'permission:manage_gallery']);
         $routes->delete('gallery/(:num)', 'Api\AdminController::deleteGallery/$1', ['filter' => 'permission:manage_gallery']);
+
+        // Donation Campaigns CMS (requires manage_donations)
+        $routes->get('donation-campaigns', 'Api\AdminController::getDonationCampaigns', ['filter' => 'permission:manage_donations']);
+        $routes->post('donation-campaigns', 'Api\AdminController::saveDonationCampaign', ['filter' => 'permission:manage_donations']);
+        $routes->delete('donation-campaigns/(:num)', 'Api\AdminController::deleteDonationCampaign/$1', ['filter' => 'permission:manage_donations']);
+        $routes->get('donations', 'Api\AdminController::getDonations', ['filter' => 'permission:manage_donations']);
 
         // Audit Logs (requires view_audit_logs)
         $routes->get('audit-logs', 'Api\AdminController::getAuditLogs', ['filter' => 'permission:view_audit_logs']);

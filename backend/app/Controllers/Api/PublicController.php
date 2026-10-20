@@ -195,6 +195,105 @@ class PublicController extends BaseController
     }
 
     /**
+     * Public Donation Campaigns (only published)
+     */
+    public function getDonationCampaigns()
+    {
+        $campaigns = $this->db->table('donation_campaigns')
+            ->where('is_published', 1)
+            ->orderBy('is_featured', 'DESC')
+            ->orderBy('created_at', 'DESC')
+            ->get()->getResultArray();
+
+        foreach ($campaigns as &$c) {
+            $stats = $this->db->table('donations')
+                ->select('COUNT(*) as total_donors, COALESCE(SUM(amount), 0) as total_raised')
+                ->where('campaign_id', $c['id'])
+                ->where('status', 'completed')
+                ->get()->getRowArray();
+            $c['total_donors'] = (int) ($stats['total_donors'] ?? 0);
+            $c['raised_amount'] = (float) ($stats['total_raised'] ?? 0);
+            // Don't expose internal fields publicly
+            unset($c['created_by']);
+        }
+
+        return $this->respondSuccess($campaigns, 'Donation campaigns retrieved');
+    }
+
+    /**
+     * Record a donation made by an authenticated user (any role).
+     * Body: { campaign_id, amount, message?, payment_method?, is_anonymous? }
+     */
+    public function makeDonation()
+    {
+        $authUser = $this->request->authUser ?? null;
+        if (!$authUser) {
+            return $this->respondError('Authentication required to donate', 401);
+        }
+
+        $json = $this->request->getJSON(true);
+        $campaignId = (int) ($json['campaign_id'] ?? 0);
+        $amount = (float) ($json['amount'] ?? 0);
+
+        if ($campaignId <= 0) {
+            return $this->respondValidationError(['campaign_id' => 'Campaign is required']);
+        }
+        if ($amount <= 0) {
+            return $this->respondValidationError(['amount' => 'Donation amount must be greater than 0']);
+        }
+
+        $campaign = $this->db->table('donation_campaigns')
+            ->where('id', $campaignId)
+            ->where('is_published', 1)
+            ->get()->getRowArray();
+        if (!$campaign) {
+            return $this->respondError('Donation campaign not found', 404);
+        }
+
+        // Resolve donor identity from profile tables
+        $donorName = '';
+        $donorEmail = $authUser['email'] ?? '';
+        $role = $authUser['role'] ?? '';
+        if (in_array($role, ['admin', 'superadmin'], true)) {
+            $p = $this->db->table('admin_profiles')->where('user_id', $authUser['id'])->get()->getRowArray();
+            $donorName = trim($p['full_name'] ?? '');
+        } elseif ($role === 'alumni') {
+            $p = $this->db->table('alumni_profiles')->where('user_id', $authUser['id'])->get()->getRowArray();
+            $donorName = trim(($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? ''));
+        } elseif ($role === 'student') {
+            $p = $this->db->table('student_profiles')->where('user_id', $authUser['id'])->get()->getRowArray();
+            $donorName = trim(($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? ''));
+        }
+        if ($donorName === '') {
+            $donorName = $donorEmail ?: 'Anonymous Donor';
+        }
+
+        $isAnonymous = !empty($json['is_anonymous']) ? 1 : 0;
+
+        $this->db->table('donations')->insert([
+            'campaign_id'    => $campaignId,
+            'user_id'        => $authUser['id'] ?? null,
+            'donor_name'     => $isAnonymous ? 'Anonymous' : mb_substr($donorName, 0, 200),
+            'donor_email'    => mb_substr($donorEmail, 0, 191),
+            'donor_phone'    => $json['donor_phone'] ?? null,
+            'amount'         => $amount,
+            'message'        => $json['message'] ?? null,
+            'payment_method' => $json['payment_method'] ?? 'online',
+            'transaction_id' => 'TXN-' . strtoupper(bin2hex(random_bytes(6))),
+            'status'         => 'completed',
+            'is_anonymous'   => $isAnonymous,
+            'created_at'     => date('Y-m-d H:i:s'),
+        ]);
+        $donationId = $this->db->insertID();
+
+        return $this->respondSuccess([
+            'donation_id' => $donationId,
+            'amount'      => $amount,
+            'campaign'    => $campaign['title'],
+        ], 'Thank you! Your donation has been recorded.');
+    }
+
+    /**
      * Portal General Statistics & Department Lists for Filter UI
      */
     public function getStats()

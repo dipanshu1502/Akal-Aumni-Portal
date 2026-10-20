@@ -33,6 +33,7 @@ class PermissionFilter implements FilterInterface
         'manage_news'      => 'Manage news & announcements',
         'manage_chapters'  => 'Manage chapters',
         'manage_gallery'   => 'Manage gallery albums',
+        'manage_donations' => 'Manage donation campaigns & view donations',
         'manage_settings'  => 'Edit system settings & site customizer',
         'view_reports'     => 'View dashboard analytics & reports',
         'view_audit_logs'  => 'View audit logs',

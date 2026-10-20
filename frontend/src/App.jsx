@@ -11,6 +11,7 @@ import HomePage from './pages/public/HomePage';
 import AUAAPage from './pages/public/AUAAPage';
 import AlumniDirectoryPage from './pages/public/AlumniDirectoryPage';
 import EventsPage from './pages/public/EventsPage';
+import DonationsPage from './pages/public/DonationsPage';
 import JobsPage from './pages/public/JobsPage';
 import MentorshipPage from './pages/public/MentorshipPage';
 import ChaptersPage from './pages/public/ChaptersPage';
@@ -39,6 +40,7 @@ function App() {
                 {/* QR scan -> public profile (Alumni ID: AUAA + AUID) */}
                 <Route path="/alumni/:alumniId" element={<AlumniProfilePage />} />
                 <Route path="/events" element={<EventsPage />} />
+            <Route path="/donations" element={<DonationsPage />} />
                 <Route path="/jobs" element={<JobsPage />} />
                 <Route path="/mentorship" element={<MentorshipPage />} />
                 <Route path="/chapters" element={<ChaptersPage />} />

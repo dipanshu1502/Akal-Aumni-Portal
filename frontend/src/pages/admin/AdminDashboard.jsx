@@ -316,6 +316,12 @@ const AdminDashboard = () => {
   const [events, setEvents] = useState([]);
   const [gallery, setGallery] = useState([]);
 
+  // Donation CMS states
+  const [donationCampaigns, setDonationCampaigns] = useState([]);
+  const [donationsList, setDonationsList] = useState([]);
+  const [editingDonation, setEditingDonation] = useState(null);
+  const [donationSubTab, setDonationSubTab] = useState('campaigns');
+
   // CMS Modal / Form states
   const [editingStory, setEditingStory] = useState(null);
   const [editingNews, setEditingNews] = useState(null);
@@ -452,9 +458,54 @@ const AdminDashboard = () => {
     }
   };
 
+  // Donation campaigns + donations (admin only, needs manage_donations permission)
+  const fetchDonations = async () => {
+    if (!hasPermission('manage_donations')) return;
+    try {
+      const [campRes, donRes] = await Promise.all([
+        api.get('/admin/donation-campaigns'),
+        api.get('/admin/donations'),
+      ]);
+      if (campRes.status) setDonationCampaigns(campRes.data);
+      if (donRes.status) setDonationsList(donRes.data);
+    } catch (err) {
+      console.error('Error fetching donation data:', err);
+    }
+  };
+
+  // CMS Donation Handlers
+  const handleSaveDonationCampaign = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await api.post('/admin/donation-campaigns', editingDonation);
+      if (res.status) {
+        showToast('Donation campaign saved successfully!');
+        setEditingDonation(null);
+        fetchDonations();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to save donation campaign');
+    }
+  };
+
+  const handleDeleteDonationCampaign = async (id) => {
+    if (!window.confirm('Delete this donation campaign? Existing donation records will remain in history.')) return;
+    try {
+      const res = await api.delete(`/admin/donation-campaigns/${id}`);
+      if (res.status) {
+        showToast('Donation campaign removed.');
+        setDonationCampaigns(donationCampaigns.filter(c => c.id !== id));
+        fetchDonations();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete campaign');
+    }
+  };
+
   useEffect(() => {
     fetchDashboard();
     fetchCMSContent();
+    fetchDonations();
   }, [token, user?.id, user?.role]);
 
   // Measure navbar and footer height so the Site Customizer sidebar stays within viewport bounds
@@ -1333,6 +1384,15 @@ const AdminDashboard = () => {
               onClick={() => setActiveTab('cms-gallery')}
             >
               🖼️ Gallery ({gallery.length})
+            </button>
+          )}
+
+          {hasPermission('manage_donations') && (
+            <button
+              className={`btn btn-sm px-3 rounded-pill fw-semibold ${activeTab === 'cms-donations' ? 'btn-primary' : 'btn-light border'}`}
+              onClick={() => setActiveTab('cms-donations')}
+            >
+              🎁 Donations ({donationCampaigns.length})
             </button>
           )}
 
@@ -2970,6 +3030,268 @@ const AdminDashboard = () => {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* CMS TAB: Donations */}
+        {activeTab === 'cms-donations' && hasPermission('manage_donations') && (
+          <div>
+            {/* Sub-tabs: Campaigns vs Donations Received */}
+            <div className="d-flex gap-2 mb-3">
+              <button
+                className={`btn btn-sm px-3 rounded-pill fw-semibold ${donationSubTab === 'campaigns' ? 'btn-primary' : 'btn-light border'}`}
+                onClick={() => setDonationSubTab('campaigns')}
+              >
+                🎯 Campaigns ({donationCampaigns.length})
+              </button>
+              <button
+                className={`btn btn-sm px-3 rounded-pill fw-semibold ${donationSubTab === 'received' ? 'btn-primary' : 'btn-light border'}`}
+                onClick={() => setDonationSubTab('received')}
+              >
+                💰 Donations Received ({donationsList.length})
+              </button>
+            </div>
+
+            {/* Sub-tab: Campaign Management */}
+            {donationSubTab === 'campaigns' && (
+              <div className="akal-card p-4">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h5 className="fw-bold text-dark mb-0">Manage Donation Campaigns</h5>
+                  <button
+                    onClick={() => setEditingDonation({ title: '', description: '', target_amount: '', category: 'General', cover_image: '', start_date: new Date().toISOString().substring(0, 10), end_date: '', is_published: 1, is_featured: 0 })}
+                    className="btn btn-sm btn-akal-primary d-flex align-items-center gap-1"
+                  >
+                    <PlusCircle size={14} /> New Campaign
+                  </button>
+                </div>
+
+                {editingDonation && (
+                  <div className="p-4 bg-light rounded-3 border mb-4">
+                    <h6 className="fw-bold mb-3">{editingDonation.id ? 'Edit Campaign' : 'Create Donation Campaign'}</h6>
+                    <form onSubmit={handleSaveDonationCampaign}>
+                      <div className="row g-3 mb-3">
+                        <div className="col-md-8">
+                          <label className="form-label small fw-bold">Campaign Title *</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            value={editingDonation.title}
+                            onChange={(e) => setEditingDonation({ ...editingDonation, title: e.target.value })}
+                            placeholder="e.g. Build New Library Block"
+                            required
+                          />
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label small fw-bold">Category</label>
+                          <select
+                            className="form-select"
+                            value={editingDonation.category || 'General'}
+                            onChange={(e) => setEditingDonation({ ...editingDonation, category: e.target.value })}
+                          >
+                            <option value="General">General</option>
+                            <option value="Scholarship">Scholarship</option>
+                            <option value="Infrastructure">Infrastructure</option>
+                            <option value="Emergency Relief">Emergency Relief</option>
+                            <option value="Research">Research</option>
+                            <option value="Sports">Sports</option>
+                            <option value="Cultural">Cultural</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label small fw-bold">Description *</label>
+                        <textarea
+                          className="form-control"
+                          rows="3"
+                          value={editingDonation.description || ''}
+                          onChange={(e) => setEditingDonation({ ...editingDonation, description: e.target.value })}
+                          placeholder="Describe the cause, why donations are needed and how funds will be used..."
+                          required
+                        />
+                      </div>
+
+                      <div className="row g-3 mb-3">
+                        <div className="col-md-3">
+                          <label className="form-label small fw-bold">Target Amount (₹) *</label>
+                          <input
+                            type="number"
+                            min="1"
+                            className="form-control"
+                            value={editingDonation.target_amount}
+                            onChange={(e) => setEditingDonation({ ...editingDonation, target_amount: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label small fw-bold">Start Date</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            value={editingDonation.start_date || ''}
+                            onChange={(e) => setEditingDonation({ ...editingDonation, start_date: e.target.value })}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label small fw-bold">End Date</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            value={editingDonation.end_date || ''}
+                            onChange={(e) => setEditingDonation({ ...editingDonation, end_date: e.target.value })}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label small fw-bold">Cover Image URL</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            value={editingDonation.cover_image || ''}
+                            onChange={(e) => setEditingDonation({ ...editingDonation, cover_image: e.target.value })}
+                            placeholder="https://..."
+                          />
+                        </div>
+                      </div>
+
+                      <div className="d-flex flex-wrap gap-4 mb-3">
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            id="donPublished"
+                            checked={editingDonation.is_published === 1}
+                            onChange={(e) => setEditingDonation({ ...editingDonation, is_published: e.target.checked ? 1 : 0 })}
+                          />
+                          <label className="form-check-label small fw-bold" htmlFor="donPublished">Published (visible to everyone)</label>
+                        </div>
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            id="donFeatured"
+                            checked={editingDonation.is_featured === 1}
+                            onChange={(e) => setEditingDonation({ ...editingDonation, is_featured: e.target.checked ? 1 : 0 })}
+                          />
+                          <label className="form-check-label small fw-bold" htmlFor="donFeatured">⭐ Featured (pin to top)</label>
+                        </div>
+                      </div>
+
+                      <div className="d-flex gap-2">
+                        <button type="submit" className="btn btn-akal-primary">Save Campaign</button>
+                        <button type="button" onClick={() => setEditingDonation(null)} className="btn btn-light border">Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                <div className="table-responsive">
+                  <table className="table table-hover align-middle small">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Campaign</th>
+                        <th>Category</th>
+                        <th>Progress</th>
+                        <th>Donors</th>
+                        <th>Status</th>
+                        <th className="text-end">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {donationCampaigns.length === 0 && (
+                        <tr>
+                          <td colSpan="6" className="text-center text-muted py-4">
+                            No donation campaigns yet. Click "New Campaign" to create one.
+                          </td>
+                        </tr>
+                      )}
+                      {donationCampaigns.map((c) => {
+                        const pct = c.target_amount > 0 ? Math.min(100, Math.round((c.raised_amount / c.target_amount) * 100)) : 0;
+                        return (
+                          <tr key={c.id}>
+                            <td>
+                              <div className="fw-bold">{c.title}</div>
+                              <div className="text-muted small text-truncate" style={{ maxWidth: 320 }}>{c.description}</div>
+                            </td>
+                            <td><span className="badge bg-light text-dark border">{c.category}</span></td>
+                            <td style={{ minWidth: 160 }}>
+                              <div className="small fw-semibold">₹{Number(c.raised_amount || 0).toLocaleString('en-IN')} / ₹{Number(c.target_amount || 0).toLocaleString('en-IN')}</div>
+                              <div className="progress mt-1" style={{ height: 6 }}>
+                                <div className="progress-bar bg-success" style={{ width: `${pct}%` }}></div>
+                              </div>
+                            </td>
+                            <td>{c.total_donors ?? 0}</td>
+                            <td>
+                              {c.is_published == 1
+                                ? <span className="badge bg-success">Published</span>
+                                : <span className="badge bg-secondary">Draft</span>}
+                            </td>
+                            <td className="text-end">
+                              <button onClick={() => setEditingDonation({ ...c, target_amount: String(c.target_amount), end_date: c.end_date || '' })} className="btn btn-sm btn-outline-primary me-1">
+                                <Edit size={14} />
+                              </button>
+                              <button onClick={() => handleDeleteDonationCampaign(c.id)} className="btn btn-sm btn-outline-danger">
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-tab: Donations Received (donor records) */}
+            {donationSubTab === 'received' && (
+              <div className="akal-card p-4">
+                <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                  <h5 className="fw-bold text-dark mb-0">Donations Received</h5>
+                  <div className="fw-bold text-success">
+                    Total: ₹{donationsList.filter(d => d.status === 'completed').reduce((sum, d) => sum + Number(d.amount || 0), 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <div className="table-responsive">
+                  <table className="table table-hover align-middle small">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Donor</th>
+                        <th>Campaign</th>
+                        <th>Amount</th>
+                        <th>Message</th>
+                        <th>Txn ID</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {donationsList.length === 0 && (
+                        <tr>
+                          <td colSpan="7" className="text-center text-muted py-4">No donations received yet.</td>
+                        </tr>
+                      )}
+                      {donationsList.map((d) => (
+                        <tr key={d.id}>
+                          <td>
+                            <div className="fw-bold">{d.is_anonymous == 1 ? '🕵️ Anonymous' : d.donor_name}</div>
+                            <div className="text-muted small">{d.donor_email}</div>
+                          </td>
+                          <td className="text-truncate" style={{ maxWidth: 200 }}>{d.campaign_title || `#${d.campaign_id}`}</td>
+                          <td className="fw-bold text-success">₹{Number(d.amount || 0).toLocaleString('en-IN')}</td>
+                          <td className="text-muted text-truncate" style={{ maxWidth: 180 }}>{d.message || '—'}</td>
+                          <td className="font-monospace small">{d.transaction_id || '—'}</td>
+                          <td className="text-muted">{d.created_at ? new Date(d.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}</td>
+                          <td>
+                            {d.status === 'completed' && <span className="badge bg-success">Completed</span>}
+                            {d.status === 'pending' && <span className="badge bg-warning text-dark">Pending</span>}
+                            {d.status === 'failed' && <span className="badge bg-danger">Failed</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

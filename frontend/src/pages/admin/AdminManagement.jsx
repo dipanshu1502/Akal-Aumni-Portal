@@ -12,6 +12,7 @@ const PERM_FALLBACK = {
   manage_news: 'Manage news',
   manage_chapters: 'Manage chapters',
   manage_gallery: 'Manage gallery',
+  manage_donations: 'Manage donation campaigns & view donations',
   manage_settings: 'Edit settings',
   view_reports: 'View reports',
   view_audit_logs: 'View audit logs',

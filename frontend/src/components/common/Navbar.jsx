@@ -10,7 +10,17 @@ import {
   ChevronDown,
   CreditCard,
   GraduationCap,
-  Zap
+  Zap,
+  Home,
+  Info,
+  Users,
+  HeartHandshake,
+  CalendarDays,
+  BriefcaseBusiness,
+  Compass,
+  MapPin,
+  BookOpen,
+  Images
 } from 'lucide-react';
 import DigitalIdModal from './DigitalIdModal';
 
@@ -65,22 +75,23 @@ const Navbar = () => {
 
   // Enabled public links — single source of truth for desktop rows + mobile list
   const navLinks = [
-    { to: '/', label: 'Home', end: true },
-    { to: '/about', label: 'About' },
-    { to: '/auaa', label: 'AUAA', end: true, title: 'Akal University Alumni Association' },
-    isFeatureEnabled('enable_public_directory', true) && { to: '/directory', label: 'Directory' },
-    isFeatureEnabled('enable_public_events', true) && { to: '/events', label: 'Events' },
-    isFeatureEnabled('enable_public_jobs', true) && { to: '/jobs', label: 'Jobs & Internships' },
-    isFeatureEnabled('enable_public_mentorship', true) && { to: '/mentorship', label: 'Mentorship' },
-    isFeatureEnabled('enable_public_chapters', true) && { to: '/chapters', label: 'Chapters' },
-    isFeatureEnabled('enable_public_stories', true) && { to: '/stories', label: 'Stories' },
-    isFeatureEnabled('enable_public_gallery', true) && { to: '/news-gallery', label: 'Gallery & News' },
+    { to: '/', label: 'Home', end: true, Icon: Home, color: '#F9B900', color2: '#F59E0B' },
+    { to: '/about', label: 'About', Icon: Info, color: '#087BB5', color2: '#0EA5E9' },
+    { to: '/auaa', label: 'AUAA', end: true, title: 'Akal University Alumni Association', Icon: GraduationCap, color: '#8B5CF6', color2: '#6366F1' },
+    isFeatureEnabled('enable_public_directory', true) && { to: '/directory', label: 'Directory', Icon: Users, color: '#14B8A6', color2: '#06B6D4' },
+    { to: '/donations', label: 'Donations', Icon: HeartHandshake, color: '#F43F5E', color2: '#EF4444' },
+    isFeatureEnabled('enable_public_events', true) && { to: '/events', label: 'Events', Icon: CalendarDays, color: '#F97316', color2: '#FBBF24' },
+    isFeatureEnabled('enable_public_jobs', true) && { to: '/jobs', label: 'Jobs & Internships', Icon: BriefcaseBusiness, color: '#6366F1', color2: '#8B5CF6' },
+    isFeatureEnabled('enable_public_mentorship', true) && { to: '/mentorship', label: 'Mentorship', Icon: Compass, color: '#10B981', color2: '#14B8A6' },
+    isFeatureEnabled('enable_public_chapters', true) && { to: '/chapters', label: 'Chapters', Icon: MapPin, color: '#EC4899', color2: '#F43F5E' },
+    isFeatureEnabled('enable_public_stories', true) && { to: '/stories', label: 'Stories', Icon: BookOpen, color: '#0EA5E9', color2: '#3B82F6' },
+    isFeatureEnabled('enable_public_gallery', true) && { to: '/news-gallery', label: 'Gallery & News', Icon: Images, color: '#A855F7', color2: '#EC4899' },
   ].filter(Boolean);
 
-  // Desktop: links ko 2 rows me split (5 + 5)
+  // Desktop (xl+): links ko 2 rows me split — row 1: Home…Events, row 2: baaki
   const mid = Math.ceil(navLinks.length / 2);
-  const linksTop = navLinks.slice(0, mid);
-  const linksBottom = navLinks.slice(mid);
+  const linksTop = navLinks.slice(0, mid+1);
+  const linksBottom = navLinks.slice(mid+1);
 
   const renderLink = (link) => (
     <li className="nav-item" key={link.to}>
@@ -89,9 +100,17 @@ const Navbar = () => {
         end={link.end}
         title={link.title}
         onClick={closeMobileMenu}
-        className={({ isActive }) => `nav-link px-2 akal-nav-link ${isActive ? 'active-nav' : ''}`}
+        className={({ isActive }) => `nav-link px-2 akal-nav-link d-inline-flex align-items-center gap-1 ${isActive ? 'active-nav' : ''}`}
       >
-        {link.label}
+        {link.Icon && (
+          <span
+            className="akal-nav-ico"
+            style={{ background: `linear-gradient(135deg, ${link.color || '#087BB5'}, ${link.color2 || '#0EA5E9'})` }}
+          >
+            <link.Icon size={13} strokeWidth={2.4} />
+          </span>
+        )}
+        <span className="text-nowrap">{link.label}</span>
       </NavLink>
     </li>
   );
@@ -184,7 +203,8 @@ const Navbar = () => {
 
           {/* Navigation Links + Actions — collapsible on mobile, inline on desktop */}
           <div className="collapse navbar-collapse" id="navbarContent">
-            <ul className="navbar-nav mx-auto mb-2 mb-xl-0 fw-semibold justify-content-center align-items-center">
+            {/* Mobile (<xl): single stacked list */}
+            <ul className="navbar-nav mx-auto mb-2 mb-xl-0 fw-semibold justify-content-center align-items-center d-xl-none">
 
               <li className="nav-item d-xl-none">
                 <div className="d-flex gap-2 py-2">
@@ -205,71 +225,20 @@ const Navbar = () => {
                   )}
                 </div>
               </li>
-              <li className="nav-item">
-                <NavLink to="/" onClick={closeMobileMenu} className={({ isActive }) => `nav-link px-2 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
-                  Home
-                </NavLink>
-              </li>
-              <li className="nav-item">
-                <NavLink to="/about" onClick={closeMobileMenu} className={({ isActive }) => `nav-link px-2 akal-nav-link text-nowrap ${isActive ? 'active-nav' : ''}`}>
-                  About
-                </NavLink>
-              </li>
-              <li className="nav-item">
-                <NavLink to="/auaa" end title="Akal University Alumni Association" className={({ isActive }) => `nav-link px-3 akal-nav-link text-nowrap ${isActive ? 'active-nav' : ''}`}>
-                  AUAA
-                </NavLink>
-              </li>
-              {isFeatureEnabled('enable_public_directory', true) && (
-                <li className="nav-item">
-                  <NavLink to="/directory" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
-                    Directory
-                  </NavLink>
-                </li>
-              )}
-              {isFeatureEnabled('enable_public_events', true) && (
-                <li className="nav-item">
-                  <NavLink to="/events" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
-                    Events
-                  </NavLink>
-                </li>
-              )}
-              {isFeatureEnabled('enable_public_jobs', true) && (
-                <li className="nav-item">
-                  <NavLink to="/jobs" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
-                    Jobs & Internships
-                  </NavLink>
-                </li>
-              )}
-              {isFeatureEnabled('enable_public_mentorship', true) && (
-                <li className="nav-item">
-                  <NavLink to="/mentorship" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
-                    Mentorship
-                  </NavLink>
-                </li>
-              )}
-              {isFeatureEnabled('enable_public_chapters', true) && (
-                <li className="nav-item">
-                  <NavLink to="/chapters" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
-                    Chapters
-                  </NavLink>
-                </li>
-              )}
-              {isFeatureEnabled('enable_public_stories', true) && (
-                <li className="nav-item">
-                  <NavLink to="/stories" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
-                    Stories
-                  </NavLink>
-                </li>
-              )}
-              {isFeatureEnabled('enable_public_gallery', true) && (
-                <li className="nav-item">
-                  <NavLink to="/news-gallery" className={({ isActive }) => `nav-link px-3 akal-nav-link ${isActive ? 'active-nav' : ''}`}>
-                    Gallery & News
-                  </NavLink>
-                </li>
-              )}
+              {navLinks.map(renderLink)}
+
+
             </ul>
+
+            {/* Desktop (xl+): nav links in 2 rows — styled by .akal-nav-links-row */}
+            <div className="akal-nav-links-row d-none d-xl-flex">
+              <ul className="navbar-nav mb-0 fw-semibold justify-content-center align-items-center">
+                {linksTop.map(renderLink)}
+              </ul>
+              <ul className="navbar-nav mb-0 fw-semibold justify-content-center align-items-center">
+                {linksBottom.map(renderLink)}
+              </ul>
+            </div>
 
             {/* Right Action / Auth Buttons */}
             <div className="d-flex align-items-center gap-2 mt-2 mt-lg-0 flex-shrink-0 text-nowrap">
