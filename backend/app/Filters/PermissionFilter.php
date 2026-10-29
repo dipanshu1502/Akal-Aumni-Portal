@@ -21,6 +21,11 @@ use Config\Services;
  */
 class PermissionFilter implements FilterInterface
 {
+    /** Department admins only receive permissions for department-scoped records. */
+    public const DEPARTMENT_ADMIN_PERMISSIONS = [
+        'verify_alumni', 'manage_alumni', 'manage_students', 'manage_users', 'view_reports', 'manage_jobs',
+    ];
+
     public const AVAILABLE = [
         'verify_alumni'    => 'Verify alumni accounts (approve / reject)',
         'manage_alumni'    => 'Manage alumni accounts (view, activate / deactivate)',
@@ -144,7 +149,7 @@ class PermissionFilter implements FilterInterface
         // List form: ["verify_alumni", ...]
         if (array_is_list($data)) {
             foreach ($data as $perm) {
-                if (is_string($perm) && $perm !== '' && isset(self::AVAILABLE[$perm])) {
+                if (is_string($perm) && $perm !== '' && in_array($perm, self::DEPARTMENT_ADMIN_PERMISSIONS, true)) {
                     $out[$perm] = true;
                 }
             }
@@ -153,7 +158,7 @@ class PermissionFilter implements FilterInterface
 
         // Map form: {"verify_alumni": true, ...}
         foreach ($data as $perm => $val) {
-            if (isset(self::AVAILABLE[$perm]) && $val) {
+            if (in_array($perm, self::DEPARTMENT_ADMIN_PERMISSIONS, true) && isset(self::AVAILABLE[$perm]) && $val) {
                 $out[$perm] = true;
             }
         }

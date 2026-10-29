@@ -1,0 +1,318 @@
+.admin-dashboard {
+  --console-ink: #172333;
+  --console-muted: #64748B;
+  --console-navy: #172333;
+  --console-blue: #087BB5;
+  --console-gold: #F9B900;
+  --console-paper: #FFFFFF;
+  min-height: 85vh;
+  color: var(--console-ink);
+  background: var(--akal-soft-white);
+}
+
+.admin-dashboard > .container-fluid {
+  max-width: 1780px;
+  padding-bottom: 2rem;
+}
+
+.admin-console-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 140px;
+  padding: 1.5rem clamp(1.25rem, 3vw, 2.5rem);
+  color: #FFFFFF;
+  border-bottom: 3px solid var(--console-gold);
+  border-radius: 0 0 16px 16px;
+  background: var(--akal-navy);
+  box-shadow: 0 4px 16px rgba(23, 35, 51, 0.12);
+}
+
+.admin-console-hero h3 {
+  color: #FFFFFF !important;
+  font-size: clamp(1.5rem, 2.5vw, 2.1rem);
+  letter-spacing: -0.02em;
+}
+
+.admin-console-hero .text-muted,
+.admin-console-hero .small {
+  color: #CBD5E1 !important;
+}
+
+.admin-console-hero .badge {
+  background: var(--console-gold) !important;
+  color: var(--console-navy) !important;
+  font-weight: 700;
+}
+
+.admin-console-hero .form-select {
+  min-height: 40px;
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.28);
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.admin-console-hero .form-select option {
+  color: #172333;
+  background-color: #FFFFFF;
+}
+
+.admin-console-hero .btn-outline-secondary {
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.admin-console-hero .btn-outline-secondary:hover {
+  color: var(--console-navy);
+  background: #FFFFFF;
+}
+
+.admin-console-hero .btn-akal-yellow {
+  color: var(--console-navy) !important;
+  background: var(--console-gold);
+  border: 1px solid #EAA700;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.admin-console-nav {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.65rem 0.2rem 0.85rem;
+  border-bottom: 1px solid var(--akal-border-grey);
+  scrollbar-width: thin;
+}
+
+.admin-console-nav > button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0.5rem 0.95rem !important;
+  color: var(--akal-text-secondary) !important;
+  border: 1px solid var(--akal-border-grey) !important;
+  border-radius: 8px !important;
+  background: #FFFFFF !important;
+  font-weight: 600 !important;
+  font-size: 0.88rem !important;
+  transition: all 0.2s ease;
+}
+
+.admin-console-nav > button:hover {
+  color: var(--console-blue) !important;
+  border-color: var(--console-blue) !important;
+  background: var(--akal-blue-soft) !important;
+}
+
+.admin-console-nav > button.btn-primary,
+.admin-console-nav > button.btn-danger {
+  color: #FFFFFF !important;
+  border-color: var(--console-blue) !important;
+  background: var(--console-blue) !important;
+  box-shadow: 0 2px 8px rgba(8, 123, 181, 0.25);
+}
+
+.admin-console-nav > button .badge {
+  color: var(--console-navy) !important;
+  background: #FEF3C7 !important;
+  font-weight: 700;
+}
+
+.admin-dashboard .akal-card {
+  overflow: hidden;
+  border: 1px solid var(--akal-border-grey);
+  border-radius: 14px;
+  background: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(23, 35, 51, 0.05);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.admin-dashboard .akal-card:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 14px rgba(23, 35, 51, 0.08);
+}
+
+.admin-analytics > .row.g-3.mb-4 > div > .akal-card {
+  position: relative;
+  min-height: 104px;
+  border-radius: 14px;
+}
+
+.admin-analytics > .row.g-3.mb-4 > div > .akal-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  content: "";
+  background: var(--console-blue);
+}
+
+.admin-analytics > .row.g-3.mb-4 > div:nth-child(2) > .akal-card::before { background: var(--console-gold); }
+.admin-analytics > .row.g-3.mb-4 > div:nth-child(3) > .akal-card::before { background: #10B981; }
+.admin-analytics > .row.g-3.mb-4 > div:nth-child(4) > .akal-card::before { background: #8B5CF6; }
+
+.admin-analytics .stat-icon-wrapper {
+  border-radius: 10px;
+}
+
+.admin-analytics h4 {
+  color: var(--console-navy);
+  font-size: 1.75rem;
+  letter-spacing: -0.03em;
+}
+
+.admin-dashboard .table {
+  --bs-table-bg: transparent;
+  --bs-table-hover-bg: #F0F7FB;
+  color: var(--akal-text-primary);
+}
+
+.admin-dashboard .table thead th {
+  color: var(--akal-text-secondary);
+  border-bottom: 2px solid var(--akal-border-grey);
+  background: var(--akal-soft-white);
+  font-size: 0.76rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-event-table {
+  min-width: 1200px;
+}
+
+.admin-event-table th,
+.admin-event-table td {
+  vertical-align: middle;
+}
+
+.admin-event-filters {
+  padding: 1rem;
+  border: 1px solid var(--akal-border-grey);
+  border-radius: 12px;
+  background: #FFFFFF;
+}
+
+.admin-event-filters .form-label {
+  margin-bottom: 0.35rem;
+  color: var(--akal-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-event-filters .form-control,
+.admin-event-filters .form-select {
+  min-height: 38px;
+  background-color: #FFFFFF;
+  border-radius: 8px;
+}
+
+.admin-event-registration-backdrop {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 1rem;
+  background: rgba(23, 35, 51, 0.65);
+  backdrop-filter: blur(4px);
+}
+
+.admin-event-registration-backdrop .modal-dialog {
+  flex: 0 1 1140px;
+  width: min(1140px, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  max-height: calc(100vh - 2rem);
+  margin: auto;
+}
+
+.admin-event-registration-backdrop .admin-event-registration-modal {
+  width: 100%;
+  max-height: calc(100vh - 2rem);
+  overflow: hidden;
+  background: #FFFFFF;
+  border-radius: 16px;
+}
+
+.admin-event-registration-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem !important;
+  color: #FFFFFF;
+  background: var(--akal-navy);
+  border-bottom: 3px solid var(--console-gold) !important;
+}
+
+.admin-event-registration-header > div { min-width: 0; }
+.admin-event-registration-header .text-warning { color: var(--console-gold) !important; letter-spacing: 0.08em; }
+.admin-event-registration-header .modal-title { margin: 0.25rem 0; color: #FFFFFF; overflow-wrap: anywhere; }
+.admin-event-registration-header .btn-close { flex: 0 0 auto; margin: 0; filter: invert(1); opacity: 0.85; }
+.admin-event-registration-header .btn-close:hover { opacity: 1; }
+.admin-event-registration-meta { color: #CBD5E1; }
+.admin-event-registration-meta span { padding: 0 0.35rem; color: var(--console-gold); }
+
+.admin-event-registration-body {
+  min-height: 130px;
+  overflow-y: auto;
+  padding: 1rem 1.5rem !important;
+  background: #FFFFFF;
+}
+
+.admin-event-registration-body .table { margin-bottom: 0; min-width: 900px; }
+.admin-event-registration-body .table thead th { background: var(--akal-soft-white); }
+.admin-event-registration-body .table th,
+.admin-event-registration-body .table td { padding: 0.8rem 0.9rem; }
+.admin-event-registration-footer {
+  padding: 0.9rem 1.5rem 1.1rem !important;
+  background: var(--akal-soft-white);
+  border-top: 1px solid var(--akal-border-grey) !important;
+}
+.admin-event-registration-footer .btn { min-width: 100px; font-weight: 600; border-radius: 8px; }
+
+@media (max-width: 575.98px) {
+  .admin-event-registration-backdrop { padding: 0.5rem; }
+  .admin-event-registration-backdrop .modal-dialog { width: calc(100vw - 1rem); max-width: calc(100vw - 1rem); }
+  .admin-event-registration-header { padding: 1rem !important; }
+  .admin-event-registration-body { padding: 0.75rem 1rem !important; }
+  .admin-event-registration-footer { padding: 0.75rem 1rem 1rem !important; }
+}
+
+.admin-dashboard .form-control,
+.admin-dashboard .form-select {
+  border-color: var(--akal-border-grey);
+  border-radius: 8px;
+}
+
+.admin-dashboard .form-control:focus,
+.admin-dashboard .form-select:focus {
+  border-color: var(--console-blue);
+  box-shadow: 0 0 0 3px rgba(8, 123, 181, 0.15);
+}
+
+.admin-dashboard .btn-primary {
+  border-color: var(--console-blue);
+  background: var(--console-blue);
+  border-radius: 8px;
+}
+
+.admin-dashboard .btn-primary:hover {
+  border-color: var(--akal-blue-hover);
+  background: var(--akal-blue-hover);
+}
+
+@media (max-width: 767.98px) {
+  .admin-dashboard.py-4 { padding-top: 0 !important; }
+  .admin-console-hero { min-height: 0; padding: 1.25rem 1rem; border-radius: 0 0 16px 16px; }
+  .admin-console-hero > div:first-child { width: 100%; }
+  .admin-console-hero > div:last-child { width: 100%; }
+  .admin-console-hero > div:last-child .btn { flex: 1 1 auto; justify-content: center; }
+  .admin-console-nav { margin-right: -12px; margin-left: -12px; padding-right: 12px; padding-left: 12px; }
+  .admin-analytics > .row.g-3.mb-4 > div > .akal-card { min-height: 96px; }
+}

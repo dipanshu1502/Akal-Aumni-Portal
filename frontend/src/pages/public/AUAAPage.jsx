@@ -129,24 +129,21 @@ const AUAAPage = () => {
   const btnVisit = getSetting('auaa_btn_visit', 'Visit Official Website');
   const btnJoin = getSetting('auaa_btn_join', 'Join Network');
   return (
-    <div className="aua-page">
-      {/* HERO — HomePage style */}
-      <section className="py-5 position-relative text-white overflow-hidden" style={{ background: 'linear-gradient(135deg, #075985 0%, #087BB5 50%, #172333 100%)' }}>
-        <div className="position-absolute rounded-circle opacity-10" style={{ width: '520px', height: '520px', background: 'var(--akal-yellow)', top: '-180px', right: '-100px', filter: 'blur(80px)' }} />
-        <div className="position-absolute rounded-circle opacity-15" style={{ width: '380px', height: '380px', background: 'var(--akal-blue-light)', bottom: '-140px', left: '-60px', filter: 'blur(70px)' }} />
+    <div className="aua-page bg-white min-vh-100">
+      {/* HERO — Official University Style */}
+      <section className="py-5 position-relative text-white overflow-hidden" style={{ backgroundColor: 'var(--akal-navy)', borderBottom: '3px solid var(--akal-yellow)' }}>
         <div className="container position-relative z-1 py-3">
           <div className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-warning bg-opacity-20 border border-warning border-opacity-40 text-warning small fw-bold mb-3">
             <Sparkles size={14} /><span>{heroBadge}</span>
           </div>
-          <h1 className="display-5 fw-extrabold text-white mb-3" style={{ lineHeight: 1.15 }}>{heroTitle}</h1>
-          <p className="lead text-light text-opacity-90 mb-4" style={{ maxWidth: '760px', fontSize: '1.08rem' }}>
+          <h1 className="display-5 fw-bold text-white mb-3" style={{ lineHeight: 1.15 }}>{heroTitle}</h1>
+          <p className="lead text-white-50 mb-4" style={{ maxWidth: '760px', fontSize: '1.08rem' }}>
             {heroSubtitle}
           </p>
           <div className="d-flex flex-wrap gap-3">
             <Link to="/register" className="btn btn-akal-yellow px-4 py-2">{btnMember} <ArrowRight size={17} /></Link>
-            <a href={officialUrl} target="_blank" rel="noreferrer" className="btn btn-akal-outline-white px-4 py-2">{btnOfficial} <ExternalLink size={16} /></a>
           </div>
-          <div className="d-flex align-items-center gap-4 mt-4 pt-3 border-top border-white border-opacity-15 small text-light text-opacity-75 flex-wrap">
+          <div className="d-flex align-items-center gap-4 mt-4 pt-3 border-top border-white border-opacity-15 small text-white-50 flex-wrap">
             <span className="d-flex align-items-center gap-2"><ShieldCheck size={17} className="text-warning" /> {trust1}</span>
             <span className="d-flex align-items-center gap-2"><Users size={17} className="text-warning" /> {trust2}</span>
             <span className="d-flex align-items-center gap-2"><Globe size={17} className="text-warning" /> {trust3}</span>
@@ -297,13 +294,12 @@ const AUAAPage = () => {
         </section>
 
         {/* Official Website CTA */}
-        <section className="py-4 px-4 px-lg-5 rounded-4 text-center text-white position-relative overflow-hidden" style={{ background: 'var(--grad-primary)' }}>
-          <div className="university-crest mx-auto mb-3" style={{ width: '54px', height: '54px', fontSize: '22px' }}>AU</div>
-          <h2 className="h3 fw-bold text-white mb-3">{ctaTitle}</h2>
-          <p className="mb-4 mx-auto text-light text-opacity-85" style={{ maxWidth: '650px' }}>{ctaDesc}</p>
+        <section className="py-4 mt-5 px-4 px-lg-5 rounded-4 text-center text-white position-relative overflow-hidden" style={{ backgroundColor: 'var(--akal-navy)', borderTop: '3px solid var(--akal-yellow)' }}>
+          <div className="university-crest mx-auto mb-3" style={{ width: '52px', height: '52px', fontSize: '20px' }}>AU</div>
+          <h2 className="h3 fw-bold text-white mb-2">{ctaTitle}</h2>
+          <p className="mb-4 mx-auto text-white-50" style={{ maxWidth: '650px' }}>{ctaDesc}</p>
           <div className="d-flex justify-content-center flex-wrap gap-3">
-            <a href={officialUrl} target="_blank" rel="noreferrer" className="btn btn-akal-yellow px-4 py-2">{btnVisit} <ExternalLink size={16} /></a>
-            <Link to="/register" className="btn btn-akal-outline-white px-4 py-2">{btnJoin} <ArrowRight size={16} /></Link>
+            <Link to="/register" className="btn btn-akal-yellow px-4 py-2">{btnJoin} <ArrowRight size={16} /></Link>
           </div>
         </section>
       </div>

@@ -20,6 +20,7 @@ $routes->group('api', function ($routes) {
         $routes->get('alumni', 'Api\PublicController::getAlumni');
         $routes->get('alumni/(:any)', 'Api\PublicController::getAlumniDetail/$1');
         $routes->get('events', 'Api\PublicController::getEvents');
+        $routes->post('events/(:num)/register', 'Api\PublicController::registerForEvent/$1');
         $routes->get('jobs', 'Api\PublicController::getJobs');
         $routes->get('chapters', 'Api\PublicController::getChapters');
         $routes->get('stories', 'Api\PublicController::getStories');
@@ -38,6 +39,7 @@ $routes->group('api', function ($routes) {
     // Authenticated user routes (any logged-in role — e.g. donate)
     $routes->group('user', ['filter' => 'auth'], function ($routes) {
         $routes->post('donate', 'Api\PublicController::makeDonation');
+        $routes->post('jobs/(:num)/apply', 'Api\PublicController::applyForJob/$1');
     });
 
     // Alumni Authenticated Routes
@@ -46,6 +48,8 @@ $routes->group('api', function ($routes) {
         $routes->put('profile', 'Api\AlumniController::updateProfile');
         $routes->get('id-card', 'Api\AlumniController::getIdCard');
         $routes->post('jobs', 'Api\AlumniController::postJob');
+        $routes->get('jobs', 'Api\AlumniController::getMyJobs');
+        $routes->get('jobs/(:num)/applications', 'Api\AlumniController::getMyJobApplications/$1');
         $routes->get('mentorship-requests', 'Api\AlumniController::getMentorshipRequests');
         $routes->put('mentorship-requests/(:num)', 'Api\AlumniController::updateMentorshipStatus/$1');
     });
@@ -61,6 +65,9 @@ $routes->group('api', function ($routes) {
     // Admin & Super Admin Authenticated Routes
     $routes->group('admin', ['filter' => 'auth:admin,superadmin'], function ($routes) {
         $routes->get('dashboard', 'Api\AdminController::getDashboard');
+        $routes->get('mentorship-requests', 'Api\AdminController::getMentorshipRequests');
+        $routes->get('alumni-mentors', 'Api\AdminController::getAlumniMentorRoster');
+        $routes->get('alumni-mentors/(:num)/students', 'Api\AdminController::getMentorStudents/$1');
         $routes->get('verifications', 'Api\AdminController::getPendingVerifications', ['filter' => 'permission:verify_alumni,manage_alumni,manage_users']);
         $routes->post('verifications/(:num)/approve', 'Api\AdminController::approveVerification/$1', ['filter' => 'permission:verify_alumni,manage_alumni,manage_users']);
         $routes->post('verifications/(:num)/reject', 'Api\AdminController::rejectVerification/$1', ['filter' => 'permission:verify_alumni,manage_alumni,manage_users']);
@@ -85,6 +92,7 @@ $routes->group('api', function ($routes) {
         // Events (requires manage_events)
         $routes->post('events', 'Api\AdminController::saveEvent', ['filter' => 'permission:manage_events']);
         $routes->delete('events/(:num)', 'Api\AdminController::deleteEvent/$1', ['filter' => 'permission:manage_events']);
+        $routes->get('events/(:num)/registrations', 'Api\AdminController::getEventRegistrations/$1', ['filter' => 'permission:manage_events']);
 
         // Settings (requires manage_settings)
         $routes->get('settings', 'Api\AdminController::getSettings', ['filter' => 'permission:manage_settings']);
@@ -108,7 +116,8 @@ $routes->group('api', function ($routes) {
         $routes->delete('chapters/(:num)', 'Api\AdminController::deleteChapter/$1', ['filter' => 'permission:manage_chapters']);
 
         // Jobs CMS (requires manage_jobs)
-        $routes->get('jobs', 'Api\AdminController::getJobs');
+        $routes->get('jobs', 'Api\AdminController::getJobs', ['filter' => 'permission:manage_jobs']);
+        $routes->get('jobs/(:num)/applications', 'Api\AdminController::getJobApplications/$1', ['filter' => 'permission:manage_jobs']);
         $routes->post('jobs', 'Api\AdminController::saveJob', ['filter' => 'permission:manage_jobs']);
         $routes->delete('jobs/(:num)', 'Api\AdminController::deleteJob/$1', ['filter' => 'permission:manage_jobs']);
 

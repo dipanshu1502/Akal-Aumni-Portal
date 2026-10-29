@@ -179,6 +179,23 @@ class AuthController extends BaseController
             return $this->respondValidationError(['study_institution' => 'Please enter where you are doing higher studies (institution name)']);
         }
 
+        // --- Date of birth (optional, must be a valid past date, age 17–100 years) ---
+        $dateOfBirth = trim((string)($json['date_of_birth'] ?? ''));
+        if ($dateOfBirth !== '') {
+            $dob = \DateTime::createFromFormat('Y-m-d', $dateOfBirth);
+            if (!$dob || $dob->format('Y-m-d') !== $dateOfBirth) {
+                return $this->respondValidationError(['date_of_birth' => 'Please enter a valid date of birth (YYYY-MM-DD).']);
+            }
+            $today = new \DateTime();
+            if ($dob > $today) {
+                return $this->respondValidationError(['date_of_birth' => 'Date of birth cannot be in the future.']);
+            }
+            $age = (int) $today->diff($dob)->y;
+            if ($age < 17 || $age > 100) {
+                return $this->respondValidationError(['date_of_birth' => 'Please enter a valid date of birth (age must be between 17 and 100 years).']);
+            }
+        }
+
         // --- Profile photo (DP): base64 data-url ya https URL, max ~2MB for base64 ---
         $profilePhoto = $json['profile_photo'] ?? null;
         if (is_string($profilePhoto) && $profilePhoto !== '') {
@@ -253,6 +270,7 @@ class AuthController extends BaseController
                 'department'          => $primary['department'],
                 'batch_year'          => $batchYear,
                 'graduation_year'     => $primary['end_year'] ?: null,
+                'date_of_birth'       => $dateOfBirth !== '' ? $dateOfBirth : null,
                 'phone'               => $strOrNull($json['phone'] ?? null),
                 'current_company'     => $currentStatus === 'job' ? $strOrNull(($json['job_organization'] ?? '') !== '' ? $json['job_organization'] : ($json['current_company'] ?? null)) : $strOrNull($json['current_company'] ?? null),
                 'current_designation' => $currentStatus === 'job' ? $strOrNull(($json['job_designation'] ?? '') !== '' ? $json['job_designation'] : ($json['current_designation'] ?? null)) : $strOrNull($json['current_designation'] ?? null),
@@ -454,6 +472,8 @@ class AuthController extends BaseController
                 $errors[$ref . '.department'] = 'Department / discipline is required';
             } elseif (mb_strlen($department) > 100) {
                 $errors[$ref . '.department'] = 'Department name is too long';
+            } elseif (!in_array($department, \App\Libraries\DepartmentCatalog::ALL, true)) {
+                $errors[$ref . '.department'] = 'Please select a department from the department list';
             }
             if ($startYear < 1950 || $startYear > 2100) {
                 $errors[$ref . '.start_year'] = 'Starting year is required';

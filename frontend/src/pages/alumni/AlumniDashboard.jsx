@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import DigitalIdModal from '../../components/common/DigitalIdModal';
+import { DEPARTMENTS } from '../../constants/departments';
 import { 
   User, 
   CreditCard, 
@@ -15,7 +16,8 @@ import {
   Save, 
   Send,
   Building,
-  GraduationCap
+  GraduationCap,
+  Download
 } from 'lucide-react';
 
 const AlumniDashboard = () => {
@@ -36,16 +38,22 @@ const AlumniDashboard = () => {
   const [jobDesc, setJobDesc] = useState('');
   const [jobReqs, setJobReqs] = useState('');
   const [jobSuccess, setJobSuccess] = useState(false);
+  const [myJobs, setMyJobs] = useState([]);
+  const [jobApplicantsView, setJobApplicantsView] = useState(null);
+  const [jobApplicantsLoading, setJobApplicantsLoading] = useState(false);
+  const [jobApplicantsError, setJobApplicantsError] = useState('');
 
   useEffect(() => {
     const fetchAlumniData = async () => {
       try {
-        const [profileRes, menteesRes] = await Promise.all([
+        const [profileRes, menteesRes, jobsRes] = await Promise.all([
           api.get('/alumni/profile'),
-          api.get('/alumni/mentorship-requests')
+          api.get('/alumni/mentorship-requests'),
+          api.get('/alumni/jobs')
         ]);
         if (profileRes.status) setProfile(profileRes.data);
         if (menteesRes.status) setMentees(menteesRes.data);
+        if (jobsRes.status) setMyJobs(jobsRes.data || []);
       } catch (err) {
         console.error('Error fetching alumni data:', err);
       } finally {
@@ -83,6 +91,12 @@ const AlumniDashboard = () => {
 
       if (res.status) {
         setJobSuccess(true);
+        try {
+          const jobsRes = await api.get('/alumni/jobs');
+          if (jobsRes.status) setMyJobs(jobsRes.data || []);
+        } catch (refreshError) {
+          console.error('Job was submitted, but the list could not be refreshed:', refreshError);
+        }
         setJobTitle('');
         setCompanyName('');
         setJobDesc('');
@@ -92,6 +106,52 @@ const AlumniDashboard = () => {
     } catch (err) {
       alert(err.message || 'Error posting job');
     }
+  };
+
+  const openJobApplicants = async (job) => {
+    setJobApplicantsView({ job, applicants: [] });
+    setJobApplicantsLoading(true);
+    setJobApplicantsError('');
+    try {
+      const response = await api.get(`/alumni/jobs/${job.id}/applications`);
+      if (!response.status) throw new Error(response.message || 'Could not load applicants');
+      setJobApplicantsView(response.data);
+    } catch (error) {
+      setJobApplicantsError(error.message || 'Could not load applicants.');
+    } finally {
+      setJobApplicantsLoading(false);
+    }
+  };
+
+  const downloadJobApplicants = () => {
+    const applicants = jobApplicantsView?.applicants || [];
+    const columns = [['sr_no', 'Sr. No.'], ['uid', 'UID'], ['name', 'Name'], ['contact_number', 'Contact Number'], ['member_type', 'Alumni / Student'], ['email', 'Email'], ['applied_at', 'Applied At']];
+    const escapeCsv = (value) => {
+      const text = String(value ?? '');
+      const safe = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
+    const csv = [columns.map(([, label]) => escapeCsv(label)).join(','), ...applicants.map((row, index) => columns.map(([key]) => escapeCsv(key === 'sr_no' ? index + 1 : row[key])).join(','))].join('\r\n');
+    const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(jobApplicantsView?.job?.title || 'job').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-applicants.csv`;
+    document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const downloadMentorshipRequests = () => {
+    const columns = [['sr_no', 'Sr. No.'], ['enrollment_no', 'Student UID'], ['mentee_first_name', 'First Name'], ['mentee_last_name', 'Last Name'], ['mentee_email', 'Email'], ['mentee_phone', 'Contact Number'], ['department', 'Department'], ['degree', 'Program'], ['current_year', 'Year'], ['semester', 'Semester'], ['topic', 'Topic'], ['message', 'Message'], ['status', 'Status'], ['requested_at', 'Requested At']];
+    const escapeCsv = (value) => {
+      const text = String(value ?? '');
+      const safe = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
+    const csv = [columns.map(([, label]) => escapeCsv(label)).join(','), ...mentees.map((row, index) => columns.map(([key]) => escapeCsv(key === 'sr_no' ? index + 1 : row[key])).join(','))].join('\r\n');
+    const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `mentorship-requests-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const handleMentorshipAction = async (id, status) => {
@@ -132,20 +192,20 @@ const AlumniDashboard = () => {
   }
 
   return (
-    <div className="alumni-dashboard py-4">
+    <div className="alumni-dashboard py-4 bg-white min-vh-100">
       <div className="container">
         {/* Welcome Header */}
-        <div className="bg-primary text-white rounded-4 p-4 p-md-5 mb-4 shadow" style={{ background: 'var(--grad-hero)' }}>
+        <div className="text-white rounded-4 p-4 p-md-5 mb-4 shadow-sm" style={{ backgroundColor: 'var(--akal-navy)', borderBottom: '3px solid var(--akal-yellow)' }}>
           <div className="row align-items-center g-4">
             <div className="col-lg-8">
               <div className="d-flex align-items-center gap-2 text-warning small fw-bold text-uppercase mb-2">
                 <ShieldCheck size={16} />
                 <span>OFFICIAL ALUMNI MEMBER PORTAL</span>
               </div>
-              <h2 className="fw-bold mb-2">
+              <h2 className="fw-bold mb-2 text-white">
                 Welcome, {profile?.first_name} {profile?.last_name}!
               </h2>
-              <p className="text-light text-opacity-85 mb-0">
+              <p className="text-white-50 mb-0">
                 {profile?.current_designation || 'Alumni Member'} at {profile?.current_company || 'Industry'} • Batch {profile?.batch_year || 'AU'}
               </p>
             </div>
@@ -153,7 +213,7 @@ const AlumniDashboard = () => {
             <div className="col-lg-4 text-lg-end">
               <button 
                 onClick={() => setShowIdModal(true)} 
-                className="btn btn-akal-yellow d-inline-flex align-items-center gap-2 shadow"
+                className="btn btn-akal-yellow d-inline-flex align-items-center gap-2 shadow-sm"
               >
                 <CreditCard size={18} />
                 <span>View Digital Alumni ID</span>
@@ -429,9 +489,12 @@ const AlumniDashboard = () => {
                     </div>
                     <div className="col-md-6">
                       <label className="form-label small fw-bold">Department</label>
-                      <input type="text" className="form-control"
+                      <select className="form-select"
                         value={profile.department || ''}
-                        onChange={(e) => setProfile({ ...profile, department: e.target.value })} />
+                        onChange={(e) => setProfile({ ...profile, department: e.target.value })}>
+                        <option value="">Select department</option>
+                        {DEPARTMENTS.map((department) => <option key={department} value={department}>{department}</option>)}
+                      </select>
                     </div>
                     <div className="col-md-6">
                       <label className="form-label small fw-bold">Graduation Year</label>
@@ -559,7 +622,10 @@ const AlumniDashboard = () => {
         {/* TAB 2: Mentorship Requests */}
         {activeTab === 'mentorship' && (
           <div className="akal-card p-4">
-            <h5 className="fw-bold text-dark mb-3">Student Mentorship Inquiries</h5>
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+              <h5 className="fw-bold text-dark mb-0">Student Mentorship Inquiries</h5>
+              <button type="button" className="btn btn-sm btn-akal-primary d-inline-flex align-items-center gap-2" onClick={downloadMentorshipRequests} disabled={mentees.length === 0}><Download size={15} /> Download CSV</button>
+            </div>
             
             {mentees.length === 0 ? (
               <div className="text-center py-4 text-muted">
@@ -572,9 +638,11 @@ const AlumniDashboard = () => {
                   <thead className="table-light small">
                     <tr>
                       <th>Student Mentee</th>
-                      <th>Program & Year</th>
+                      <th>Contact & ID</th>
+                      <th>Department / Program</th>
                       <th>Mentorship Topic</th>
                       <th>Message</th>
+                      <th>Requested At</th>
                       <th>Status</th>
                       <th>Actions</th>
                     </tr>
@@ -583,9 +651,11 @@ const AlumniDashboard = () => {
                     {mentees.map((req) => (
                       <tr key={req.id}>
                         <td className="fw-bold">{req.mentee_first_name} {req.mentee_last_name}</td>
-                        <td className="text-muted">{req.degree} (Year {req.current_year})</td>
+                        <td>{req.mentee_email}<div className="text-muted">{req.mentee_phone || 'No phone'} · {req.enrollment_no || 'No UID'}</div></td>
+                        <td className="text-muted">{req.department || '—'}<div>{req.degree || '—'} · Year {req.current_year || '—'} / Sem {req.semester || '—'}</div></td>
                         <td className="fw-semibold text-primary">{req.topic}</td>
-                        <td className="text-muted" style={{ maxWidth: '200px' }}>{req.message}</td>
+                        <td className="text-muted" style={{ maxWidth: '240px', whiteSpace: 'pre-wrap' }}>{req.message || 'No message provided'}</td>
+                        <td>{req.requested_at ? new Date(req.requested_at).toLocaleString() : '—'}</td>
                         <td>
                           <span className={`badge ${req.status === 'accepted' ? 'bg-success' : req.status === 'completed' ? 'bg-info' : 'bg-warning text-dark'}`}>
                             {req.status.toUpperCase()}
@@ -621,13 +691,14 @@ const AlumniDashboard = () => {
 
         {/* TAB 3: Job Posting */}
         {activeTab === 'jobs' && (
-          <div className="akal-card p-4" style={{ maxWidth: '750px' }}>
+          <div className="row g-4 align-items-start">
+          <div className="col-lg-7"><div className="akal-card p-4">
             <h5 className="fw-bold text-dark mb-3">Post Career Opportunity for Alumni & Students</h5>
 
             {jobSuccess && (
               <div className="alert alert-success small py-2 d-flex align-items-center gap-2">
                 <CheckCircle2 size={16} />
-                <span>Opportunity published successfully to the career board!</span>
+                <span>Opportunity submitted for review. It will appear on the career board after Admin or Super Admin approval.</span>
               </div>
             )}
 
@@ -717,9 +788,45 @@ const AlumniDashboard = () => {
 
               <button type="submit" className="btn btn-akal-primary d-flex align-items-center gap-2">
                 <PlusCircle size={16} />
-                <span>Publish Opportunity</span>
+                <span>Submit for Approval</span>
               </button>
             </form>
+          </div></div>
+          <div className="col-lg-5">
+            <div className="akal-card p-4">
+              <h5 className="fw-bold text-dark mb-3">My Job Posts & Applicants</h5>
+              {myJobs.length === 0 ? <p className="text-muted mb-0">You have not posted any jobs yet.</p> : (
+                <div className="d-flex flex-column gap-2">
+                  {myJobs.map((job) => (
+                    <div key={job.id} className="border rounded-3 p-3">
+                      <div className="d-flex justify-content-between gap-2 align-items-start">
+                        <div><div className="fw-bold">{job.title}</div><div className="small text-muted">{job.company_name}</div></div>
+                        <span className={`badge ${job.status === 'approved' ? 'bg-success' : job.status === 'rejected' ? 'bg-danger' : 'bg-warning text-dark'}`}>{job.status}</span>
+                      </div>
+                      <button type="button" className="btn btn-sm btn-outline-primary mt-2" onClick={() => openJobApplicants(job)}>
+                        View applicants ({Number(job.application_count || 0)})
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {jobApplicantsView && (
+                <div className="border rounded-3 p-3 mt-3">
+                  <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <div><div className="fw-bold">{jobApplicantsView.job.title}</div><div className="small text-muted">{jobApplicantsView.applicants.length} applicants</div></div>
+                    <button type="button" className="btn-close" aria-label="Close applicants" onClick={() => setJobApplicantsView(null)} />
+                  </div>
+                  {jobApplicantsLoading ? <div className="small text-muted">Loading applicants...</div>
+                    : jobApplicantsError ? <div className="small text-danger">{jobApplicantsError}</div>
+                      : jobApplicantsView.applicants.length === 0 ? <div className="small text-muted">No applications received yet.</div>
+                        : <div className="table-responsive"><table className="table table-sm align-middle mb-2"><thead><tr><th>Name</th><th>Type</th><th>Email</th><th>Applied</th></tr></thead><tbody>
+                          {jobApplicantsView.applicants.map((applicant) => <tr key={applicant.id}><td>{applicant.name}<div className="small text-muted">{applicant.uid || '—'}</div></td><td>{applicant.member_type}</td><td>{applicant.email}</td><td>{applicant.applied_at ? new Date(applicant.applied_at).toLocaleDateString() : '—'}</td></tr>)}
+                        </tbody></table></div>}
+                  <button type="button" className="btn btn-sm btn-akal-primary" onClick={downloadJobApplicants} disabled={jobApplicantsLoading || !!jobApplicantsError || jobApplicantsView.applicants.length === 0}>Download CSV</button>
+                </div>
+              )}
+            </div>
+          </div>
           </div>
         )}
       </div>

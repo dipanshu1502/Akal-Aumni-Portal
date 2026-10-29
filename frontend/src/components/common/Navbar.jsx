@@ -1,321 +1,361 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useSettings } from '../../context/SettingsContext';
-import { 
-  LogIn, 
-  LogOut, 
-  User, 
-  ShieldCheck,
-  ChevronDown,
+import React, { useEffect, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { useSettings } from "../../context/SettingsContext";
+import DigitalIdModal from "./DigitalIdModal";
+import {
+  LogIn,
+  LogOut,
+  User,
   CreditCard,
   GraduationCap,
-  Zap,
-  Home,
-  Info,
-  Users,
+  ShieldCheck,
+  UserPlus,
+  ChevronDown,
+  Globe,
   HeartHandshake,
-  CalendarDays,
-  BriefcaseBusiness,
-  Compass,
-  MapPin,
-  BookOpen,
-  Images
-} from 'lucide-react';
-import DigitalIdModal from './DigitalIdModal';
+  Users,
+  Sparkles,
+  Calendar,
+  Briefcase,
+  Newspaper,
+  Heart,
+  Landmark
+} from "lucide-react";
 
 const Navbar = () => {
-  const { user, profile, logout, quickDemoLogin, demoAccounts, isAuthenticated, isAlumni, isStudent, isAdmin, isSuperAdmin } = useAuth();
-  const { getSetting, isFeatureEnabled } = useSettings();
-  const [showDemoMenu, setShowDemoMenu] = useState(false);
+  const { user, profile, logout, isAuthenticated, isAlumni, isStudent, isAdmin, isSuperAdmin } = useAuth();
+  const { isFeatureEnabled } = useSettings();
   const [showIdModal, setShowIdModal] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const demoMenuRef = useRef(null);
+  const location = useLocation();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate("/");
   };
 
-  // Scroll par navbar compact ho jaye — content ko zyada vertical space mile
   useEffect(() => {
-    const onScroll = () => setIsScrolled(window.scrollY > 24);
+    const onScroll = () => setIsScrolled(window.scrollY > 15);
     onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Demo switcher: bahar click ya Escape karne par band ho
-  useEffect(() => {
-    if (!showDemoMenu) return undefined;
-    const onPointerDown = (e) => {
-      if (demoMenuRef.current && !demoMenuRef.current.contains(e.target)) {
-        setShowDemoMenu(false);
-      }
-    };
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') setShowDemoMenu(false);
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [showDemoMenu]);
-
-  // Mobile menu: kisi bhi link/button click par collapse band ho jaye
   const closeMobileMenu = () => {
-    const el = document.getElementById('navbarContent');
-    if (el && el.classList.contains('show') && window.bootstrap) {
+    const el = document.getElementById("navbarContent");
+    if (el && el.classList.contains("show") && window.bootstrap) {
       window.bootstrap.Collapse.getOrCreateInstance(el).hide();
     }
   };
 
-  // Enabled public links — single source of truth for desktop rows + mobile list
-  const navLinks = [
-    { to: '/', label: 'Home', end: true, Icon: Home, color: '#F9B900', color2: '#F59E0B' },
-    { to: '/about', label: 'About', Icon: Info, color: '#087BB5', color2: '#0EA5E9' },
-    { to: '/auaa', label: 'AUAA', end: true, title: 'Akal University Alumni Association', Icon: GraduationCap, color: '#8B5CF6', color2: '#6366F1' },
-    isFeatureEnabled('enable_public_directory', true) && { to: '/directory', label: 'Directory', Icon: Users, color: '#14B8A6', color2: '#06B6D4' },
-    { to: '/donations', label: 'Donations', Icon: HeartHandshake, color: '#F43F5E', color2: '#EF4444' },
-    isFeatureEnabled('enable_public_events', true) && { to: '/events', label: 'Events', Icon: CalendarDays, color: '#F97316', color2: '#FBBF24' },
-    isFeatureEnabled('enable_public_jobs', true) && { to: '/jobs', label: 'Jobs & Internships', Icon: BriefcaseBusiness, color: '#6366F1', color2: '#8B5CF6' },
-    isFeatureEnabled('enable_public_mentorship', true) && { to: '/mentorship', label: 'Mentorship', Icon: Compass, color: '#10B981', color2: '#14B8A6' },
-    isFeatureEnabled('enable_public_chapters', true) && { to: '/chapters', label: 'Chapters', Icon: MapPin, color: '#EC4899', color2: '#F43F5E' },
-    isFeatureEnabled('enable_public_stories', true) && { to: '/stories', label: 'Stories', Icon: BookOpen, color: '#0EA5E9', color2: '#3B82F6' },
-    isFeatureEnabled('enable_public_gallery', true) && { to: '/news-gallery', label: 'Gallery & News', Icon: Images, color: '#A855F7', color2: '#EC4899' },
+  // 1. About Dropdown Links
+  const aboutLinks = [
+    {
+      to: "/about",
+      title: "About Akal University",
+      desc: "Heritage, leadership & NAAC 'A' accreditation",
+      icon: <Landmark size={18} />
+    },
+    {
+      to: "/auaa",
+      title: "Alumni Association (AUAA)",
+      desc: "Association charter, council & mission",
+      icon: <ShieldCheck size={18} />
+    },
+    isFeatureEnabled("enable_public_chapters", true) && {
+      to: "/chapters",
+      title: "Regional & Global Chapters",
+      desc: "Connect with city-based alumni networks worldwide",
+      icon: <Globe size={18} />
+    }
   ].filter(Boolean);
 
-  // Desktop (xl+): links ko 2 rows me split — row 1: Home…Events, row 2: baaki
-  const mid = Math.ceil(navLinks.length / 2);
-  const linksTop = navLinks.slice(0, mid+1);
-  const linksBottom = navLinks.slice(mid+1);
+  // 2. Network & Mentorship Links
+  const networkLinks = [
+    isFeatureEnabled("enable_public_directory", true) && {
+      to: "/directory",
+      title: "Alumni Directory",
+      desc: "Search verified graduates, batchmates & faculty",
+      icon: <Users size={18} />
+    },
+    isFeatureEnabled("enable_public_mentorship", true) && {
+      to: "/mentorship",
+      title: "Mentorship Hub",
+      desc: "1-on-1 career guidance, resume reviews & mocks",
+      icon: <HeartHandshake size={18} />
+    },
+    isFeatureEnabled("enable_public_stories", true) && {
+      to: "/stories",
+      title: "Success Stories",
+      desc: "Inspiring career milestones of distinguished Akalites",
+      icon: <Sparkles size={18} />
+    }
+  ].filter(Boolean);
 
-  const renderLink = (link) => (
-    <li className="nav-item" key={link.to}>
-      <NavLink
-        to={link.to}
-        end={link.end}
-        title={link.title}
-        onClick={closeMobileMenu}
-        className={({ isActive }) => `nav-link px-2 akal-nav-link d-inline-flex align-items-center gap-1 ${isActive ? 'active-nav' : ''}`}
-      >
-        {link.Icon && (
-          <span
-            className="akal-nav-ico"
-            style={{ background: `linear-gradient(135deg, ${link.color || '#087BB5'}, ${link.color2 || '#0EA5E9'})` }}
-          >
-            <link.Icon size={13} strokeWidth={2.4} />
-          </span>
-        )}
-        <span className="text-nowrap">{link.label}</span>
-      </NavLink>
-    </li>
-  );
+  // 3. Events & Careers Links
+  const opportunitiesLinks = [
+    isFeatureEnabled("enable_public_events", true) && {
+      to: "/events",
+      title: "Events & Reunions",
+      desc: "Campus meets, annual reunions & webinars",
+      icon: <Calendar size={18} />
+    },
+    isFeatureEnabled("enable_public_jobs", true) && {
+      to: "/jobs",
+      title: "Career & Job Board",
+      desc: "Exclusive openings & internships for alumni",
+      icon: <Briefcase size={18} />
+    },
+    isFeatureEnabled("enable_public_gallery", true) && {
+      to: "/news-gallery",
+      title: "Campus News & Gallery",
+      desc: "Press releases, event photos & campus memories",
+      icon: <Newspaper size={18} />
+    }
+  ].filter(Boolean);
 
-  const showTopBanner = isFeatureEnabled('enable_top_banner', true);
-  const bannerBadge = getSetting('top_banner_badge', 'OFFICIAL PORTAL');
-  const bannerText = getSetting('top_banner_text', 'Akal University Alumni Network — Connecting Past, Inspiring Future');
-  const logoMain = getSetting('logo_text', 'AKAL UNIVERSITY');
-  const logoSub = getSetting('logo_subtext', 'Alumni Portal');
+  const isAboutActive = aboutLinks.some(l => location.pathname === l.to);
+  const isNetworkActive = networkLinks.some(l => location.pathname.startsWith(l.to));
+  const isOpportunitiesActive = opportunitiesLinks.some(l => location.pathname.startsWith(l.to));
 
   return (
     <>
-      {/* Top University Notification & Quick Demo Switcher Bar */}
-      {showTopBanner && (
-        <div className="akal-topbar text-white py-1 px-3 small">
-          <div className="container-fluid d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div className="d-flex align-items-center gap-2">
-              <span className="badge rounded-pill px-2 py-1 fw-bold" style={{ fontSize: '0.68rem', background: 'var(--grad-gold-foil)', color: '#172333' }}>{bannerBadge}</span>
-              <span className="d-none d-md-inline" style={{ color: 'rgba(255,255,255,0.85)' }}>{bannerText}</span>
-            </div>
-
-            {/* Quick Demo Switcher */}
-            <div ref={demoMenuRef} className="d-flex align-items-center gap-2 position-relative">
-              <span className="small d-none d-sm-inline" style={{ color: 'rgba(255,255,255,0.7)' }}>Quick Role Test:</span>
-              <button 
-                className="btn btn-sm py-0 px-2 d-flex align-items-center gap-1 text-nowrap fw-bold"
-                style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.12)', color: '#FFD75E', border: '1px solid rgba(255,215,94,0.5)' }}
-                onClick={() => setShowDemoMenu(!showDemoMenu)}
-              >
-                <Zap size={12} className="text-warning" />
-                {user ? `Active: ${user.role.toUpperCase()}` : 'Select Demo Account'}
-                <ChevronDown size={12} />
-              </button>
-
-              {showDemoMenu && (
-                <div 
-                  className="position-absolute end-0 top-100 mt-2 bg-white text-dark rounded-3 shadow-lg p-2 z-3"
-                  style={{ minWidth: '260px', border: '1px solid rgba(8, 123, 181, 0.2)' }}
-                >
-                  <div className="px-2 py-1 small fw-bold text-muted border-bottom mb-1">Select Persona to Test</div>
-                  {demoAccounts.map((acc) => (
-                    <button
-                      key={acc.email}
-                      className="w-100 text-start btn btn-sm btn-light mb-1 d-flex flex-column py-1 px-2 border-0"
-                      onClick={async () => {
-                        setShowDemoMenu(false);
-                        await quickDemoLogin(acc.email, acc.pass);
-                        if (acc.role === 'superadmin' || acc.role === 'admin') navigate('/admin/dashboard');
-                        else if (acc.role === 'alumni') navigate('/alumni/dashboard');
-                        else if (acc.role === 'student') navigate('/student/dashboard');
-                      }}
-                    >
-                      <span className="fw-bold text-primary">{acc.label}</span>
-                      <span className="small text-muted font-monospace" style={{ fontSize: '0.7rem' }}>{acc.email}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main Navbar — single row on desktop: brand | links | actions */}
-      <nav id="akal-main-navbar" className={`navbar navbar-expand-xl sticky-top py-1 akal-navbar${isScrolled ? ' akal-nav-scrolled' : ''}`}>
-        <div className="container-fluid px-lg-4">
-          {/* Brand Logo */}
-          <Link to="/" className="university-logo-container" aria-label="Akal University Alumni Portal — Home">
-            <div className="university-crest">
-              <span>AU</span>
-            </div>
+      <nav
+        id="akal-main-navbar"
+        className={`navbar navbar-expand-xl akal-navbar sticky-top ${isScrolled ? "shadow-sm" : ""}`}
+      >
+        <div className="container-fluid px-3 px-lg-4">
+          {/* Logo & University Title */}
+          <Link
+            to="/"
+            className="university-logo-container navbar-brand d-flex align-items-center gap-2 text-decoration-none py-1"
+            onClick={closeMobileMenu}
+          >
+            <img
+              className="university-logo-image"
+              src="/Akal%20Logo.png"
+              alt="Akal University Alumni Association"
+            />
             <div className="university-title-text">
-              <div className="university-title-main">{logoMain}</div>
-              <div className="university-title-sub">{logoSub}</div>
+              <div className="university-title-main">AKAL UNIVERSITY</div>
+              <div className="university-title-sub">Alumni Association</div>
             </div>
           </Link>
 
-          {/* Mobile toggle */}
-          <button 
-            className="navbar-toggler border-0 ms-auto" 
-            type="button" 
-            data-bs-toggle="collapse" 
+          {/* Mobile Toggler */}
+          <button
+            className="navbar-toggler border-0 p-2 text-white"
+            type="button"
+            data-bs-toggle="collapse"
             data-bs-target="#navbarContent"
             aria-controls="navbarContent"
             aria-expanded="false"
             aria-label="Toggle navigation"
           >
-            <span className="navbar-toggler-icon"></span>
+            <span className="navbar-toggler-icon" style={{ filter: "invert(1)" }}></span>
           </button>
 
-          {/* Navigation Links + Actions — collapsible on mobile, inline on desktop */}
+          {/* Navigation Links and Action Buttons */}
           <div className="collapse navbar-collapse" id="navbarContent">
-            {/* Mobile (<xl): single stacked list */}
-            <ul className="navbar-nav mx-auto mb-2 mb-xl-0 fw-semibold justify-content-center align-items-center d-xl-none">
-
-              <li className="nav-item d-xl-none">
-                <div className="d-flex gap-2 py-2">
-                  {!isAuthenticated ? (
-                    <>
-                      <Link to="/login" onClick={closeMobileMenu} className="btn btn-akal-outline btn-sm rounded-pill px-3 flex-fill text-center">
-                        <LogIn size={15} />
-                        <span>Login</span>
-                      </Link>
-                      <Link to="/register" onClick={closeMobileMenu} className="btn btn-akal-yellow btn-sm rounded-pill px-3 akal-join-btn flex-fill text-center">
-                        <span>Join Network</span>
-                      </Link>
-                    </>
-                  ) : (
-                    <button onClick={() => { closeMobileMenu(); handleLogout(); }} className="btn btn-outline-danger btn-sm rounded-pill px-3 flex-fill">
-                      <LogOut size={15} /> Logout ({user?.role})
-                    </button>
-                  )}
-                </div>
+            <ul className="navbar-nav me-auto mb-2 mb-xl-0 ms-xl-3 gap-1 align-items-xl-center">
+              {/* 1. Home Direct Link */}
+              <li className="nav-item">
+                <NavLink
+                  to="/"
+                  end
+                  className={({ isActive }) =>
+                    `akal-nav-link nav-link ${isActive ? "active-nav" : ""}`
+                  }
+                  onClick={closeMobileMenu}
+                >
+                  Home
+                </NavLink>
               </li>
-              {navLinks.map(renderLink)}
 
+              {/* 2. About AUAA Dropdown */}
+              {aboutLinks.length > 0 && (
+                <li className="nav-item dropdown akal-nav-dropdown">
+                  <button
+                    className={`akal-nav-link nav-link dropdown-toggle d-inline-flex align-items-center border-0 bg-transparent ${isAboutActive ? "has-dropdown-active" : ""}`}
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    type="button"
+                  >
+                    <span>About AUAA</span>
+                    <ChevronDown size={14} className="nav-chevron-icon ms-1" />
+                  </button>
+                  <ul className="dropdown-menu akal-nav-dropdown-menu shadow-lg">
+                    {aboutLinks.map((link) => {
+                      const isItemActive = location.pathname === link.to;
+                      return (
+                        <li key={link.to}>
+                          <Link
+                            to={link.to}
+                            className={`akal-nav-dropdown-item ${isItemActive ? "active-item" : ""}`}
+                            onClick={closeMobileMenu}
+                          >
+                            <div className="akal-nav-dropdown-icon">
+                              {link.icon}
+                            </div>
+                            <div>
+                              <div className="akal-nav-dropdown-title">{link.title}</div>
+                              <div className="akal-nav-dropdown-desc">{link.desc}</div>
+                            </div>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              )}
 
+              {/* 3. Network & Mentorship Dropdown */}
+              {networkLinks.length > 0 && (
+                <li className="nav-item dropdown akal-nav-dropdown">
+                  <button
+                    className={`akal-nav-link nav-link dropdown-toggle d-inline-flex align-items-center border-0 bg-transparent ${isNetworkActive ? "has-dropdown-active" : ""}`}
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    type="button"
+                  >
+                    <span>Network & Mentorship</span>
+                    <ChevronDown size={14} className="nav-chevron-icon ms-1" />
+                  </button>
+                  <ul className="dropdown-menu akal-nav-dropdown-menu shadow-lg">
+                    {networkLinks.map((link) => {
+                      const isItemActive = location.pathname.startsWith(link.to);
+                      return (
+                        <li key={link.to}>
+                          <Link
+                            to={link.to}
+                            className={`akal-nav-dropdown-item ${isItemActive ? "active-item" : ""}`}
+                            onClick={closeMobileMenu}
+                          >
+                            <div className="akal-nav-dropdown-icon">
+                              {link.icon}
+                            </div>
+                            <div>
+                              <div className="akal-nav-dropdown-title">{link.title}</div>
+                              <div className="akal-nav-dropdown-desc">{link.desc}</div>
+                            </div>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              )}
+
+              {/* 4. Events & Careers Dropdown */}
+              {opportunitiesLinks.length > 0 && (
+                <li className="nav-item dropdown akal-nav-dropdown">
+                  <button
+                    className={`akal-nav-link nav-link dropdown-toggle d-inline-flex align-items-center border-0 bg-transparent ${isOpportunitiesActive ? "has-dropdown-active" : ""}`}
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    type="button"
+                  >
+                    <span>Events & Careers</span>
+                    <ChevronDown size={14} className="nav-chevron-icon ms-1" />
+                  </button>
+                  <ul className="dropdown-menu akal-nav-dropdown-menu shadow-lg">
+                    {opportunitiesLinks.map((link) => {
+                      const isItemActive = location.pathname.startsWith(link.to);
+                      return (
+                        <li key={link.to}>
+                          <Link
+                            to={link.to}
+                            className={`akal-nav-dropdown-item ${isItemActive ? "active-item" : ""}`}
+                            onClick={closeMobileMenu}
+                          >
+                            <div className="akal-nav-dropdown-icon">
+                              {link.icon}
+                            </div>
+                            <div>
+                              <div className="akal-nav-dropdown-title">{link.title}</div>
+                              <div className="akal-nav-dropdown-desc">{link.desc}</div>
+                            </div>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              )}
+
+              {/* 5. Giving Back Direct Link */}
+              <li className="nav-item">
+                <NavLink
+                  to="/donations"
+                  className={({ isActive }) =>
+                    `akal-nav-link nav-link d-inline-flex align-items-center gap-1 ${isActive ? "active-nav" : ""}`
+                  }
+                  onClick={closeMobileMenu}
+                >
+                  <Heart size={14} style={{ fill: "var(--akal-yellow)", color: "var(--akal-yellow)" }} />
+                  <span>Giving Back</span>
+                </NavLink>
+              </li>
             </ul>
 
-            {/* Desktop (xl+): nav links in 2 rows — styled by .akal-nav-links-row */}
-            <div className="akal-nav-links-row d-none d-xl-flex">
-              <ul className="navbar-nav mb-0 fw-semibold justify-content-center align-items-center">
-                {linksTop.map(renderLink)}
-              </ul>
-              <ul className="navbar-nav mb-0 fw-semibold justify-content-center align-items-center">
-                {linksBottom.map(renderLink)}
-              </ul>
-            </div>
-
-            {/* Right Action / Auth Buttons */}
-            <div className="d-flex align-items-center gap-2 mt-2 mt-lg-0 flex-shrink-0 text-nowrap">
+            {/* Right Action Controls: User Chip or Login/Register */}
+            <div className="d-flex align-items-center gap-2 flex-nowrap ms-xl-auto mt-2 mt-xl-0">
               {isAuthenticated ? (
                 <div className="dropdown">
-                  <button 
-                    className="btn rounded-pill d-flex align-items-center gap-2 py-1 ps-1 pe-3 akal-user-chip"
-                    type="button" 
-                    data-bs-toggle="dropdown" 
+                  <div
+                    className="akal-user-chip d-flex align-items-center gap-2 rounded-3 px-3 py-1 text-decoration-none dropdown-toggle"
+                    role="button"
+                    data-bs-toggle="dropdown"
                     aria-expanded="false"
                   >
-                    <span className="akal-avatar-ring d-flex">
-                      <span className="akal-avatar-inner d-flex align-items-center justify-content-center">
-                        {profile?.profile_photo ? (
-                          <img src={profile.profile_photo} alt="DP" style={{ width: '32px', height: '32px', objectFit: 'cover' }} />
-                        ) : (
-                          <span className="text-white d-flex align-items-center justify-content-center fw-bold" style={{ width: '32px', height: '32px', fontSize: '13px', background: 'var(--grad-primary)' }}>
-                            {user.email[0].toUpperCase()}
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                    <div className="text-start d-none d-sm-block" style={{ lineHeight: 1.1 }}>
-                      <div className="fw-bold small user-chip-name">{profile?.first_name ? `${profile.first_name}` : user.email.split('@')[0]}</div>
-                      <div className="user-chip-role fw-bold" style={{ fontSize: '0.65rem' }}>{user.role.toUpperCase()}</div>
+                    <div className="akal-avatar-ring">
+                      <div className="akal-avatar-inner" style={{ width: 28, height: 28, backgroundColor: "var(--akal-blue)" }}>
+                        {user.first_name?.[0] || "U"}{user.last_name ? user.last_name[0] : ""}
+                      </div>
                     </div>
-                    <ChevronDown size={14} style={{ color: 'rgba(255,255,255,0.7)' }} />
-                  </button>
-
-                  <ul className="dropdown-menu dropdown-menu-end mt-2 p-2 rounded-3 akal-dropdown" style={{ minWidth: '220px' }}>
-                    <li className="px-3 py-2 border-bottom mb-1 rounded-2" style={{ background: 'var(--grad-hero)' }}>
-                      <div className="fw-bold small text-white">{profile?.first_name ? `${profile.first_name}${profile.last_name ? ` ${profile.last_name}` : ''}` : 'Authenticated User'}</div>
-                      <div className="small font-monospace" style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.75)' }}>{user.email}</div>
-                      <span className="badge rounded-pill mt-1 fw-bold" style={{ fontSize: '0.65rem', background: 'var(--grad-gold-foil)', color: '#172333' }}>
-                        {user.role.toUpperCase()}
-                      </span>
-                    </li>
-
-                    {/* Role Dashboard Link */}
+                    <div className="d-flex flex-column text-start">
+                      <div className="user-chip-name">{profile?.first_name ? `${profile.first_name}${profile.last_name ? ` ${profile.last_name}` : ""}` : (user.first_name || "User")}</div>
+                      <div className="user-chip-role">{(user.role || "").toUpperCase()}</div>
+                    </div>
+                  </div>
+                  <ul className="dropdown-menu dropdown-menu-end akal-dropdown p-2 mt-1 shadow-lg">
                     {isAlumni && (
                       <>
                         <li>
-                          <Link to="/alumni/dashboard" className="dropdown-item d-flex align-items-center gap-2 py-2">
-                            <User size={16} className="text-primary" />
+                          <Link to="/alumni/dashboard" className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={closeMobileMenu}>
+                            <User size={16} className="text-akal-blue" />
                             Alumni Dashboard
                           </Link>
                         </li>
                         <li>
-                          <button onClick={() => setShowIdModal(true)} className="dropdown-item d-flex align-items-center gap-2 py-2 text-warning-emphasis">
+                          <button onClick={() => { setShowIdModal(true); closeMobileMenu(); }} className="dropdown-item d-flex align-items-center gap-2 py-2 w-100 text-start">
                             <CreditCard size={16} className="text-warning" />
                             Digital Alumni ID
                           </button>
                         </li>
                       </>
                     )}
-
                     {isStudent && (
                       <li>
-                        <Link to="/student/dashboard" className="dropdown-item d-flex align-items-center gap-2 py-2">
-                          <GraduationCap size={16} className="text-primary" />
+                        <Link to="/student/dashboard" className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={closeMobileMenu}>
+                          <GraduationCap size={16} className="text-akal-blue" />
                           Student Dashboard
                         </Link>
                       </li>
                     )}
-
                     {isAdmin && (
                       <li>
-                        <Link to="/admin/dashboard" className="dropdown-item d-flex align-items-center gap-2 py-2">
-                          <ShieldCheck size={16} className="text-danger" />
-                          {isSuperAdmin ? 'Super Admin Console' : 'Admin Management'}
+                        <Link to="/admin/dashboard" className="dropdown-item d-flex align-items-center gap-2 py-2" onClick={closeMobileMenu}>
+                          <ShieldCheck size={16} className="text-akal-blue" />
+                          {isSuperAdmin ? "Super Admin Console" : "Admin Management"}
                         </Link>
                       </li>
                     )}
-
-                    <li><hr className="dropdown-divider" /></li>
+                    <li><hr className="dropdown-divider my-1" /></li>
                     <li>
-                      <button onClick={handleLogout} className="dropdown-item d-flex align-items-center gap-2 text-danger py-2">
+                      <button onClick={() => { handleLogout(); closeMobileMenu(); }} className="dropdown-item d-flex align-items-center gap-2 py-2 text-danger w-100 text-start">
                         <LogOut size={16} />
                         Logout
                       </button>
@@ -323,12 +363,13 @@ const Navbar = () => {
                   </ul>
                 </div>
               ) : (
-                <div className="d-none d-lg-flex align-items-center gap-2">
-                  <Link to="/login" className="btn btn-akal-outline btn-sm rounded-pill px-3 text-nowrap">
-                    <LogIn size={15} />
+                <div className="d-flex align-items-center gap-2 flex-nowrap">
+                  <Link to="/login" className="btn btn-akal-nav-outline btn-sm px-3 py-1" onClick={closeMobileMenu}>
+                    <LogIn size={14} />
                     <span>Login</span>
                   </Link>
-                  <Link to="/register" className="btn btn-akal-yellow btn-sm rounded-pill px-3 akal-join-btn text-nowrap">
+                  <Link to="/register" className="btn btn-akal-yellow btn-sm px-3 py-1" onClick={closeMobileMenu}>
+                    <UserPlus size={14} />
                     <span>Join Network</span>
                   </Link>
                 </div>
@@ -338,7 +379,6 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Digital ID Card Modal */}
       {showIdModal && (
         <DigitalIdModal onClose={() => setShowIdModal(false)} />
       )}

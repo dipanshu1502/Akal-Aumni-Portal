@@ -114,27 +114,151 @@ class PublicController extends BaseController
 
     /**
      * Public Events List
+     * Supports optional `filter` query parameter:
+     *   - upcoming: events whose start_datetime >= NOW
+     *   - past:     events whose start_datetime < NOW
      */
     public function getEvents()
     {
-        $events = $this->db->table('events')
+        $builder = $this->db->table('events')
+            ->select('events.*, (SELECT COUNT(*) FROM event_registrations WHERE event_registrations.event_id = events.id) AS registration_count', false)
             ->where('is_published', 1)
             ->where('deleted_at IS NULL')
-            ->orderBy('start_datetime', 'ASC')
-            ->get()->getResultArray();
+            ->orderBy('start_datetime', 'ASC');
+
+        $filter = $this->request->getGet('filter');
+        $department = trim((string) ($this->request->getGet('department') ?? ''));
+        if ($department !== '') {
+            $builder->where('department', $department);
+        }
+        $now = date('Y-m-d H:i:s');
+        if ($filter === 'upcoming') {
+            $builder->where('start_datetime >=', $now);
+        } elseif ($filter === 'past') {
+            $builder->where('start_datetime <', $now);
+        }
+
+        $events = $builder->get()->getResultArray();
 
         return $this->respondSuccess($events, 'Events retrieved');
     }
 
-    /**
-     * Public Jobs List
-     */
+    /** Register a visitor for a published event. */
+    public function registerForEvent($eventId)
+    {
+        if (!$this->db->tableExists('event_registrations')) {
+            return $this->respondError('Event registration storage is not available. Run the database migrations.', 500);
+        }
+
+        $event = $this->db->table('events')
+            ->where('id', (int) $eventId)
+            ->where('is_published', 1)
+            ->where('deleted_at IS NULL')
+            ->get()->getRowArray();
+        if (!$event) {
+            return $this->respondError('This event is not available for registration.', 404);
+        }
+
+        $json = $this->request->getJSON(true) ?? [];
+        $name = trim((string) ($json['attendee_name'] ?? ''));
+        $email = trim((string) ($json['attendee_email'] ?? ''));
+        $phone = trim((string) ($json['attendee_phone'] ?? ''));
+        $errors = [];
+        if ($name === '') $errors['attendee_name'] = 'Name is required';
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors['attendee_email'] = 'Enter a valid email address';
+        if ($errors) return $this->respondValidationError($errors);
+
+        if (!empty($event['registration_deadline']) && strtotime($event['registration_deadline']) < time()) {
+            return $this->respondError('Registration for this event has closed.', 400);
+        }
+        $duplicate = $this->db->table('event_registrations')
+            ->where('event_id', (int) $eventId)
+            ->where('attendee_email', $email)
+            ->countAllResults();
+        if ($duplicate > 0) {
+            return $this->respondError('This email is already registered for the event.', 409);
+        }
+
+        $capacity = (int) ($event['max_capacity'] ?? 0);
+        if ($capacity > 0) {
+            $registrationTotals = $this->db->table('event_registrations')
+                ->selectSum('tickets_count', 'total')
+                ->where('event_id', (int) $eventId)
+                ->get()->getRowArray();
+            $registeredCount = (int) ($registrationTotals['total'] ?? 0);
+            if ($registeredCount >= $capacity) {
+                return $this->respondError('This event has reached its registration capacity.', 409);
+            }
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $saved = $this->db->table('event_registrations')->insert([
+            'event_id' => (int) $eventId,
+            'user_id' => null,
+            'attendee_name' => $name,
+            'attendee_email' => $email,
+            'attendee_phone' => $phone !== '' ? $phone : null,
+            'tickets_count' => 1,
+            'checkin_status' => 0,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        if (!$saved) {
+            return $this->respondError('Registration could not be saved. Please try again.', 500);
+        }
+        $registrationId = (int) $this->db->insertID();
+        if ($registrationId <= 0) {
+            return $this->respondError('Registration could not be confirmed in the database. Please try again.', 500);
+        }
+
+        return $this->respondSuccess([
+            'id' => $registrationId,
+            'registration_count' => $this->db->table('event_registrations')->where('event_id', (int) $eventId)->countAllResults(),
+        ], 'Event registration successful');
+    }
+
+    /** Persist a signed-in alumni or student's application for an approved job. */
+    public function applyForJob($jobId)
+    {
+        $authUser = $this->request->authUser ?? [];
+        $userId = (int) ($authUser['id'] ?? 0);
+        if (!in_array($authUser['role'] ?? '', ['alumni', 'student'], true) || !$userId) {
+            return $this->respondError('Only signed-in alumni and students can apply for jobs.', 403);
+        }
+
+        $job = $this->db->table('jobs')->select('id, status, deadline, posted_by_user_id')
+            ->where('id', (int) $jobId)->where('deleted_at IS NULL', null, false)->get()->getRowArray();
+        if (!$job || $job['status'] !== 'approved' || (!empty($job['deadline']) && $job['deadline'] < date('Y-m-d'))) {
+            return $this->respondError('This job is not accepting applications.', 404);
+        }
+        if ((int) ($job['posted_by_user_id'] ?? 0) === $userId) {
+            return $this->respondError('You cannot apply to your own job posting.', 400);
+        }
+        if ($this->db->table('job_applications')->where('job_id', (int) $jobId)->where('user_id', $userId)->countAllResults() > 0) {
+            return $this->respondError('You have already applied for this job.', 409);
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $saved = $this->db->table('job_applications')->insert([
+            'job_id' => (int) $jobId,
+            'user_id' => $userId,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        if (!$saved) {
+            return $this->respondError('Application could not be saved. Please try again.', 500);
+        }
+        return $this->respondSuccess(['id' => $this->db->insertID()], 'Job application submitted successfully');
+    }
+
+    /** Public Jobs List */
     public function getJobs()
     {
         $jobs = $this->db->table('jobs')
-            ->where('status', 'approved')
+            ->select('jobs.*, (SELECT COUNT(*) FROM job_applications WHERE job_applications.job_id = jobs.id) AS application_count', false)
+            ->where('jobs.status', 'approved')
             ->where('deleted_at IS NULL')
-            ->orderBy('created_at', 'DESC')
+            ->orderBy('jobs.created_at', 'DESC')
             ->get()->getResultArray();
 
         return $this->respondSuccess($jobs, 'Jobs retrieved');

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
-import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
-import { X, Download, ShieldCheck, CheckCircle2, Award, Calendar, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { QRCodeSVG } from "qrcode.react";
+import { useAuth } from "../../context/AuthContext";
+import api from "../../services/api";
+import { X, Download, ShieldCheck, Sparkles, Award } from "lucide-react";
 
 const DigitalIdModal = ({ onClose }) => {
   const { user, profile } = useAuth();
@@ -12,12 +12,12 @@ const DigitalIdModal = ({ onClose }) => {
   useEffect(() => {
     const fetchCard = async () => {
       try {
-        const res = await api.get('/alumni/id-card');
+        const res = await api.get("/alumni/id-card");
         if (res.status && res.data) {
           setCardData(res.data);
         }
       } catch (err) {
-        console.error('Failed to load card:', err);
+        console.error("Failed to load card:", err);
       } finally {
         setLoading(false);
       }
@@ -27,23 +27,24 @@ const DigitalIdModal = ({ onClose }) => {
   }, []);
 
   const card = cardData?.card || {
-    card_number: 'AU-AID-2020-0010',
-    issue_date: '2024-01-15',
-    expiry_date: '2029-01-15',
+    card_number: "AU-AID-2020-0010",
+    issue_date: "2024-01-15",
+    expiry_date: "2029-01-15",
   };
 
-  const alumniName = profile?.first_name 
-    ? `${profile.first_name} ${profile.last_name || ''}` 
-    : 'Harpreet Singh';
+  const alumniName = profile?.first_name
+    ? `${profile.first_name} ${profile.last_name || ""}`
+    : "Alumni Member";
 
-  const degree = profile?.degree || 'B.Tech in Computer Science & Engineering';
-  const batch = profile?.batch_year || '2016-2020';
+  const degree = profile?.degree || "Graduate Program";
+  const department = profile?.department || "Akal University";
+  const batch = profile?.batch_year || "Alumni";
   const photoSrc = profile?.profile_photo || null;
   const alumniId = profile?.alumni_id || card.card_number;
-  const auid = profile?.auid || '';
+  const auid = profile?.auid || "";
 
-  // QR scan -> public profile page par le jaye: /alumni/AUAAxxxxxxxxxx
-  let profileUrl = '';
+  // QR scan -> public profile page
+  let profileUrl = "";
   try {
     if (cardData?.card?.qr_payload) {
       const parsed = JSON.parse(cardData.card.qr_payload);
@@ -55,17 +56,16 @@ const DigitalIdModal = ({ onClose }) => {
   }
 
   return (
-    <div className="modal show d-block" style={{ backgroundColor: 'rgba(13, 22, 34, 0.75)', backdropFilter: 'blur(8px)', zIndex: 1050 }}>
-      <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '480px' }}>
-        <div className="modal-content border-0 rounded-4 shadow-lg overflow-hidden" style={{ backgroundColor: '#0D1622' }}>
-          
+    <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ backgroundColor: "rgba(23, 35, 51, 0.7)", backdropFilter: "blur(6px)", zIndex: 1060 }}>
+      <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: "480px" }}>
+        <div className="modal-content border-0 shadow-lg" style={{ borderRadius: "16px", overflow: "hidden", backgroundColor: "var(--akal-navy)" }}>
           {/* Header */}
           <div className="d-flex justify-content-between align-items-center px-4 py-3 border-bottom border-secondary border-opacity-25 text-white">
             <div className="d-flex align-items-center gap-2">
               <Sparkles size={18} className="text-warning" />
-              <span className="fw-bold">Digital Alumni ID Pass</span>
+              <span className="fw-bold text-white">Verified Digital Alumni ID Pass</span>
             </div>
-            <button onClick={onClose} className="btn btn-sm btn-outline-light rounded-circle p-1 d-flex">
+            <button onClick={onClose} className="btn btn-sm btn-outline-light rounded-circle p-1" style={{ width: 32, height: 32 }}>
               <X size={16} />
             </button>
           </div>
@@ -76,83 +76,80 @@ const DigitalIdModal = ({ onClose }) => {
               {/* Gold Foil Strip */}
               <div className="id-card-foil-strip"></div>
 
-              {/* Card Top Row */}
-              <div className="d-flex justify-content-between align-items-start mb-3 pt-2">
+              {/* Card Top Row: University Crest & Header */}
+              <div className="d-flex justify-content-between align-items-center mb-3 pt-2">
                 <div className="d-flex align-items-center gap-2">
-                  <div className="university-crest" style={{ width: '38px', height: '38px', fontSize: '16px' }}>
+                  <div className="university-crest" style={{ width: "36px", height: "36px", fontSize: "15px" }}>
                     AU
                   </div>
                   <div>
-                    <div className="fw-bold small" style={{ letterSpacing: '0.04em', color: '#FFFFFF' }}>AKAL UNIVERSITY</div>
-                    <div className="text-uppercase fw-bold" style={{ fontSize: '0.62rem', letterSpacing: '0.08em', color: '#FFD75E' }}>Official Alumni Card</div>
+                    <div className="fw-bold text-white small" style={{ letterSpacing: "0.04em" }}>AKAL UNIVERSITY</div>
+                    <div className="text-warning small text-uppercase" style={{ fontSize: "0.65rem", letterSpacing: "0.1em" }}>Alumni Association</div>
                   </div>
                 </div>
-
-                <span className="badge rounded-pill px-2 py-1 small d-flex align-items-center gap-1 fw-bold" style={{ fontSize: '0.68rem', backgroundColor: 'rgba(25,135,84,0.9)', color: '#FFFFFF', border: '1px solid #FFD75E' }}>
-                  <ShieldCheck size={12} />
-                  VERIFIED
-                </span>
+                <div className="badge-akal-distinguished py-1 px-2" style={{ fontSize: "0.65rem" }}>
+                  <ShieldCheck size={12} className="me-1" /> VERIFIED
+                </div>
               </div>
 
-              {/* Main Card Content */}
+              {/* Card Middle: Photo, Info, and QR Code */}
               <div className="row g-3 align-items-center my-1">
-                <div className="col-4 text-center">
+                <div className="col-auto">
                   {photoSrc ? (
-                    <img src={photoSrc} alt={alumniName}
-                      className="rounded-3 border border-warning border-opacity-50"
-                      style={{ width: '104px', height: '124px', objectFit: 'cover' }} />
+                    <img 
+                      src={photoSrc} 
+                      alt={alumniName} 
+                      className="rounded-3 shadow-sm object-fit-cover" 
+                      style={{ width: "68px", height: "68px", border: "2px solid var(--akal-yellow)" }} 
+                    />
                   ) : (
-                    <div className="rounded-3 bg-white bg-opacity-10 d-flex align-items-center justify-content-center fw-bold text-white mx-auto"
-                      style={{ width: '104px', height: '124px', fontSize: '30px' }}>
-                      {alumniName.split(' ').map((w) => w[0]).slice(0, 2).join('')}
+                    <div 
+                      className="rounded-3 d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+                      style={{ width: "68px", height: "68px", fontSize: "24px", background: "var(--akal-blue)", border: "2px solid var(--akal-yellow)" }}
+                    >
+                      {alumniName[0]}
                     </div>
                   )}
-                  <div className="fw-bold mt-1" style={{ fontSize: '0.6rem', letterSpacing: '0.06em', color: '#9FB3C8' }}>ALUMNI PHOTO</div>
                 </div>
-                <div className="col-6">
-                  <div className="text-uppercase fw-bold mb-1" style={{ fontSize: '0.62rem', letterSpacing: '0.08em', color: '#9FB3C8' }}>Alumni Name</div>
-                  <h5 className="fw-bold mb-2" style={{ color: '#FFFFFF' }}>{alumniName}</h5>
 
-                  <div className="text-uppercase fw-bold mb-1" style={{ fontSize: '0.62rem', letterSpacing: '0.08em', color: '#9FB3C8' }}>Program & Batch</div>
-                  <div className="small fw-semibold mb-1" style={{ fontSize: '0.8rem', color: '#FFD75E' }}>{degree}</div>
-                  <div className="d-flex flex-wrap gap-1">
-                    <div className="badge rounded-pill px-2 py-1 fw-bold small" style={{ fontSize: '0.68rem', backgroundColor: '#0B5FFF', color: '#FFFFFF' }}>
-                      Batch {batch}
-                    </div>
+                <div className="col">
+                  <h5 className="fw-bold mb-1 text-white" style={{ fontSize: "1.05rem" }}>{alumniName}</h5>
+                  <div className="text-warning small fw-semibold text-truncate mb-1">{degree}</div>
+                  <div className="small text-white-50">{department} • Batch {batch}</div>
+                  <div className="font-monospace small text-white-50 mt-1" style={{ fontSize: "0.72rem" }}>
+                    {alumniId}{auid ? ` • AUID ${auid}` : ""}
                   </div>
-                  <div className="font-monospace fw-bold small mt-2" style={{ fontSize: '0.72rem', color: '#FFD75E' }}>{alumniId}{auid ? ` • AUID ${auid}` : ''}</div>
                 </div>
 
-                {/* QR Code Container */}
-                <div className="col-2 text-center">
+                <div className="col-auto text-center">
                   <div className="p-1 bg-white rounded-3 d-inline-block shadow-sm">
-                    <QRCodeSVG 
-                      value={profileUrl} 
-                      size={56} 
-                      bgColor="#FFFFFF" 
-                      fgColor="#087BB5" 
-                      level="M" 
+                    <QRCodeSVG
+                      value={profileUrl}
+                      size={60}
+                      bgColor="#FFFFFF"
+                      fgColor="#172333"
+                      level="M"
                     />
                   </div>
-                  <div className="fw-bold mt-1" style={{ fontSize: '0.58rem', letterSpacing: '0.05em', color: '#9FB3C8' }}>SCAN TO VIEW PROFILE</div>
+                  <div className="text-white-50 mt-1" style={{ fontSize: "0.58rem", letterSpacing: "0.05em" }}>SCAN PROFILE</div>
                 </div>
               </div>
 
               {/* Card Bottom Meta */}
-              <div className="d-flex justify-content-between align-items-center pt-3 mt-2 small" style={{ borderTop: '1px solid rgba(255,255,255,0.18)' }}>
+              <div className="d-flex justify-content-between align-items-center pt-3 mt-3 border-top border-secondary border-opacity-25 small">
                 <div>
-                  <div className="fw-bold" style={{ fontSize: '0.62rem', letterSpacing: '0.06em', color: '#9FB3C8' }}>CARD ID</div>
-                  <div className="font-monospace fw-bold small" style={{ color: '#FFD75E' }}>{card.card_number}</div>
+                  <div className="text-white-50" style={{ fontSize: "0.62rem", letterSpacing: "0.06em" }}>CARD NUMBER</div>
+                  <div className="font-monospace fw-bold text-warning">{card.card_number}</div>
                 </div>
                 <div className="text-end">
-                  <div className="fw-bold" style={{ fontSize: '0.62rem', letterSpacing: '0.06em', color: '#9FB3C8' }}>VALIDITY</div>
-                  <div className="small fw-semibold" style={{ color: '#FFFFFF' }}>Official Lifetime</div>
+                  <div className="text-white-50" style={{ fontSize: "0.62rem", letterSpacing: "0.06em" }}>STATUS</div>
+                  <div className="text-white fw-semibold">Official Lifetime Member</div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-3 small" style={{ color: 'rgba(255,255,255,0.85)' }}>
-              This digital alumni identity is recognized for university library, campus access, reunions, and global chapter voting rights.
+            <div className="mt-3 small text-white-50">
+              Recognized for university campus access, alumni reunions, library privileges, and global chapter voting rights.
             </div>
           </div>
 

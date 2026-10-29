@@ -88,45 +88,43 @@ const AboutPage = () => {
   const cardTitle = getSetting('university_name', 'Akal University');
 
   return (
-    <div className="about-page">
+    <div className="about-page bg-white min-vh-100">
 
       {/* HERO */}
-      <section className="py-5 position-relative text-white overflow-hidden" style={{ background: 'linear-gradient(135deg, #075985 0%, #087BB5 50%, #172333 100%)' }}>
-        <div className="position-absolute rounded-circle opacity-10" style={{ width: '520px', height: '520px', background: 'var(--akal-yellow)', top: '-180px', right: '-100px', filter: 'blur(80px)' }} />
-        <div className="position-absolute rounded-circle opacity-15" style={{ width: '380px', height: '380px', background: 'var(--akal-blue-light)', bottom: '-140px', left: '-60px', filter: 'blur(70px)' }} />
+      <section className="py-5 position-relative text-white overflow-hidden" style={{ backgroundColor: 'var(--akal-navy)', borderBottom: '3px solid var(--akal-yellow)' }}>
         <div className="container position-relative z-1 py-3">
           <div className="row align-items-center g-4">
             <div className="col-lg-7">
               <div className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-warning bg-opacity-20 border border-warning border-opacity-40 text-warning small fw-bold mb-3">
                 <Sparkles size={14} /><span>{heroBadge}</span>
               </div>
-              <h1 className="display-5 fw-extrabold text-white mb-3">{heroTitle}</h1>
-              <p className="lead text-light text-opacity-90 mb-4" style={{ fontSize: '1.08rem', maxWidth: '640px' }}>
+              <h1 className="display-5 fw-bold text-white mb-3">{heroTitle}</h1>
+              <p className="lead text-white-50 mb-4" style={{ fontSize: '1.08rem', maxWidth: '640px' }}>
                 {heroSubtitle}
               </p>
               <div className="d-flex flex-wrap gap-3">
                 <Link to="/register" className="btn btn-akal-yellow px-4 py-2">{btnJoin} <ArrowRight size={17} /></Link>
                 <Link to="/auaa" className="btn btn-akal-outline-white px-4 py-2">{btnAuaa} <ExternalLink size={16} /></Link>
               </div>
-              <div className="d-flex align-items-center gap-4 mt-4 pt-3 border-top border-white border-opacity-15 small text-light text-opacity-75 flex-wrap">
+              <div className="d-flex align-items-center gap-4 mt-4 pt-3 border-top border-white border-opacity-15 small text-white-50 flex-wrap">
                 <span className="d-flex align-items-center gap-2"><ShieldCheck size={17} className="text-warning" /> {trust1}</span>
                 <span className="d-flex align-items-center gap-2"><Award size={17} className="text-warning" /> {trust2}</span>
                 <span className="d-flex align-items-center gap-2"><Globe size={17} className="text-warning" /> {trust3}</span>
               </div>
             </div>
             <div className="col-lg-5">
-              <div className="akal-card-glass p-4 rounded-4 text-dark shadow-lg">
+              <div className="akal-card p-4 bg-white text-dark shadow-sm border-akal-border-grey">
                 <div className="d-flex align-items-center gap-2 mb-3">
                   <div className="university-crest" style={{ width: '38px', height: '38px', fontSize: '15px' }}>AU</div>
-                  <div><h6 className="mb-0 fw-bold">{cardTitle}</h6><span className="text-muted small" style={{ fontSize: '0.72rem' }}>{campusShort}</span></div>
+                  <div><h6 className="mb-0 fw-bold text-akal-navy">{cardTitle}</h6><span className="text-akal-muted small" style={{ fontSize: '0.72rem' }}>{campusShort}</span></div>
                 </div>
                 <div className="row g-2 text-center">
                   {facts.map((f) => (
                     <div key={f.title} className="col-6">
-                      <div className="p-2 border rounded-3 bg-white h-100">
-                        <f.icon size={20} className="text-primary mb-1" />
-                        <div className="fw-bold text-dark small">{f.value}</div>
-                        <div className="text-muted" style={{ fontSize: '0.68rem' }}>{f.title} - {f.note}</div>
+                      <div className="p-2 border border-akal-border-grey rounded-3 bg-white h-100">
+                        <f.icon size={20} className="text-akal-blue mb-1" />
+                        <div className="fw-bold text-akal-navy small">{f.value}</div>
+                        <div className="text-akal-muted" style={{ fontSize: '0.68rem' }}>{f.title} - {f.note}</div>
                       </div>
                     </div>
                   ))}
@@ -140,18 +138,18 @@ const AboutPage = () => {
       <div className="container py-5">
         <div className="row g-4">
           <div className="col-lg-8">
-            <div className="akal-card p-4 p-lg-5 h-100">
-              <div className="d-flex align-items-center gap-2 text-primary small fw-bold text-uppercase mb-3">
+            <div className="akal-card p-4 p-lg-5 h-100 bg-white border-akal-border-grey">
+              <div className="d-flex align-items-center gap-2 text-akal-blue small fw-bold text-uppercase mb-3">
                 <BookOpen size={16} /><span>{overviewLabel}</span>
               </div>
-              <div style={{ lineHeight: 1.85, color: '#2b3a4a', fontSize: '1.02rem' }} dangerouslySetInnerHTML={{ __html: aboutContent }} />
+              <div style={{ lineHeight: 1.85, color: 'var(--akal-text-primary)', fontSize: '1.02rem' }} dangerouslySetInnerHTML={{ __html: aboutContent }} />
             </div>
           </div>
           <div className="col-lg-4">
-            <div className="akal-card-dark p-4 d-flex flex-column gap-3 position-sticky" style={{ top: '90px' }}>
+            <div className="akal-card p-4 d-flex flex-column gap-3 position-sticky border-akal-border-grey" style={{ top: '90px', backgroundColor: 'var(--akal-navy)', color: '#FFFFFF' }}>
               <span className="badge bg-warning text-dark fw-bold px-3 py-1 rounded-pill align-self-start">{sideBadge}</span>
               <h4 className="fw-bold text-white mb-0">{sideTitle}</h4>
-              <p className="text-light text-opacity-75 small mb-1">{sideDesc}</p>
+              <p className="text-white-50 small mb-1">{sideDesc}</p>
               <div className="d-flex flex-column gap-2 mt-1">
                 <Link to="/directory" className="btn btn-akal-yellow w-100 justify-content-center">{btnDirectory} <ArrowRight size={16} /></Link>
                 <Link to="/stories" className="btn btn-akal-outline-white w-100 justify-content-center">{btnStories}</Link>
@@ -163,21 +161,21 @@ const AboutPage = () => {
         <div className="row g-4 mt-2">
           {values.map((v) => (
             <div key={v.title} className="col-md-4">
-              <div className="akal-card p-4 h-100">
+              <div className="akal-card p-4 h-100 bg-white border-akal-border-grey">
                 <div className="rounded-3 d-inline-flex align-items-center justify-content-center mb-3" style={{ width: '48px', height: '48px', background: 'var(--akal-blue-soft)', color: 'var(--akal-blue)' }}>
                   <v.icon size={22} />
                 </div>
-                <h5 className="fw-bold text-dark mb-2">{v.title}</h5>
-                <p className="text-muted small mb-0" style={{ lineHeight: 1.7 }}>{v.desc}</p>
+                <h5 className="fw-bold text-akal-navy mb-2">{v.title}</h5>
+                <p className="text-akal-secondary small mb-0" style={{ lineHeight: 1.7 }}>{v.desc}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <section className="py-4 mt-4 px-4 px-lg-5 rounded-4 text-white text-center position-relative overflow-hidden" style={{ background: 'var(--grad-primary)' }}>
-          <div className="university-crest mx-auto mb-3" style={{ width: '54px', height: '54px', fontSize: '22px' }}>AU</div>
+        <section className="py-4 mt-5 px-4 px-lg-5 rounded-4 text-white text-center position-relative overflow-hidden" style={{ backgroundColor: 'var(--akal-navy)', borderTop: '3px solid var(--akal-yellow)' }}>
+          <div className="university-crest mx-auto mb-3" style={{ width: '52px', height: '52px', fontSize: '20px' }}>AU</div>
           <h2 className="fw-bold text-white mb-2">{ctaTitle}</h2>
-          <p className="text-light text-opacity-85 mx-auto mb-4" style={{ maxWidth: '620px' }}>{ctaDesc}</p>
+          <p className="text-white-50 mx-auto mb-4" style={{ maxWidth: '620px' }}>{ctaDesc}</p>
           <div className="d-flex justify-content-center flex-wrap gap-3">
             <Link to="/register" className="btn btn-akal-yellow px-4 py-2">{btnJoin} <ArrowRight size={16} /></Link>
             <Link to="/directory" className="btn btn-akal-outline-white px-4 py-2">{btnDirectory}</Link>

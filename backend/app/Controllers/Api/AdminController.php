@@ -16,18 +16,94 @@ class AdminController extends BaseController
         $this->db = \Config\Database::connect();
     }
 
+    /** Return null for Super Admin, otherwise the admin's assigned department. */
+    private function getDepartmentScope(array $authUser): ?string
+    {
+        if (($authUser['role'] ?? '') === 'superadmin') {
+            return null;
+        }
+        $profile = $this->db->table('admin_profiles')
+            ->select('department')
+            ->where('user_id', (int) ($authUser['id'] ?? 0))
+            ->get()->getRowArray();
+        return trim((string) ($profile['department'] ?? ''));
+    }
+
+    private function departmentAdminPermissions($input): array
+    {
+        $permissions = is_array($input)
+            ? \App\Filters\PermissionFilter::sanitize($input)
+            : \App\Filters\PermissionFilter::normalize($input);
+        $departmentPermissions = \App\Filters\PermissionFilter::DEPARTMENT_ADMIN_PERMISSIONS;
+        return array_intersect_key($permissions, array_flip($departmentPermissions));
+    }
+
+    private function isAllowedAdminDepartment(string $department): bool
+    {
+        return in_array($department, \App\Libraries\DepartmentCatalog::ALL, true);
+    }
+
+    private function canAccessDepartmentUser(array $authUser, int $userId): bool
+    {
+        if (($authUser['role'] ?? '') === 'superadmin') {
+            return true;
+        }
+        $department = $this->getDepartmentScope($authUser);
+        if ($department === '') {
+            return false;
+        }
+        $target = $this->db->table('users')
+            ->select('users.role, alumni_profiles.department as alumni_department, student_profiles.department as student_department')
+            ->join('alumni_profiles', 'alumni_profiles.user_id = users.id', 'left')
+            ->join('student_profiles', 'student_profiles.user_id = users.id', 'left')
+            ->where('users.id', $userId)->get()->getRowArray();
+        if (!$target) {
+            return false;
+        }
+        if (($target['role'] ?? '') === 'alumni') {
+            return trim((string) ($target['alumni_department'] ?? '')) === $department;
+        }
+        if (($target['role'] ?? '') === 'student') {
+            return trim((string) ($target['student_department'] ?? '')) === $department;
+        }
+        return false;
+    }
+
     /**
      * Admin & Super Admin KPI Dashboard Metrics
      */
     public function getDashboard()
     {
-        $totalAlumni = $this->db->table('users')->where('role', 'alumni')->countAllResults();
-        $pendingVerifications = $this->db->table('users')->where('role', 'alumni')->where('verification_status', 'pending')->countAllResults();
-        $verifiedAlumni = $this->db->table('users')->where('role', 'alumni')->where('verification_status', 'verified')->countAllResults();
-        $totalStudents = $this->db->table('users')->where('role', 'student')->countAllResults();
-        $totalEvents = $this->db->table('events')->where('is_published', 1)->countAllResults();
-        $totalJobs = $this->db->table('jobs')->where('status', 'approved')->countAllResults();
-        $totalMentors = $this->db->table('alumni_profiles')->where('is_mentor', 1)->countAllResults();
+        $authUser = $this->request->authUser ?? [];
+        $department = $this->getDepartmentScope($authUser);
+        if (($authUser['role'] ?? '') === 'superadmin') {
+            $department = trim((string) ($this->request->getGet('department') ?? '')) ?: null;
+        }
+        if ($department === '') {
+            return $this->respondError('Your admin account needs a department assignment. Contact Super Admin.', 403);
+        }
+
+        $alumniCount = $this->db->table('alumni_profiles')->join('users', 'users.id = alumni_profiles.user_id')->where('users.role', 'alumni');
+        $pendingCount = $this->db->table('alumni_profiles')->join('users', 'users.id = alumni_profiles.user_id')->where('users.role', 'alumni')->where('users.verification_status', 'pending');
+        $verifiedCount = $this->db->table('alumni_profiles')->join('users', 'users.id = alumni_profiles.user_id')->where('users.role', 'alumni')->where('users.verification_status', 'verified');
+        $studentCount = $this->db->table('student_profiles')->join('users', 'users.id = student_profiles.user_id')->where('users.role', 'student');
+        $mentorCount = $this->db->table('alumni_profiles')->join('users', 'users.id = alumni_profiles.user_id')->where('users.role', 'alumni')->where('alumni_profiles.is_mentor', 1);
+        if ($department !== null) {
+            $alumniCount->where('alumni_profiles.department', $department);
+            $pendingCount->where('alumni_profiles.department', $department);
+            $verifiedCount->where('alumni_profiles.department', $department);
+            $studentCount->where('student_profiles.department', $department);
+            $mentorCount->where('alumni_profiles.department', $department);
+        }
+        $totalAlumni = $alumniCount->countAllResults();
+        $pendingVerifications = $pendingCount->countAllResults();
+        $verifiedAlumni = $verifiedCount->countAllResults();
+        $totalStudents = $studentCount->countAllResults();
+        $totalMentors = $mentorCount->countAllResults();
+        $eventCount = $this->db->table('events')->where('is_published', 1);
+        if ($department !== null) $eventCount->where('department', $department);
+        $totalEvents = $eventCount->countAllResults();
+        $totalJobs = $department === null ? $this->db->table('jobs')->where('status', 'approved')->countAllResults() : 0;
 
         // Recent Registrations
         $recentUsers = $this->db->table('users')
@@ -35,23 +111,66 @@ class AdminController extends BaseController
             ->join('alumni_profiles', 'alumni_profiles.user_id = users.id', 'left')
             ->join('student_profiles', 'student_profiles.user_id = users.id', 'left')
             ->orderBy('users.created_at', 'DESC')
-            ->limit(10)
-            ->get()->getResultArray();
+            ->limit(10);
+        if ($department !== null) {
+            $recentUsers->groupStart()->where('alumni_profiles.department', $department)->orWhere('student_profiles.department', $department)->groupEnd();
+        }
+        $recentUsers = $recentUsers->get()->getResultArray();
 
         // Department breakdown for chart
         $deptDistribution = $this->db->table('alumni_profiles')
             ->select('department, COUNT(*) as count')
             ->where('department IS NOT NULL')
-            ->groupBy('department')
-            ->get()->getResultArray();
+            ->groupBy('department');
+        if ($department !== null) $deptDistribution->where('department', $department);
+        $deptDistribution = $deptDistribution->get()->getResultArray();
 
         // Batch breakdown for chart
         $batchDistribution = $this->db->table('alumni_profiles')
             ->select('batch_year, COUNT(*) as count')
             ->where('batch_year IS NOT NULL')
             ->groupBy('batch_year')
-            ->orderBy('batch_year', 'ASC')
-            ->get()->getResultArray();
+            ->orderBy('batch_year', 'ASC');
+        if ($department !== null) $batchDistribution->where('department', $department);
+        $batchDistribution = $batchDistribution->get()->getResultArray();
+
+        $departments = [];
+        $departmentComparison = [];
+        if (($authUser['role'] ?? '') === 'superadmin') {
+            $actualDepartmentRows = $this->db->table('alumni_profiles')
+                ->select('department')->distinct()->where('department IS NOT NULL', null, false)->where('department !=', '')->get()->getResultArray();
+            $actualStudentDepartmentRows = $this->db->table('student_profiles')
+                ->select('department')->distinct()->where('department IS NOT NULL', null, false)->where('department !=', '')->get()->getResultArray();
+            $actualDepartments = array_merge(
+                array_column($actualDepartmentRows, 'department'),
+                array_column($actualStudentDepartmentRows, 'department')
+            );
+            $departments = array_values(array_unique(array_merge(\App\Libraries\DepartmentCatalog::ALL, $actualDepartments)));
+            foreach ($departments as $departmentName) {
+                $departmentComparison[] = [
+                    'department' => $departmentName,
+                    'alumni' => $this->db->table('alumni_profiles')->join('users', 'users.id = alumni_profiles.user_id')
+                        ->where('users.role', 'alumni')->where('alumni_profiles.department', $departmentName)->countAllResults(),
+                    'students' => $this->db->table('student_profiles')->join('users', 'users.id = student_profiles.user_id')
+                        ->where('users.role', 'student')->where('student_profiles.department', $departmentName)->countAllResults(),
+                    'mentors' => $this->db->table('alumni_profiles')->join('users', 'users.id = alumni_profiles.user_id')
+                        ->where('users.role', 'alumni')->where('alumni_profiles.department', $departmentName)->where('alumni_profiles.is_mentor', 1)->countAllResults(),
+                    'verified' => $this->db->table('alumni_profiles')->join('users', 'users.id = alumni_profiles.user_id')
+                        ->where('users.role', 'alumni')->where('alumni_profiles.department', $departmentName)->where('users.verification_status', 'verified')->countAllResults(),
+                    'pending' => $this->db->table('alumni_profiles')->join('users', 'users.id = alumni_profiles.user_id')
+                        ->where('users.role', 'alumni')->where('alumni_profiles.department', $departmentName)->where('users.verification_status', 'pending')->countAllResults(),
+                    'higher_studies' => $this->db->table('alumni_profiles')->join('users', 'users.id = alumni_profiles.user_id')
+                        ->where('users.role', 'alumni')->where('alumni_profiles.department', $departmentName)->where('alumni_profiles.current_status', 'higher_study')->countAllResults(),
+                    'government_jobs' => $this->db->table('alumni_profiles')->join('users', 'users.id = alumni_profiles.user_id')
+                        ->where('users.role', 'alumni')->where('alumni_profiles.department', $departmentName)->where('alumni_profiles.current_status', 'job')->where('alumni_profiles.job_type', 'government')->countAllResults(),
+                    'private_jobs' => $this->db->table('alumni_profiles')->join('users', 'users.id = alumni_profiles.user_id')
+                        ->where('users.role', 'alumni')->where('alumni_profiles.department', $departmentName)->where('alumni_profiles.current_status', 'job')->where('alumni_profiles.job_type', 'private')->countAllResults(),
+                    'distinguished' => $this->db->table('alumni_profiles')->join('users', 'users.id = alumni_profiles.user_id')
+                        ->where('users.role', 'alumni')->where('alumni_profiles.department', $departmentName)->where('alumni_profiles.is_distinguished', 1)->countAllResults(),
+                    'events' => $this->db->table('events')->where('department', $departmentName)->where('is_published', 1)->countAllResults(),
+                ];
+            }
+        }
 
         return $this->respondSuccess([
             'metrics' => [
@@ -66,7 +185,112 @@ class AdminController extends BaseController
             'recent_users'       => $recentUsers,
             'dept_distribution'  => $deptDistribution,
             'batch_distribution' => $batchDistribution,
+            'department'         => $department,
+            'departments'        => $departments,
+            'department_comparison' => $departmentComparison,
         ], 'Dashboard metrics retrieved');
+    }
+
+    /** Super Admin oversight of mentorship requests, optionally filtered by the mentee's department. */
+    public function getMentorshipRequests()
+    {
+        $authUser = $this->request->authUser ?? [];
+        if (($authUser['role'] ?? '') !== 'superadmin') {
+            return $this->respondError('Only Super Admin can view university-wide mentorship requests.', 403);
+        }
+
+        $department = trim((string) ($this->request->getGet('department') ?? ''));
+        if ($department !== '' && !$this->isAllowedAdminDepartment($department)) {
+            return $this->respondValidationError(['department' => 'Select a department from the approved department list']);
+        }
+
+        $builder = $this->db->table('mentorship_programs')
+            ->select('mentorship_programs.id, mentorship_programs.topic, mentorship_programs.message, mentorship_programs.notes,
+                mentorship_programs.status, mentorship_programs.requested_at, mentorship_programs.accepted_at, mentorship_programs.completed_at,
+                student_profiles.user_id AS student_user_id, student_profiles.first_name AS student_first_name,
+                student_profiles.last_name AS student_last_name, student_profiles.phone AS student_phone,
+                student_profiles.enrollment_no, student_profiles.department AS student_department, student_profiles.degree,
+                student_profiles.current_year, student_profiles.semester, student_users.email AS student_email,
+                alumni_profiles.user_id AS mentor_user_id, alumni_profiles.first_name AS mentor_first_name,
+                alumni_profiles.last_name AS mentor_last_name, alumni_profiles.phone AS mentor_phone,
+                alumni_profiles.auid AS mentor_auid, alumni_profiles.alumni_id, alumni_profiles.department AS mentor_department,
+                alumni_profiles.current_company, alumni_profiles.current_designation, mentor_users.email AS mentor_email')
+            ->join('student_profiles', 'student_profiles.user_id = mentorship_programs.mentee_user_id')
+            ->join('users AS student_users', 'student_users.id = mentorship_programs.mentee_user_id')
+            ->join('alumni_profiles', 'alumni_profiles.user_id = mentorship_programs.mentor_user_id')
+            ->join('users AS mentor_users', 'mentor_users.id = mentorship_programs.mentor_user_id')
+            ->orderBy('mentorship_programs.requested_at', 'DESC');
+        if ($department !== '') {
+            $builder->where('student_profiles.department', $department);
+        }
+        $requests = $builder->get()->getResultArray();
+
+        return $this->respondSuccess($requests, 'Mentorship requests retrieved');
+    }
+
+    /** Super Admin list of all alumni, including mentors with zero mentees. */
+    public function getAlumniMentorRoster()
+    {
+        $authUser = $this->request->authUser ?? [];
+        if (($authUser['role'] ?? '') !== 'superadmin') {
+            return $this->respondError('Only Super Admin can view the university-wide alumni mentor roster.', 403);
+        }
+        $department = trim((string) ($this->request->getGet('department') ?? ''));
+        if ($department !== '' && !$this->isAllowedAdminDepartment($department)) {
+            return $this->respondValidationError(['department' => 'Select a department from the approved department list']);
+        }
+
+        $builder = $this->db->table('alumni_profiles')
+            ->select("alumni_profiles.user_id, alumni_profiles.auid, alumni_profiles.alumni_id, alumni_profiles.first_name,
+                alumni_profiles.last_name, alumni_profiles.phone, alumni_profiles.department, alumni_profiles.degree,
+                alumni_profiles.batch_year, alumni_profiles.graduation_year, alumni_profiles.is_mentor,
+                alumni_profiles.current_company, alumni_profiles.current_designation, users.email, users.status AS account_status,
+                users.verification_status,
+                (SELECT COUNT(*) FROM mentorship_programs
+                    WHERE mentorship_programs.mentor_user_id = alumni_profiles.user_id
+                    AND mentorship_programs.status IN ('requested', 'accepted', 'completed')) AS student_count", false)
+            ->join('users', 'users.id = alumni_profiles.user_id')
+            ->where('users.role', 'alumni')
+            ->orderBy('student_count', 'DESC')
+            ->orderBy('alumni_profiles.first_name', 'ASC');
+        if ($department !== '') {
+            $builder->where('alumni_profiles.department', $department);
+        }
+        return $this->respondSuccess($builder->get()->getResultArray(), 'Alumni mentor roster retrieved');
+    }
+
+    /** Click-through detail list for one alumni mentor. */
+    public function getMentorStudents($mentorUserId)
+    {
+        $authUser = $this->request->authUser ?? [];
+        if (($authUser['role'] ?? '') !== 'superadmin') {
+            return $this->respondError('Only Super Admin can view university-wide mentor details.', 403);
+        }
+        $mentor = $this->db->table('alumni_profiles')
+            ->select('alumni_profiles.user_id, alumni_profiles.auid, alumni_profiles.alumni_id, alumni_profiles.first_name,
+                alumni_profiles.last_name, alumni_profiles.department, alumni_profiles.phone, alumni_profiles.current_company,
+                alumni_profiles.current_designation, users.email')
+            ->join('users', 'users.id = alumni_profiles.user_id')
+            ->where('users.role', 'alumni')->where('alumni_profiles.user_id', (int) $mentorUserId)
+            ->get()->getRowArray();
+        if (!$mentor) return $this->respondError('Alumni mentor not found.', 404);
+
+        $students = $this->db->table('mentorship_programs')
+            ->select('mentorship_programs.id AS request_id, mentorship_programs.topic, mentorship_programs.message,
+                mentorship_programs.status, mentorship_programs.requested_at, mentorship_programs.accepted_at,
+                mentorship_programs.completed_at, student_profiles.user_id AS student_user_id,
+                student_profiles.first_name AS student_first_name, student_profiles.last_name AS student_last_name,
+                student_profiles.enrollment_no, student_profiles.phone AS student_phone,
+                student_profiles.department AS student_department, student_profiles.degree,
+                student_profiles.current_year, student_profiles.semester, student_users.email AS student_email')
+            ->join('student_profiles', 'student_profiles.user_id = mentorship_programs.mentee_user_id')
+            ->join('users AS student_users', 'student_users.id = mentorship_programs.mentee_user_id')
+            ->where('mentorship_programs.mentor_user_id', (int) $mentorUserId)
+            ->whereIn('mentorship_programs.status', ['requested', 'accepted', 'completed'])
+            ->orderBy('mentorship_programs.requested_at', 'DESC')
+            ->get()->getResultArray();
+
+        return $this->respondSuccess(['mentor' => $mentor, 'students' => $students], 'Mentor students retrieved');
     }
 
     /**
@@ -74,10 +298,18 @@ class AdminController extends BaseController
      */
     public function getPendingVerifications()
     {
+        $authUser = $this->request->authUser ?? [];
+        $department = $this->getDepartmentScope($authUser);
+        if (($authUser['role'] ?? '') === 'superadmin') {
+            $department = trim((string) ($this->request->getGet('department') ?? '')) ?: null;
+        }
+        if ($department === '') {
+            return $this->respondError('Your admin account needs a department assignment. Contact Super Admin.', 403);
+        }
         // NOTE: select explicit columns — `alumni_profiles.*` must NOT be selected together
         // with `users.id` (both are named `id`, the profile id would overwrite the user id
         // and Approve/Reject would then act on the WRONG account).
-        $queue = $this->db->table('users')
+        $builder = $this->db->table('users')
             ->select('users.id, users.email, users.role, users.verification_status, users.created_at,
                       alumni_profiles.first_name, alumni_profiles.last_name, alumni_profiles.auid,
                       alumni_profiles.alumni_id, alumni_profiles.phone, alumni_profiles.degree,
@@ -85,9 +317,11 @@ class AdminController extends BaseController
                       alumni_profiles.current_company, alumni_profiles.current_designation,
                       alumni_profiles.profile_photo, alumni_profiles.admin_notes')
             ->join('alumni_profiles', 'alumni_profiles.user_id = users.id')
+            ->where('users.role', 'alumni')
             ->where('users.verification_status', 'pending')
-            ->orderBy('users.created_at', 'ASC')
-            ->get()->getResultArray();
+            ->orderBy('users.created_at', 'ASC');
+        if ($department !== null) $builder->where('alumni_profiles.department', $department);
+        $queue = $builder->get()->getResultArray();
 
         return $this->respondSuccess($queue, 'Pending verifications retrieved');
     }
@@ -97,7 +331,14 @@ class AdminController extends BaseController
      */
     public function approveVerification($userId)
     {
-        $authUser = $this->request->authUser;
+        $authUser = $this->request->authUser ?? [];
+        $targetRole = $this->db->table('users')->select('role')->where('id', $userId)->get()->getRowArray()['role'] ?? null;
+        if ($targetRole !== 'alumni') {
+            return $this->respondError('Only alumni accounts can be verified.', 400);
+        }
+        if (!$this->canAccessDepartmentUser($authUser, (int) $userId)) {
+            return $this->respondError('This alumni account is outside your assigned department.', 403);
+        }
 
         $this->db->table('users')
             ->where('id', $userId)
@@ -186,7 +427,14 @@ class AdminController extends BaseController
      */
     public function rejectVerification($userId)
     {
-        $authUser = $this->request->authUser;
+        $authUser = $this->request->authUser ?? [];
+        $targetRole = $this->db->table('users')->select('role')->where('id', $userId)->get()->getRowArray()['role'] ?? null;
+        if ($targetRole !== 'alumni') {
+            return $this->respondError('Only alumni accounts can be rejected from this queue.', 400);
+        }
+        if (!$this->canAccessDepartmentUser($authUser, (int) $userId)) {
+            return $this->respondError('This alumni account is outside your assigned department.', 403);
+        }
         $json = $this->request->getJSON(true);
         $reason = $json['reason'] ?? 'Provided graduation or enrollment details could not be matched.';
 
@@ -232,6 +480,13 @@ class AdminController extends BaseController
         $authUser = $this->request->authUser ?? null;
         $actorRole = $authUser['role'] ?? '';
         $perms = ($actorRole === 'admin') ? \App\Filters\PermissionFilter::getPermissionsForUser((int) ($authUser['id'] ?? 0)) : [];
+        $department = $this->getDepartmentScope($authUser ?? []);
+        if ($actorRole === 'superadmin') {
+            $department = trim((string) ($this->request->getGet('department') ?? '')) ?: null;
+        }
+        if ($department === '') {
+            return $this->respondError('Your admin account needs a department assignment. Contact Super Admin.', 403);
+        }
 
         $role = $this->request->getGet('role');
         $status = $this->request->getGet('status');
@@ -244,6 +499,13 @@ class AdminController extends BaseController
                       alumni_profiles.degree as a_degree, alumni_profiles.department as a_department,
                       alumni_profiles.batch_year as a_batch, alumni_profiles.phone as a_phone,
                       alumni_profiles.current_company as a_company, alumni_profiles.current_designation as a_designation,
+                      alumni_profiles.graduation_year as a_graduation_year, alumni_profiles.industry as a_industry,
+                      alumni_profiles.location_city as a_city, alumni_profiles.location_country as a_country,
+                      alumni_profiles.is_mentor as a_is_mentor, alumni_profiles.is_distinguished as a_is_distinguished,
+                      alumni_profiles.distinguished_title as a_distinguished_title,
+                      alumni_profiles.current_status as a_current_status, alumni_profiles.job_type as a_job_type,
+                      alumni_profiles.study_institution as a_study_institution, alumni_profiles.study_course as a_study_course,
+                      alumni_profiles.study_location as a_study_location,
                       alumni_profiles.admin_notes as a_admin_notes,
                       student_profiles.first_name as s_fname, student_profiles.last_name as s_lname,
                       student_profiles.enrollment_no as s_enrollment, student_profiles.degree as s_degree,
@@ -276,6 +538,14 @@ class AdminController extends BaseController
             }
         } elseif (!empty($role)) {
             $builder->where('users.role', $role);
+        }
+
+        if ($department !== null) {
+            $builder->groupStart()
+                ->where('alumni_profiles.department', $department)
+                ->orWhere('student_profiles.department', $department)
+                ->groupEnd();
+            $builder->whereIn('users.role', ['alumni', 'student']);
         }
 
         if (!empty($status) && in_array($status, ['active', 'pending', 'rejected', 'suspended'], true)) {
@@ -331,6 +601,10 @@ class AdminController extends BaseController
         unset($user['password_hash'], $user['remember_token']);
 
         $role = $user['role'] ?? '';
+
+        if ($actorRole === 'admin' && !$this->canAccessDepartmentUser($authUser, (int) $userId)) {
+            return $this->respondError('This account is outside your assigned department.', 403);
+        }
 
         // Role-based permission check for admins without manage_users:
         if ($actorRole === 'admin') {
@@ -402,11 +676,16 @@ class AdminController extends BaseController
     {
         $json = $this->request->getJSON(true);
         $id = $json['id'] ?? null;
+        $eventDepartment = trim((string) ($json['department'] ?? ''));
+        if ($eventDepartment !== '' && !$this->isAllowedAdminDepartment($eventDepartment)) {
+            return $this->respondValidationError(['department' => 'Select a department from the approved department list']);
+        }
 
         $data = [
             'title'                 => $json['title'],
             'slug'                  => url_title($json['title'], '-', true) . '-' . rand(100, 999),
             'event_type'            => $json['event_type'] ?? 'general',
+            'department'            => $eventDepartment !== '' ? $eventDepartment : null,
             'description'           => $json['description'] ?? '',
             'venue'                 => $json['venue'] ?? '',
             'is_virtual'            => !empty($json['is_virtual']) ? 1 : 0,
@@ -438,6 +717,57 @@ class AdminController extends BaseController
     {
         $this->db->table('events')->where('id', $id)->delete();
         return $this->respondSuccess([], 'Event deleted');
+    }
+
+    /** List registrations only for an event in the caller's permitted scope. */
+    public function getEventRegistrations($eventId)
+    {
+        $authUser = $this->request->authUser ?? [];
+        $event = $this->db->table('events')
+            ->select('id, title, department')
+            ->where('id', (int) $eventId)
+            ->get()->getRowArray();
+        if (!$event) {
+            return $this->respondError('Event not found.', 404);
+        }
+
+        if (($authUser['role'] ?? '') !== 'superadmin') {
+            $department = $this->getDepartmentScope($authUser);
+            if ($department === '' || $event['department'] !== $department) {
+                return $this->respondError('You can only view registrations for events in your department.', 403);
+            }
+        }
+
+        $registrations = $this->db->table('event_registrations')
+            ->select('event_registrations.id, event_registrations.attendee_name, event_registrations.attendee_email,
+                event_registrations.attendee_phone, event_registrations.created_at, users.id as matched_user_id,
+                users.role as registrant_role, alumni_profiles.auid, alumni_profiles.alumni_id,
+                alumni_profiles.phone as alumni_phone, student_profiles.enrollment_no,
+                student_profiles.phone as student_phone')
+            ->join('users', 'users.id = event_registrations.user_id OR users.email = event_registrations.attendee_email', 'left', false)
+            ->join('alumni_profiles', 'alumni_profiles.user_id = users.id', 'left')
+            ->join('student_profiles', 'student_profiles.user_id = users.id', 'left')
+            ->where('event_registrations.event_id', (int) $eventId)
+            ->orderBy('event_registrations.created_at', 'DESC')
+            ->get()->getResultArray();
+        $registrations = array_map(static function (array $registration): array {
+            $role = $registration['registrant_role'] ?? '';
+            return [
+                'id' => $registration['id'],
+                'uid' => $registration['auid'] ?: ($registration['alumni_id'] ?: ($registration['enrollment_no'] ?: ($registration['matched_user_id'] ?? ''))),
+                'name' => $registration['attendee_name'],
+                'contact_number' => $registration['attendee_phone'] ?: ($registration['alumni_phone'] ?: ($registration['student_phone'] ?? '')),
+                'member_type' => in_array($role, ['alumni', 'student'], true) ? ucfirst($role) : 'Guest',
+                'email' => $registration['attendee_email'],
+                'registered_at' => $registration['created_at'],
+            ];
+        }, $registrations);
+
+        return $this->respondSuccess([
+            'event' => $event,
+            'registrations' => $registrations,
+            'registration_count' => count($registrations),
+        ], 'Event registrations retrieved');
     }
 
     /**
@@ -592,6 +922,9 @@ class AdminController extends BaseController
         if (!$target) {
             return $this->respondError('User not found', 404);
         }
+        if ($newRole === 'admin' && !in_array($target['role'], ['admin', 'superadmin'], true)) {
+            return $this->respondError('Create department admins through Admins & Permissions and assign a department.', 400);
+        }
         if ((int) $userId === (int) ($authUser['id'] ?? 0) && $target['role'] === 'superadmin' && $newRole !== 'superadmin') {
             return $this->respondError('You cannot remove your own Super Admin access', 403);
         }
@@ -649,6 +982,9 @@ class AdminController extends BaseController
         if ($actorRole === 'superadmin') {
             // full access
         } elseif ($actorRole === 'admin') {
+            if (!$this->canAccessDepartmentUser($authUser, (int) $userId)) {
+                return $this->respondError('This account is outside your assigned department.', 403);
+            }
             $perms = \App\Filters\PermissionFilter::getPermissionsForUser((int) $authUser['id']);
             $targetRole = $target['role'] ?? '';
 
@@ -697,7 +1033,8 @@ class AdminController extends BaseController
         if (!$authUser || ($authUser['role'] ?? '') !== 'superadmin') {
             return $this->respondError('Forbidden: only Super Admin can view permissions', 403);
         }
-        return $this->respondSuccess(\App\Filters\PermissionFilter::AVAILABLE, 'Permissions catalogue');
+        $departmentPermissions = ['verify_alumni', 'manage_alumni', 'manage_students', 'manage_users', 'view_reports', 'manage_jobs'];
+        return $this->respondSuccess(array_intersect_key(\App\Filters\PermissionFilter::AVAILABLE, array_flip($departmentPermissions)), 'Department admin permissions catalogue');
     }
 
     /**
@@ -718,7 +1055,7 @@ class AdminController extends BaseController
         foreach ($rows as &$r) {
             $raw = $r['permissions'] ?? null;
             unset($r['permissions']);
-            $r['permissions'] = ($r['role'] === 'superadmin') ? ['all' => true] : \App\Filters\PermissionFilter::normalize($raw ?? '');
+            $r['permissions'] = ($r['role'] === 'superadmin') ? ['all' => true] : $this->departmentAdminPermissions($raw ?? '');
         }
         unset($r);
         return $this->respondSuccess($rows, 'Admins retrieved');
@@ -737,6 +1074,7 @@ class AdminController extends BaseController
         $email = strtolower(trim($json['email'] ?? ''));
         $password = $json['password'] ?? '';
         $fullName = trim($json['full_name'] ?? '');
+        $department = mb_substr(trim((string) ($json['department'] ?? '')), 0, 100);
         $errors = [];
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $errors['email'] = 'A valid email address is required';
@@ -747,6 +1085,11 @@ class AdminController extends BaseController
         if ($fullName === '') {
             $errors['full_name'] = 'Full name is required';
         }
+        if ($department === '') {
+            $errors['department'] = 'A department assignment is required for every admin';
+        } elseif (!$this->isAllowedAdminDepartment($department)) {
+            $errors['department'] = 'Select a department from the approved department list';
+        }
         if (!empty($errors)) {
             return $this->respondValidationError($errors);
         }
@@ -754,7 +1097,7 @@ class AdminController extends BaseController
         if ($exists) {
             return $this->respondError('An account with this email already exists', 409);
         }
-        $permissions = \App\Filters\PermissionFilter::sanitize($json['permissions'] ?? []);
+        $permissions = $this->departmentAdminPermissions($json['permissions'] ?? []);
         $now = date('Y-m-d H:i:s');
         $this->db->table('users')->insert([
             'email' => $email, 'password_hash' => password_hash($password, PASSWORD_BCRYPT),
@@ -765,7 +1108,7 @@ class AdminController extends BaseController
         $desig = isset($json['designation']) ? trim((string) $json['designation']) : '';
         $this->db->table('admin_profiles')->insert([
             'user_id' => $newId, 'full_name' => mb_substr($fullName, 0, 150),
-            'department' => isset($json['department']) ? mb_substr(trim((string) $json['department']), 0, 100) : null,
+            'department' => $department,
             'designation' => $desig !== '' ? mb_substr($desig, 0, 100) : 'Alumni Admin',
             'phone' => isset($json['phone']) ? mb_substr(trim((string) $json['phone']), 0, 30) : null,
             'permissions' => json_encode($permissions),
@@ -797,7 +1140,7 @@ class AdminController extends BaseController
             return $this->respondError('Permissions can only be edited for admin accounts', 400);
         }
         $json = $this->request->getJSON(true) ?? [];
-        $permissions = \App\Filters\PermissionFilter::sanitize($json['permissions'] ?? []);
+        $permissions = $this->departmentAdminPermissions($json['permissions'] ?? []);
         $profileData = ['updated_at' => date('Y-m-d H:i:s'), 'permissions' => json_encode($permissions)];
         if (isset($json['full_name']) && trim((string) $json['full_name']) !== '') {
             $profileData['full_name'] = mb_substr(trim((string) $json['full_name']), 0, 150);
@@ -808,7 +1151,13 @@ class AdminController extends BaseController
         }
         if (array_key_exists('department', $json)) {
             $d = mb_substr(trim((string) $json['department']), 0, 100);
-            $profileData['department'] = $d !== '' ? $d : null;
+            if ($d === '') {
+                return $this->respondValidationError(['department' => 'Admin department cannot be blank']);
+            }
+            if (!$this->isAllowedAdminDepartment($d)) {
+                return $this->respondValidationError(['department' => 'Select a department from the approved department list']);
+            }
+            $profileData['department'] = $d;
         }
         if (array_key_exists('phone', $json)) {
             $d = mb_substr(trim((string) $json['phone']), 0, 30);
@@ -1016,14 +1365,79 @@ class AdminController extends BaseController
      */
     public function getJobs()
     {
-        $jobs = $this->db->table('jobs')->orderBy('id', 'DESC')->get()->getResultArray();
+        $authUser = $this->request->authUser ?? [];
+        $builder = $this->db->table('jobs')
+            ->select('jobs.*, (SELECT COUNT(*) FROM job_applications WHERE job_applications.job_id = jobs.id) AS application_count', false)
+            ->orderBy('jobs.id', 'DESC');
+        if (($authUser['role'] ?? '') !== 'superadmin') {
+            $department = $this->getDepartmentScope($authUser);
+            if ($department === '') {
+                return $this->respondError('Your admin account needs a department assignment.', 403);
+            }
+            $builder->where('department', $department);
+        }
+        $jobs = $builder->get()->getResultArray();
         return $this->respondSuccess($jobs, 'Jobs retrieved');
+    }
+
+    /** Admins see applicants for jobs in their department; Super Admin sees any job. */
+    public function getJobApplications($jobId)
+    {
+        $authUser = $this->request->authUser ?? [];
+        $job = $this->db->table('jobs')->select('id, title, company_name, department, status, posted_by_user_id')
+            ->where('id', (int) $jobId)->where('deleted_at IS NULL', null, false)->get()->getRowArray();
+        if (!$job) return $this->respondError('Job posting not found.', 404);
+
+        if (($authUser['role'] ?? '') !== 'superadmin') {
+            $department = $this->getDepartmentScope($authUser);
+            if ($department === '' || ($job['department'] ?? '') !== $department) {
+                return $this->respondError('You can only view applicants for jobs in your department.', 403);
+            }
+        }
+
+        $applicants = $this->db->table('job_applications')
+            ->select("job_applications.id, job_applications.created_at AS applied_at, users.id AS user_id, users.email, users.role,
+                COALESCE(NULLIF(CONCAT(alumni_profiles.first_name, ' ', alumni_profiles.last_name), ' '), NULLIF(CONCAT(student_profiles.first_name, ' ', student_profiles.last_name), ' '), users.email) AS name,
+                COALESCE(alumni_profiles.phone, student_profiles.phone) AS contact_number,
+                CASE WHEN users.role = 'alumni' THEN COALESCE(alumni_profiles.auid, alumni_profiles.alumni_id) ELSE student_profiles.enrollment_no END AS uid", false)
+            ->join('users', 'users.id = job_applications.user_id')
+            ->join('alumni_profiles', 'alumni_profiles.user_id = users.id', 'left')
+            ->join('student_profiles', 'student_profiles.user_id = users.id', 'left')
+            ->where('job_applications.job_id', (int) $jobId)
+            ->orderBy('job_applications.created_at', 'ASC')
+            ->get()->getResultArray();
+        $applicants = array_map(static function (array $row): array {
+            $row['member_type'] = ucfirst((string) $row['role']);
+            return $row;
+        }, $applicants);
+
+        return $this->respondSuccess(['job' => $job, 'applicants' => $applicants], 'Job applicants retrieved');
     }
 
     public function saveJob()
     {
-        $json = $this->request->getJSON(true);
+        $authUser = $this->request->authUser ?? [];
+        $json = $this->request->getJSON(true) ?? [];
         $id = $json['id'] ?? null;
+        $isSuperAdmin = ($authUser['role'] ?? '') === 'superadmin';
+        $department = $isSuperAdmin ? trim((string) ($json['department'] ?? '')) : $this->getDepartmentScope($authUser);
+        if (!$isSuperAdmin && $department === '') {
+            return $this->respondError('Your admin account needs a department assignment.', 403);
+        }
+        if ($isSuperAdmin && $department !== '' && !$this->isAllowedAdminDepartment($department)) {
+            return $this->respondValidationError(['department' => 'Select a department from the approved department list']);
+        }
+        if ($id) {
+            $existingJob = $this->db->table('jobs')->where('id', (int) $id)->get()->getRowArray();
+            if (!$existingJob) return $this->respondError('Job opportunity not found.', 404);
+            if (!$isSuperAdmin && ($existingJob['department'] ?? '') !== $department) {
+                return $this->respondError('You can only manage jobs from your assigned department.', 403);
+            }
+        }
+        $status = $json['status'] ?? 'approved';
+        if (!in_array($status, ['pending', 'approved', 'closed', 'rejected'], true)) {
+            return $this->respondValidationError(['status' => 'Invalid job status']);
+        }
 
         $data = [
             'title'               => $json['title'] ?? '',
@@ -1037,7 +1451,8 @@ class AdminController extends BaseController
             'apply_link'          => $json['apply_link'] ?? '',
             'contact_email'       => $json['contact_email'] ?? '',
             'deadline'            => !empty($json['deadline']) ? $json['deadline'] : null,
-            'status'              => $json['status'] ?? 'approved',
+            'department'          => $department !== '' ? $department : null,
+            'status'              => $status,
             'updated_at'          => date('Y-m-d H:i:s'),
         ];
 
@@ -1054,6 +1469,14 @@ class AdminController extends BaseController
 
     public function deleteJob($id)
     {
+        $authUser = $this->request->authUser ?? [];
+        if (($authUser['role'] ?? '') !== 'superadmin') {
+            $department = $this->getDepartmentScope($authUser);
+            $job = $this->db->table('jobs')->select('department')->where('id', (int) $id)->get()->getRowArray();
+            if ($department === '' || !$job || ($job['department'] ?? '') !== $department) {
+                return $this->respondError('You can only manage jobs from your assigned department.', 403);
+            }
+        }
         $this->db->table('jobs')->where('id', $id)->delete();
         return $this->respondSuccess([], 'Job deleted');
     }

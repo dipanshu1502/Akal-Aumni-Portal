@@ -2,16 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { UserPlus, ShieldCheck, GraduationCap, AlertCircle, CheckCircle2, Plus, Trash2, BookOpen, Camera, Briefcase, Building2, Landmark, Clock, LogIn } from 'lucide-react';
-
-const DEPARTMENTS = [
-  'Computer Science & Engineering',
-  'Mathematics & Computing',
-  'Botany & Biotechnology',
-  'Physics',
-  'Chemistry',
-  'Commerce & Management',
-  'Psychology & Humanities',
-];
+import { DEPARTMENTS } from '../../constants/departments';
 
 const EDUCATION_LEVELS = [
   { value: 'UG', label: "UG — Undergraduate (Bachelor's)" },
@@ -88,6 +79,8 @@ const RegisterPage = () => {
   const [skills, setSkills] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [isMentor, setIsMentor] = useState(false);
+  // Date of birth (stored in alumni_profiles)
+  const [dateOfBirth, setDateOfBirth] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -272,6 +265,8 @@ const RegisterPage = () => {
       skills,
       linkedin_url: linkedinUrl,
       is_mentor: isMentor ? 1 : 0,
+      // Date of birth -> saved in alumni_profiles
+      date_of_birth: dateOfBirth || undefined,
       // Every degree/programme (UG, PG, PhD, ...) done at Akal University
       educations: educations.map((edu) => ({
         education_level: edu.education_level,
@@ -842,6 +837,22 @@ const RegisterPage = () => {
 
                     {/* Contact & profile fields — saved in alumni_profiles table */}
                     <div className="border rounded-3 p-3 mb-3">
+                    {/* Date of birth -> saved in alumni_profiles */}
+                    <div className="border rounded-3 p-3 mb-3 bg-light">
+                      <div className="row g-3 align-items-end">
+                        <div className="col-md-4">
+                          <label className="form-label small fw-bold">Date of Birth</label>
+                          <input
+                            type="date"
+                            className="form-control"
+                            value={dateOfBirth}
+                            onChange={(e) => setDateOfBirth(e.target.value)}
+                          />
+                          <div className="form-text">Optional. Stored in your alumni profile.</div>
+                        </div>
+                      </div>
+                    </div>
+
                       <div className="fw-bold small mb-2">Contact & Profile Details</div>
                       <div className="row g-3">
                         <div className="col-md-4">

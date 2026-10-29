@@ -155,7 +155,7 @@ class AkalAlumniPortalSeeder extends Seeder
                 'email' => 'harpreet.tech@gmail.com',
                 'name' => ['Harpreet', 'Singh'],
                 'degree' => 'B.Tech in Computer Science & Engineering',
-                'department' => 'Computer Science & Engineering',
+                'department' => 'CSE',
                 'batch' => '2016-2020',
                 'grad_year' => 2020,
                 'company' => 'Google Cloud',
@@ -170,14 +170,14 @@ class AkalAlumniPortalSeeder extends Seeder
                 'bio' => 'Passionate about distributed computing and large-scale cloud applications. Mentoring students for software development careers.',
                 'skills' => 'Kubernetes, Go, GCP, Distributed Systems, Python, Microservices',
                 'educations' => [
-                    ['level' => 'UG', 'degree' => 'B.Tech in Computer Science & Engineering', 'department' => 'Computer Science & Engineering', 'specialization' => 'Cloud Computing', 'enrollment_no' => 'AU-2016-0042', 'start' => 2016, 'end' => 2020, 'status' => 'completed', 'grade' => '8.7 CGPA'],
+                    ['level' => 'UG', 'degree' => 'B.Tech in Computer Science & Engineering', 'department' => 'CSE', 'specialization' => 'Cloud Computing', 'enrollment_no' => 'AU-2016-0042', 'start' => 2016, 'end' => 2020, 'status' => 'completed', 'grade' => '8.7 CGPA'],
                 ]
             ],
             [
                 'email' => 'aman.kaur.data@outlook.com',
                 'name' => ['Amanpreet', 'Kaur'],
                 'degree' => 'M.Sc. Data Science & Mathematics',
-                'department' => 'Mathematics & Computing',
+                'department' => 'Mathematics',
                 'batch' => '2018-2020',
                 'grad_year' => 2020,
                 'company' => 'Microsoft',
@@ -192,15 +192,15 @@ class AkalAlumniPortalSeeder extends Seeder
                 'bio' => 'Working at the frontier of Generative AI and multilingual language modeling. Proud alumna of Akal University.',
                 'skills' => 'PyTorch, LLMs, Transformer Models, Python, Computer Vision, MLOps',
                 'educations' => [
-                    ['level' => 'UG', 'degree' => 'B.Sc. Mathematics', 'department' => 'Mathematics & Computing', 'enrollment_no' => 'AU-2015-0117', 'start' => 2015, 'end' => 2018, 'status' => 'completed', 'grade' => '8.9 CGPA'],
-                    ['level' => 'PG', 'degree' => 'M.Sc. Data Science & Mathematics', 'department' => 'Mathematics & Computing', 'specialization' => 'Data Science', 'enrollment_no' => 'AU-2018-0117', 'start' => 2018, 'end' => 2020, 'status' => 'completed', 'grade' => '9.1 CGPA'],
+                    ['level' => 'UG', 'degree' => 'B.Sc. Mathematics', 'department' => 'Mathematics', 'enrollment_no' => 'AU-2015-0117', 'start' => 2015, 'end' => 2018, 'status' => 'completed', 'grade' => '8.9 CGPA'],
+                    ['level' => 'PG', 'degree' => 'M.Sc. Data Science & Mathematics', 'department' => 'Mathematics', 'specialization' => 'Data Science', 'enrollment_no' => 'AU-2018-0117', 'start' => 2018, 'end' => 2020, 'status' => 'completed', 'grade' => '9.1 CGPA'],
                 ]
             ],
             [
                 'email' => 'jasleen.biotech@gmail.com',
                 'name' => ['Jasleen', 'Kaur'],
                 'degree' => 'B.Sc. (Hons) Biotechnology',
-                'department' => 'Botany & Biotechnology',
+                'department' => 'Life Sciences',
                 'batch' => '2017-2020',
                 'grad_year' => 2020,
                 'company' => 'Biocon Research',
@@ -215,14 +215,14 @@ class AkalAlumniPortalSeeder extends Seeder
                 'bio' => 'Biotech innovator exploring therapeutic enzymes and molecular biology advancements.',
                 'skills' => 'Molecular Biology, CRISPR, HPLC, Genetic Engineering, Data Analysis',
                 'educations' => [
-                    ['level' => 'UG', 'degree' => 'B.Sc. (Hons) Biotechnology', 'department' => 'Botany & Biotechnology', 'enrollment_no' => 'AU-2017-0233', 'start' => 2017, 'end' => 2020, 'status' => 'completed', 'grade' => '8.4 CGPA'],
+                    ['level' => 'UG', 'degree' => 'B.Sc. (Hons) Biotechnology', 'department' => 'Life Sciences', 'enrollment_no' => 'AU-2017-0233', 'start' => 2017, 'end' => 2020, 'status' => 'completed', 'grade' => '8.4 CGPA'],
                 ]
             ],
             [
                 'email' => 'navjot.finance@gmail.com',
                 'name' => ['Navjot', 'Singh'],
                 'degree' => 'B.Com (Hons) with Finance',
-                'department' => 'Commerce & Management',
+                'department' => 'Commerce',
                 'batch' => '2019-2022',
                 'grad_year' => 2022,
                 'company' => 'Deloitte Advisory',
@@ -237,7 +237,7 @@ class AkalAlumniPortalSeeder extends Seeder
                 'bio' => 'Consulting professional aiding multinational clients with risk assurance and valuation strategies.',
                 'skills' => 'Financial Modeling, Valuation, PowerBI, Risk Consulting, Excel Automation',
                 'educations' => [
-                    ['level' => 'UG', 'degree' => 'B.Com (Hons) with Finance', 'department' => 'Commerce & Management', 'enrollment_no' => 'AU-2019-0358', 'start' => 2019, 'end' => 2022, 'status' => 'completed', 'grade' => '8.2 CGPA'],
+                    ['level' => 'UG', 'degree' => 'B.Com (Hons) with Finance', 'department' => 'Commerce', 'enrollment_no' => 'AU-2019-0358', 'start' => 2019, 'end' => 2022, 'status' => 'completed', 'grade' => '8.2 CGPA'],
                 ]
             ],
             [
@@ -377,7 +377,7 @@ class AkalAlumniPortalSeeder extends Seeder
                 'last_name'        => '',
                 'enrollment_no'    => 'AU-STU-2023-1042',
                 'degree'           => 'B.Tech in Computer Science & Engineering',
-                'department'       => 'Computer Science & Engineering',
+                'department'       => 'CSE',
                 'current_year'     => 3,
                 'semester'         => 6,
                 'phone'            => '+91 9811223344',
@@ -400,7 +400,7 @@ class AkalAlumniPortalSeeder extends Seeder
                     'user_id'         => $eduUserId,
                     'education_level' => 'UG',
                     'degree_name'     => 'B.Tech in Computer Science & Engineering',
-                    'department'      => 'Computer Science & Engineering',
+                    'department'      => 'CSE',
                     'specialization'  => 'Full-stack Development',
                     'enrollment_no'   => 'AU-STU-2023-1042',
                     'start_year'      => 2023,

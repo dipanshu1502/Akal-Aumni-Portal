@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import AlumniCard from '../../components/common/AlumniCard';
 import { useAuth } from '../../context/AuthContext';
-import { Award, BookOpen, MessageSquare, CheckCircle2, Sparkles, Send } from 'lucide-react';
+import { Award, BookOpen, MessageSquare, CheckCircle2, Sparkles, Send, X } from 'lucide-react';
 
 const MentorshipPage = () => {
   const { user, isStudent, isAuthenticated } = useAuth();
@@ -50,7 +50,7 @@ const MentorshipPage = () => {
           setSubmitted(false);
           setTopic('');
           setMessage('');
-        }, 2000);
+        }, 2200);
       }
     } catch (err) {
       alert(err.message || 'Failed to submit request');
@@ -60,25 +60,25 @@ const MentorshipPage = () => {
   };
 
   return (
-    <div className="mentorship-page py-4">
+    <div className="mentorship-page py-4 bg-white min-vh-100">
       <div className="container">
-        {/* Header */}
-        <div className="bg-white rounded-4 p-4 p-lg-5 mb-4 border" style={{ boxShadow: 'var(--shadow-sm)' }}>
+        {/* Header Card */}
+        <div className="akal-card p-4 p-lg-5 mb-4 bg-white border-akal-border-grey">
           <div className="row align-items-center g-4">
             <div className="col-lg-8">
-              <div className="d-flex align-items-center gap-2 text-warning small fw-bold text-uppercase mb-2">
+              <div className="d-flex align-items-center gap-2 text-akal-blue small fw-bold text-uppercase mb-2">
                 <Award size={16} />
                 <span>CAREER & ACADEMIC GUIDANCE</span>
               </div>
-              <h1 className="display-6 fw-bold mb-2">Alumni Mentorship Hub</h1>
-              <p className="text-muted mb-0">
+              <h1 className="display-6 fw-bold text-akal-navy mb-2">Alumni Mentorship Hub</h1>
+              <p className="text-akal-secondary mb-0">
                 Connect directly with experienced Akal University alumni working in global tech companies, research institutions, finance firms, and civil services.
               </p>
             </div>
             <div className="col-lg-4 text-lg-end">
-              <div className="p-3 bg-light rounded-3 d-inline-block text-start border">
-                <div className="fw-bold text-primary">{mentors.length}+ Active Mentors</div>
-                <div className="small text-muted">Ready to guide students & recent grads</div>
+              <div className="p-3 rounded-3 d-inline-block text-start border border-akal-border-grey" style={{ backgroundColor: 'var(--akal-blue-soft)' }}>
+                <div className="fw-bold text-akal-blue fs-5">{mentors.length}+ Active Mentors</div>
+                <div className="small text-akal-secondary">Ready to guide students & recent grads</div>
               </div>
             </div>
           </div>
@@ -87,7 +87,16 @@ const MentorshipPage = () => {
         {/* Mentors Grid */}
         {loading ? (
           <div className="text-center py-5">
-            <div className="spinner-border text-primary"></div>
+            <div className="spinner-border text-akal-blue" role="status">
+              <span className="visually-hidden">Loading mentors...</span>
+            </div>
+            <p className="text-akal-muted mt-2">Loading alumni mentors...</p>
+          </div>
+        ) : mentors.length === 0 ? (
+          <div className="text-center py-5 akal-card border-akal-border-grey p-5 bg-white">
+            <Award size={48} className="text-akal-muted mb-3 opacity-50" />
+            <h5 className="text-akal-navy fw-bold mb-2">No Mentors Currently Available</h5>
+            <p className="text-akal-secondary small mb-0">Check back soon as more alumni register to offer mentorship.</p>
           </div>
         ) : (
           <div className="row g-4">
@@ -105,34 +114,38 @@ const MentorshipPage = () => {
 
       {/* Mentorship Request Modal */}
       {selectedMentor && (
-        <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 1050 }}>
+        <div className="modal show d-block" tabIndex="-1" role="dialog" aria-modal="true" style={{ background: 'rgba(23, 35, 51, 0.65)', backdropFilter: 'blur(4px)', zIndex: 1060 }}>
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
-              <div className="p-4 bg-primary text-white" style={{ background: 'var(--grad-primary)' }}>
+            <div className="modal-content border-0 shadow-lg" style={{ borderRadius: '16px', overflow: 'hidden' }}>
+              <div className="p-4 text-white" style={{ backgroundColor: 'var(--akal-navy)' }}>
                 <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0 fw-bold">Request Mentorship</h5>
-                  <button onClick={() => setSelectedMentor(null)} className="btn btn-sm btn-outline-light rounded-circle">✕</button>
-                </div>
-                <div className="small text-warning mt-1">
-                  Mentor: {selectedMentor.first_name} {selectedMentor.last_name} ({selectedMentor.current_company || 'Alumni'})
+                  <div>
+                    <h5 className="mb-0 fw-bold text-white">Request Mentorship</h5>
+                    <div className="small text-warning mt-1">
+                      Mentor: {selectedMentor.first_name} {selectedMentor.last_name} ({selectedMentor.current_company || 'Alumni'})
+                    </div>
+                  </div>
+                  <button onClick={() => setSelectedMentor(null)} className="btn btn-sm btn-outline-light rounded-circle p-1" style={{ width: 32, height: 32 }}>
+                    <X size={16} />
+                  </button>
                 </div>
               </div>
 
-              <div className="modal-body p-4">
+              <div className="modal-body p-4 bg-white">
                 {submitted ? (
                   <div className="text-center py-4 text-success">
                     <CheckCircle2 size={48} className="mb-2" />
-                    <h5 className="fw-bold">Request Sent Successfully!</h5>
-                    <p className="small text-muted">The mentor will receive your inquiry and connect via portal notification or email.</p>
+                    <h5 className="fw-bold text-akal-navy">Request Sent Successfully!</h5>
+                    <p className="small text-akal-secondary">The mentor will receive your inquiry and connect via portal notification or email.</p>
                   </div>
                 ) : (
                   <form onSubmit={handleRequestSubmit}>
                     <div className="mb-3">
-                      <label className="form-label small fw-bold">Mentorship Topic / Area</label>
+                      <label className="form-label small fw-bold">Mentorship Topic / Area *</label>
                       <input 
                         type="text" 
                         className="form-control" 
-                        placeholder="e.g. Cloud Engineering roadmap, resume review, higher studies in Canada"
+                        placeholder="e.g. Cloud Engineering roadmap, resume review, higher studies abroad"
                         value={topic}
                         onChange={(e) => setTopic(e.target.value)}
                         required
@@ -140,24 +153,24 @@ const MentorshipPage = () => {
                     </div>
 
                     <div className="mb-3">
-                      <label className="form-label small fw-bold">Message / Questions for Mentor</label>
+                      <label className="form-label small fw-bold">Message / Questions for Mentor *</label>
                       <textarea 
                         className="form-control" 
                         rows="4" 
-                        placeholder="Introduce yourself, your current semester or graduation year, and what specific guidance you are looking for..."
+                        placeholder="Introduce yourself, your current semester or graduation year, and what specific guidance you are seeking..."
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         required
                       />
                     </div>
 
-                    <div className="d-flex justify-content-end gap-2 pt-2">
-                      <button type="button" onClick={() => setSelectedMentor(null)} className="btn btn-light btn-sm">
+                    <div className="d-flex justify-content-end gap-2 pt-2 border-top border-akal-border-grey">
+                      <button type="button" onClick={() => setSelectedMentor(null)} className="btn btn-akal-outline btn-sm">
                         Cancel
                       </button>
                       <button type="submit" disabled={submitting} className="btn btn-akal-yellow btn-sm d-flex align-items-center gap-1">
                         <Send size={14} />
-                        {submitting ? 'Submitting...' : 'Send Request'}
+                        <span>{submitting ? 'Submitting...' : 'Send Request'}</span>
                       </button>
                     </div>
                   </form>

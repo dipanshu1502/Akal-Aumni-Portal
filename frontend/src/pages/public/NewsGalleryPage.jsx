@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { Image, Bell, Calendar, Tag, Pin, Camera } from 'lucide-react';
+import { Image, Bell, Calendar, Pin, Camera } from 'lucide-react';
 
 const NewsGalleryPage = () => {
   const [news, setNews] = useState([]);
@@ -26,16 +26,16 @@ const NewsGalleryPage = () => {
   }, []);
 
   return (
-    <div className="news-gallery-page py-4">
+    <div className="news-gallery-page py-4 bg-white min-vh-100">
       <div className="container">
-        {/* Header */}
-        <div className="bg-white rounded-4 p-4 p-lg-5 mb-4 border" style={{ boxShadow: 'var(--shadow-sm)' }}>
-          <div className="d-flex align-items-center gap-2 text-primary small fw-bold text-uppercase mb-2">
+        {/* Header Card */}
+        <div className="akal-card p-4 p-lg-5 mb-4 bg-white border-akal-border-grey">
+          <div className="d-flex align-items-center gap-2 text-akal-blue small fw-bold text-uppercase mb-2">
             <Bell size={16} />
-            <span>CAMPUS PULSE & MEDIA</span>
+            <span>CAMPUS PULSE & OFFICIAL MEDIA</span>
           </div>
-          <h1 className="display-6 fw-bold mb-2">News, Announcements & Gallery</h1>
-          <p className="text-muted mb-0">
+          <h1 className="display-6 fw-bold text-akal-navy mb-2">News, Announcements & Gallery</h1>
+          <p className="text-akal-secondary mb-0">
             Stay updated with official Akal University alumni announcements, convocation photo highlights, and campus developments.
           </p>
         </div>
@@ -43,71 +43,84 @@ const NewsGalleryPage = () => {
         {/* Section 1: News & Announcements */}
         <div className="mb-5">
           <div className="d-flex align-items-center gap-2 mb-3">
-            <Bell size={20} className="text-primary" />
-            <h3 className="fw-bold mb-0">Official Announcements</h3>
+            <Bell size={20} className="text-akal-blue" />
+            <h3 className="fw-bold text-akal-navy mb-0">Official Announcements</h3>
           </div>
 
           <div className="row g-4">
             {news.map((item) => (
               <div key={item.id} className="col-lg-6">
-                <div className={`akal-card p-4 h-100 ${item.is_pinned ? 'border-primary border-2' : ''}`}>
+                <div className={`akal-card p-4 h-100 bg-white ${item.is_pinned ? 'border-akal-blue border-2' : 'border-akal-border-grey'}`}>
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="badge bg-primary-subtle text-primary fw-bold small text-uppercase">
+                    <span className="badge bg-akal-blue-soft text-akal-blue fw-bold small text-uppercase">
                       {item.category}
                     </span>
                     {item.is_pinned && (
-                      <span className="badge bg-warning text-dark d-flex align-items-center gap-1 small fw-bold">
-                        <Pin size={12} /> Pinned
+                      <span className="badge-akal-distinguished">
+                        <Pin size={12} /> Pinned Announcement
                       </span>
                     )}
                   </div>
 
-                  <h5 className="fw-bold text-dark mb-2">{item.title}</h5>
-                  <p className="text-muted small mb-3">{item.content}</p>
+                  <h5 className="fw-bold text-akal-navy mb-2" style={{ fontSize: '1.1rem' }}>{item.title}</h5>
+                  <p className="text-akal-secondary small mb-3" style={{ lineHeight: 1.6 }}>{item.content}</p>
 
-                  <div className="pt-2 border-top small text-muted d-flex align-items-center gap-1">
-                    <Calendar size={13} className="text-warning" />
+                  <div className="pt-2 border-top border-akal-border-grey small text-akal-muted d-flex align-items-center gap-1">
+                    <Calendar size={13} className="text-akal-blue" />
                     <span>Published: {new Date(item.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                   </div>
                 </div>
               </div>
             ))}
+            {!loading && news.length === 0 && (
+              <div className="col-12">
+                <div className="akal-card p-4 text-center text-akal-muted bg-white border-akal-border-grey">
+                  No announcements published at this time.
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Section 2: Media Gallery */}
         <div>
           <div className="d-flex align-items-center gap-2 mb-3">
-            <Camera size={20} className="text-warning" />
-            <h3 className="fw-bold mb-0">Photo Gallery Albums</h3>
+            <Camera size={20} className="text-akal-blue" />
+            <h3 className="fw-bold text-akal-navy mb-0">Photo Gallery Albums</h3>
           </div>
 
           <div className="row g-4">
             {albums.map((alb) => (
               <div key={alb.id} className="col-lg-4 col-md-6">
-                <div className="akal-card h-100 overflow-hidden d-flex flex-column">
+                <div className="akal-card h-100 overflow-hidden d-flex flex-column bg-white border-akal-border-grey">
                   <div 
                     className="p-5 text-white d-flex align-items-center justify-content-center"
                     style={{ 
-                      background: 'linear-gradient(135deg, #075985 0%, #087BB5 60%, #172333 100%)',
-                      minHeight: '160px'
+                      background: 'var(--akal-navy)',
+                      minHeight: '150px'
                     }}
                   >
-                    <Image size={48} className="opacity-50" />
+                    <Image size={44} className="text-white-50" />
                   </div>
 
                   <div className="p-4 d-flex flex-column flex-grow-1">
-                    <span className="badge bg-light text-dark border align-self-start small mb-2">{alb.category}</span>
-                    <h5 className="fw-bold text-dark mb-2">{alb.title}</h5>
-                    <p className="text-muted small flex-grow-1">{alb.description}</p>
-                    <div className="pt-2 border-top small text-muted d-flex align-items-center gap-1 mt-auto">
-                      <Calendar size={13} className="text-primary" />
-                      <span>{alb.event_date ? new Date(alb.event_date).toLocaleDateString() : 'Campus Memory'}</span>
+                    <span className="badge bg-akal-blue-soft text-akal-blue align-self-start small mb-2">{alb.category || 'Event'}</span>
+                    <h5 className="fw-bold text-akal-navy mb-1">{alb.title}</h5>
+                    <p className="text-akal-secondary small mb-3 flex-grow-1">{alb.description}</p>
+                    <div className="text-akal-muted small pt-2 border-top border-akal-border-grey">
+                      {alb.photo_count || 0} Photos Recorded
                     </div>
                   </div>
                 </div>
               </div>
             ))}
+            {!loading && albums.length === 0 && (
+              <div className="col-12">
+                <div className="akal-card p-4 text-center text-akal-muted bg-white border-akal-border-grey">
+                  Campus media albums will appear here.
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

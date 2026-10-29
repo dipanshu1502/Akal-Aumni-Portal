@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import AdminManagement from './AdminManagement';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
+import { DEPARTMENTS } from '../../constants/departments';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -16,6 +18,7 @@ import {
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { ABOUT_PAGE_DEFAULTS } from '../public/AboutPage';
 import { AUAA_PAGE_DEFAULTS } from '../public/AUAAPage';
+import './AdminDashboard.css';
 import {
   ShieldCheck,
   Users,
@@ -56,7 +59,8 @@ import {
   GraduationCap,
   Landmark,
   Award,
-  QrCode
+  QrCode,
+  Download
 } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
@@ -286,6 +290,16 @@ const AdminDashboard = () => {
   const { refreshSettings } = useSettings();
 
   const [dashboardData, setDashboardData] = useState(null);
+  const [mentorshipRequests, setMentorshipRequests] = useState([]);
+  const [mentorshipRequestsLoading, setMentorshipRequestsLoading] = useState(false);
+  const [mentorshipRequestsError, setMentorshipRequestsError] = useState('');
+  const [mentorshipAdminView, setMentorshipAdminView] = useState('mentors');
+  const [mentorRoster, setMentorRoster] = useState([]);
+  const [mentorRosterLoading, setMentorRosterLoading] = useState(false);
+  const [mentorRosterError, setMentorRosterError] = useState('');
+  const [mentorStudentsView, setMentorStudentsView] = useState(null);
+  const [mentorStudentsLoading, setMentorStudentsLoading] = useState(false);
+  const [mentorStudentsError, setMentorStudentsError] = useState('');
   const [verifications, setVerifications] = useState([]);
   const [usersList, setUsersList] = useState([]);
   const [settings, setSettings] = useState([]);
@@ -328,6 +342,19 @@ const AdminDashboard = () => {
   const [editingChapter, setEditingChapter] = useState(null);
   const [editingJob, setEditingJob] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [eventDepartmentFilter, setEventDepartmentFilter] = useState('');
+  const [eventTimelineFilter, setEventTimelineFilter] = useState('all');
+  const [eventTypeFilter, setEventTypeFilter] = useState('all');
+  const [eventModeFilter, setEventModeFilter] = useState('all');
+  const [eventFromDate, setEventFromDate] = useState('');
+  const [eventToDate, setEventToDate] = useState('');
+  const [eventSearch, setEventSearch] = useState('');
+  const [eventRegistrationView, setEventRegistrationView] = useState(null);
+  const [eventRegistrationLoading, setEventRegistrationLoading] = useState(false);
+  const [eventRegistrationError, setEventRegistrationError] = useState('');
+  const [jobApplicantsView, setJobApplicantsView] = useState(null);
+  const [jobApplicantsLoading, setJobApplicantsLoading] = useState(false);
+  const [jobApplicantsError, setJobApplicantsError] = useState('');
   const [editingGallery, setEditingGallery] = useState(null);
 
   // Search in users
@@ -337,6 +364,20 @@ const AdminDashboard = () => {
   // Manage Alumni / Manage Students tabs
   const [manageSearch, setManageSearch] = useState('');
   const [manageStatusFilter, setManageStatusFilter] = useState('');
+  const [alumniDepartmentFilter, setAlumniDepartmentFilter] = useState('');
+  const [alumniBatchFilter, setAlumniBatchFilter] = useState('');
+  const [alumniGraduationFilter, setAlumniGraduationFilter] = useState('');
+  const [alumniIndustryFilter, setAlumniIndustryFilter] = useState('');
+  const [alumniPathFilter, setAlumniPathFilter] = useState('');
+  const [alumniJobTypeFilter, setAlumniJobTypeFilter] = useState('');
+  const [alumniCountryFilter, setAlumniCountryFilter] = useState('');
+  const [alumniVerificationFilter, setAlumniVerificationFilter] = useState('');
+  const [alumniMentorFilter, setAlumniMentorFilter] = useState('');
+  const [alumniDistinguishedFilter, setAlumniDistinguishedFilter] = useState('');
+  const [superAdminDepartment, setSuperAdminDepartment] = useState('');
+  const [showDepartmentComparison, setShowDepartmentComparison] = useState(false);
+  const [compareDepartments, setCompareDepartments] = useState([]);
+  const [compareMetrics, setCompareMetrics] = useState(['alumni', 'students', 'mentors', 'verified', 'pending', 'events']);
   const [detailUserId, setDetailUserId] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -394,12 +435,16 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = async (department = superAdminDepartment) => {
     try {
+      const departmentQuery = isSuperAdmin && department
+        ? `?department=${encodeURIComponent(department)}`
+        : '';
+      if (isSuperAdmin) setSuperAdminDepartment(department || '');
       const results = await Promise.allSettled([
-        api.get('/admin/dashboard'),
-        api.get('/admin/verifications'),
-        api.get('/admin/users'),
+        api.get(`/admin/dashboard${departmentQuery}`),
+        api.get(`/admin/verifications${departmentQuery}`),
+        api.get(`/admin/users${departmentQuery}`),
         api.get('/admin/settings'),
         api.get('/admin/audit-logs')
       ]);
@@ -438,11 +483,14 @@ const AdminDashboard = () => {
 
   const fetchCMSContent = async () => {
     try {
+      const jobsRequest = hasPermission('manage_jobs')
+        ? api.get('/admin/jobs').catch(() => api.get('/public/jobs'))
+        : api.get('/public/jobs');
       const [storiesRes, newsRes, chaptersRes, jobsRes, eventsRes, galleryRes] = await Promise.all([
         api.get('/public/stories'),
         api.get('/public/news'),
         api.get('/public/chapters'),
-        api.get('/public/jobs'),
+        jobsRequest,
         api.get('/public/events'),
         api.get('/public/gallery')
       ]);
@@ -456,6 +504,74 @@ const AdminDashboard = () => {
     } catch (err) {
       console.error('Error fetching CMS content:', err);
     }
+  };
+
+  const fetchMentorshipRequests = async (department = superAdminDepartment) => {
+    setMentorshipRequestsLoading(true);
+    setMentorshipRequestsError('');
+    try {
+      const query = department ? `?department=${encodeURIComponent(department)}` : '';
+      const response = await api.get(`/admin/mentorship-requests${query}`);
+      if (!response.status) throw new Error(response.message || 'Could not load mentorship requests');
+      setMentorshipRequests(response.data || []);
+    } catch (error) {
+      setMentorshipRequestsError(error.message || 'Could not load mentorship requests.');
+      setMentorshipRequests([]);
+    } finally {
+      setMentorshipRequestsLoading(false);
+    }
+  };
+
+  const fetchMentorRoster = async (department = superAdminDepartment) => {
+    setMentorRosterLoading(true);
+    setMentorRosterError('');
+    try {
+      const query = department ? `?department=${encodeURIComponent(department)}` : '';
+      const response = await api.get(`/admin/alumni-mentors${query}`);
+      if (!response.status) throw new Error(response.message || 'Could not load alumni roster');
+      setMentorRoster(response.data || []);
+    } catch (error) {
+      setMentorRosterError(error.message || 'Could not load alumni roster.');
+      setMentorRoster([]);
+    } finally {
+      setMentorRosterLoading(false);
+    }
+  };
+
+  const openMentorStudents = async (mentor) => {
+    setMentorStudentsView({ mentor, students: [] });
+    setMentorStudentsLoading(true);
+    setMentorStudentsError('');
+    try {
+      const response = await api.get(`/admin/alumni-mentors/${mentor.user_id}/students`);
+      if (!response.status) throw new Error(response.message || 'Could not load students');
+      setMentorStudentsView(response.data);
+    } catch (error) {
+      setMentorStudentsError(error.message || 'Could not load this mentor’s students.');
+    } finally {
+      setMentorStudentsLoading(false);
+    }
+  };
+
+  const downloadMentorshipRequestsCsv = () => {
+    const columns = [
+      ['sr_no', 'Sr. No.'], ['enrollment_no', 'Student UID'], ['student_first_name', 'Student First Name'], ['student_last_name', 'Student Last Name'],
+      ['student_email', 'Student Email'], ['student_phone', 'Student Contact'], ['student_department', 'Student Department'], ['degree', 'Program'],
+      ['current_year', 'Year'], ['semester', 'Semester'], ['mentor_auid', 'Mentor AUID'], ['mentor_first_name', 'Mentor First Name'],
+      ['mentor_last_name', 'Mentor Last Name'], ['mentor_email', 'Mentor Email'], ['mentor_phone', 'Mentor Contact'], ['mentor_department', 'Mentor Department'],
+      ['topic', 'Topic'], ['message', 'Message'], ['notes', 'Notes'], ['status', 'Status'], ['requested_at', 'Requested At'],
+    ];
+    const escapeCsv = (value) => {
+      const text = String(value ?? '');
+      const safe = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
+    const csv = [columns.map(([, label]) => escapeCsv(label)).join(','), ...mentorshipRequests.map((row, index) => columns.map(([key]) => escapeCsv(key === 'sr_no' ? index + 1 : row[key])).join(','))].join('\r\n');
+    const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `mentorship-requests-${(superAdminDepartment || 'all-departments').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   // Donation campaigns + donations (admin only, needs manage_donations permission)
@@ -506,7 +622,14 @@ const AdminDashboard = () => {
     fetchDashboard();
     fetchCMSContent();
     fetchDonations();
-  }, [token, user?.id, user?.role]);
+  }, [token, user?.id, user?.role, permissions]);
+
+  useEffect(() => {
+    if (isSuperAdmin && activeTab === 'mentorship-oversight') {
+      if (mentorshipAdminView === 'requests') fetchMentorshipRequests(superAdminDepartment);
+      else fetchMentorRoster(superAdminDepartment);
+    }
+  }, [isSuperAdmin, activeTab, superAdminDepartment, mentorshipAdminView]);
 
   // Measure navbar and footer height so the Site Customizer sidebar stays within viewport bounds
   useEffect(() => {
@@ -673,6 +796,45 @@ const AdminDashboard = () => {
           {roleKey === 'alumni' ? '🎓 Manage Alumni Accounts' : '🎒 Manage Student Accounts'}
         </h5>
         <div className="d-flex align-items-center gap-2 flex-wrap">
+          {roleKey === 'alumni' && (
+            <>
+              <select className="form-select form-select-sm" style={{ width: '170px' }} value={alumniDepartmentFilter} onChange={(e) => setAlumniDepartmentFilter(e.target.value)}>
+                <option value="">All Departments</option>
+                {[...new Set(usersList.filter((u) => u.role === 'alumni').map((u) => u.a_department).filter(Boolean))].sort().map((dept) => <option key={dept} value={dept}>{dept}</option>)}
+              </select>
+              <select className="form-select form-select-sm" style={{ width: '130px' }} value={alumniBatchFilter} onChange={(e) => setAlumniBatchFilter(e.target.value)}>
+                <option value="">All Batches</option>
+                {[...new Set(usersList.filter((u) => u.role === 'alumni').map((u) => u.a_batch).filter(Boolean))].sort().map((batch) => <option key={batch} value={batch}>{batch}</option>)}
+              </select>
+              <select className="form-select form-select-sm" style={{ width: '145px' }} value={alumniGraduationFilter} onChange={(e) => setAlumniGraduationFilter(e.target.value)}>
+                <option value="">All Grad Years</option>
+                {[...new Set(usersList.filter((u) => u.role === 'alumni').map((u) => u.a_graduation_year).filter(Boolean))].sort((a, b) => b - a).map((year) => <option key={year} value={year}>{year}</option>)}
+              </select>
+              <select className="form-select form-select-sm" style={{ width: '155px' }} value={alumniPathFilter} onChange={(e) => { setAlumniPathFilter(e.target.value); if (e.target.value !== 'job') setAlumniJobTypeFilter(''); }}>
+                <option value="">All Career Paths</option><option value="higher_study">Higher Studies</option><option value="job">Employed</option><option value="other">Other</option>
+              </select>
+              {(!alumniPathFilter || alumniPathFilter === 'job') && <select className="form-select form-select-sm" style={{ width: '150px' }} value={alumniJobTypeFilter} onChange={(e) => setAlumniJobTypeFilter(e.target.value)}>
+                <option value="">All Job Sectors</option><option value="government">Government</option><option value="private">Private</option>
+              </select>}
+              <select className="form-select form-select-sm" style={{ width: '145px' }} value={alumniCountryFilter} onChange={(e) => setAlumniCountryFilter(e.target.value)}>
+                <option value="">All Countries</option>
+                {[...new Set(usersList.filter((u) => u.role === 'alumni').map((u) => u.a_country).filter(Boolean))].sort().map((country) => <option key={country} value={country}>{country}</option>)}
+              </select>
+              <select className="form-select form-select-sm" style={{ width: '155px' }} value={alumniVerificationFilter} onChange={(e) => setAlumniVerificationFilter(e.target.value)}>
+                <option value="">All Verification</option>
+                <option value="verified">Verified</option><option value="pending">Pending</option><option value="rejected">Rejected</option><option value="unverified">Unverified</option>
+              </select>
+              <select className="form-select form-select-sm" style={{ width: '140px' }} value={manageStatusFilter} onChange={(e) => setManageStatusFilter(e.target.value)}>
+                <option value="">All Account Status</option><option value="active">Active</option><option value="pending">Pending</option><option value="rejected">Rejected</option><option value="suspended">Suspended</option>
+              </select>
+              <select className="form-select form-select-sm" style={{ width: '125px' }} value={alumniMentorFilter} onChange={(e) => setAlumniMentorFilter(e.target.value)}>
+                <option value="">All Mentors</option><option value="yes">Mentors</option><option value="no">Non-mentors</option>
+              </select>
+              <select className="form-select form-select-sm" style={{ width: '155px' }} value={alumniDistinguishedFilter} onChange={(e) => setAlumniDistinguishedFilter(e.target.value)}>
+                <option value="">All Alumni</option><option value="yes">Distinguished</option><option value="no">Standard</option>
+              </select>
+            </>
+          )}
           <div className="input-group input-group-sm" style={{ width: '230px' }}>
             <span className="input-group-text bg-white"><Search size={14} /></span>
             <input
@@ -683,7 +845,7 @@ const AdminDashboard = () => {
               onChange={(e) => setManageSearch(e.target.value)}
             />
           </div>
-          <select
+          {roleKey !== 'alumni' && <select
             className="form-select form-select-sm"
             style={{ width: '150px' }}
             value={manageStatusFilter}
@@ -694,7 +856,7 @@ const AdminDashboard = () => {
             <option value="pending">Pending</option>
             <option value="rejected">Rejected</option>
             <option value="suspended">Suspended</option>
-          </select>
+          </select>}
         </div>
       </div>
 
@@ -990,6 +1152,51 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleSetJobStatus = async (job, status) => {
+    const action = status === 'approved' ? 'approve' : 'reject';
+    if (!window.confirm(`${action === 'approve' ? 'Approve' : 'Reject'} “${job.title}”?`)) return;
+    try {
+      const response = await api.post('/admin/jobs', { ...job, status });
+      if (response.status) {
+        showToast(`Job ${status} successfully.`);
+        fetchCMSContent();
+      }
+    } catch (error) {
+      alert(error.message || `Could not ${action} this job`);
+    }
+  };
+
+  const openJobApplicants = async (job) => {
+    setJobApplicantsView({ job, applicants: [] });
+    setJobApplicantsLoading(true);
+    setJobApplicantsError('');
+    try {
+      const response = await api.get(`/admin/jobs/${job.id}/applications`);
+      if (!response.status) throw new Error(response.message || 'Could not load applicants');
+      setJobApplicantsView(response.data);
+    } catch (error) {
+      setJobApplicantsError(error.message || 'Could not load job applicants.');
+    } finally {
+      setJobApplicantsLoading(false);
+    }
+  };
+
+  const downloadJobApplicants = () => {
+    const applicants = jobApplicantsView?.applicants || [];
+    const columns = [['sr_no', 'Sr. No.'], ['uid', 'UID'], ['name', 'Name'], ['contact_number', 'Contact Number'], ['member_type', 'Alumni / Student'], ['email', 'Email'], ['applied_at', 'Applied At']];
+    const escapeCsv = (value) => {
+      const text = String(value ?? '');
+      const safe = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
+    const csv = [columns.map(([, label]) => escapeCsv(label)).join(','), ...applicants.map((row, index) => columns.map(([key]) => escapeCsv(key === 'sr_no' ? index + 1 : row[key])).join(','))].join('\r\n');
+    const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(jobApplicantsView?.job?.title || 'job').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-applicants.csv`;
+    document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const handleDeleteJob = async (id) => {
     if (!hasPermission('manage_jobs')) { alert('No jobs permission'); return; }
     if (!window.confirm('Delete this job posting?')) return;
@@ -1033,6 +1240,50 @@ const AdminDashboard = () => {
     } catch (err) {
       alert(err.message || 'Failed to delete event');
     }
+  };
+
+  const openEventRegistrations = async (event) => {
+    setEventRegistrationView({ event, registrations: [] });
+    setEventRegistrationLoading(true);
+    setEventRegistrationError('');
+    try {
+      const response = await api.get(`/admin/events/${event.id}/registrations`);
+      if (!response.status) throw new Error(response.message || 'Could not load registrations');
+      setEventRegistrationView({ event: response.data.event, registrations: response.data.registrations || [] });
+    } catch (error) {
+      setEventRegistrationError(error.message || 'Could not load event registrations.');
+    } finally {
+      setEventRegistrationLoading(false);
+    }
+  };
+
+  const downloadEventRegistrations = () => {
+    const registrations = eventRegistrationView?.registrations || [];
+    const columns = [
+      ['sr_no', 'Sr. No.'], ['uid', 'UID'], ['name', 'Name'],
+      ['contact_number', 'Contact Number'], ['member_type', 'Alumni / Student'],
+      ['email', 'Email'], ['registered_at', 'Registered At'],
+    ];
+    const escapeCsv = (value) => {
+      const text = String(value ?? '');
+      const safeText = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+      return `"${safeText.replace(/"/g, '""')}"`;
+    };
+    const rows = registrations.map((registration, index) => ({
+      ...registration,
+      sr_no: index + 1,
+    }));
+    const csv = [columns.map(([, title]) => escapeCsv(title)).join(','), ...rows.map((row) => columns.map(([key]) => escapeCsv(row[key])).join(','))].join('\r\n');
+    const file = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    const eventTitle = eventRegistrationView?.event?.title || 'event';
+    link.href = url;
+    link.download = `${eventTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-registrations-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   // CMS Gallery Handlers
@@ -1100,7 +1351,18 @@ const AdminDashboard = () => {
       (u.a_alumni_id && u.a_alumni_id.toLowerCase().includes(q)) ||
       (u.s_enrollment && u.s_enrollment.toLowerCase().includes(q));
     const matchStatus = !manageStatusFilter || u.status === manageStatusFilter;
-    return matchSearch && matchStatus;
+    if (roleKey !== 'alumni') return matchSearch && matchStatus;
+    const matchDepartment = !alumniDepartmentFilter || u.a_department === alumniDepartmentFilter;
+    const matchBatch = !alumniBatchFilter || String(u.a_batch || '') === alumniBatchFilter;
+    const matchGraduation = !alumniGraduationFilter || String(u.a_graduation_year || '') === alumniGraduationFilter;
+    const matchIndustry = !alumniIndustryFilter || u.a_industry === alumniIndustryFilter;
+    const matchCountry = !alumniCountryFilter || u.a_country === alumniCountryFilter;
+    const matchPath = !alumniPathFilter || u.a_current_status === alumniPathFilter;
+    const matchJobType = !alumniJobTypeFilter || (u.a_current_status === 'job' && u.a_job_type === alumniJobTypeFilter);
+    const matchVerification = !alumniVerificationFilter || (u.verification_status || 'unverified') === alumniVerificationFilter;
+    const matchMentor = !alumniMentorFilter || String(Number(u.a_is_mentor || 0) === 1) === String(alumniMentorFilter === 'yes');
+    const matchDistinguished = !alumniDistinguishedFilter || String(Number(u.a_is_distinguished || 0) === 1) === String(alumniDistinguishedFilter === 'yes');
+    return matchSearch && matchStatus && matchDepartment && matchBatch && matchGraduation && matchIndustry && matchCountry && matchPath && matchJobType && matchVerification && matchMentor && matchDistinguished;
   });
 
   const manageAlumniList = filteredManageUsers('alumni');
@@ -1163,14 +1425,74 @@ const AdminDashboard = () => {
       {
         label: 'Alumni by Department',
         data: deptCounts,
-        backgroundColor: ['#087BB5', '#F9B900', '#10B981', '#6366F1', '#EC4899', '#8B5CF6'],
+        backgroundColor: ['#2C5E91', '#E97832', '#10B981', '#6366F1', '#EC4899', '#8B5CF6'],
         borderRadius: 6
       }
     ]
   };
-
+  const comparisonRowsByDepartment = new Map((dashboardData?.department_comparison || []).map((row) => [row.department, row]));
+  const departmentOptions = [...new Set([
+    ...DEPARTMENTS,
+    ...(dashboardData?.departments || []),
+    ...(dashboardData?.department_comparison || []).map((row) => row.department),
+  ].filter(Boolean))];
+  const departmentComparison = departmentOptions.map((department) => ({
+    department,
+    alumni: 0,
+    students: 0,
+    mentors: 0,
+    verified: 0,
+    pending: 0,
+    higher_studies: 0,
+    government_jobs: 0,
+    private_jobs: 0,
+    distinguished: 0,
+    events: 0,
+    ...(comparisonRowsByDepartment.get(department) || {}),
+  }));
+  const comparisonMetricOptions = [
+    { key: 'alumni', label: 'Alumni', color: '#244A78' },
+    { key: 'students', label: 'Students', color: '#D1A94F' },
+    { key: 'mentors', label: 'Mentors', color: '#188977' },
+    { key: 'verified', label: 'Verified', color: '#26A269' },
+    { key: 'pending', label: 'Pending Verifications', color: '#E97832' },
+    { key: 'higher_studies', label: 'Higher Studies', color: '#805AD5' },
+    { key: 'government_jobs', label: 'Government Jobs', color: '#C0392B' },
+    { key: 'private_jobs', label: 'Private Jobs', color: '#2980B9' },
+    { key: 'distinguished', label: 'Distinguished Alumni', color: '#B7791F' },
+    { key: 'events', label: 'Department Events', color: '#7C3AED' },
+  ];
+  const visibleComparisonRows = departmentComparison.filter((row) => compareDepartments.length === 0 || compareDepartments.includes(row.department));
+  const deptCompareData = {
+    labels: visibleComparisonRows.map((row) => row.department),
+    datasets: comparisonMetricOptions.filter((metric) => compareMetrics.includes(metric.key)).map((metric) => ({
+      label: metric.label,
+      data: visibleComparisonRows.map((row) => Number(row[metric.key]) || 0),
+      backgroundColor: metric.color,
+      borderRadius: 5,
+    })),
+  };
+  const eventTypeOptions = [...new Set(events.map((event) => event.event_type).filter(Boolean))].sort();
+  const eventDepartmentOptions = [...new Set([...(dashboardData?.departments || []), dashboardData?.department].filter(Boolean))];
+  const filteredAdminEvents = events.filter((event) => {
+    const start = new Date(event.start_datetime).getTime();
+    const end = new Date(event.end_datetime || event.start_datetime).getTime();
+    const now = Date.now();
+    const timeline = end < now ? 'completed' : start > now ? 'upcoming' : 'ongoing';
+    const departmentMatches = !eventDepartmentFilter || (eventDepartmentFilter === '__university__' ? !event.department : event.department === eventDepartmentFilter);
+    const typeMatches = eventTypeFilter === 'all' || event.event_type === eventTypeFilter;
+    const timelineMatches = eventTimelineFilter === 'all' || timeline === eventTimelineFilter;
+    const mode = Number(event.is_virtual) === 1 ? 'virtual' : 'onsite';
+    const modeMatches = eventModeFilter === 'all' || mode === eventModeFilter;
+    const eventDate = new Date(event.start_datetime);
+    const fromMatches = !eventFromDate || eventDate >= new Date(`${eventFromDate}T00:00:00`);
+    const toMatches = !eventToDate || eventDate <= new Date(`${eventToDate}T23:59:59.999`);
+    const query = eventSearch.trim().toLowerCase();
+    const searchMatches = !query || [event.title, event.description, event.venue, event.department, event.event_type].some((value) => String(value || '').toLowerCase().includes(query));
+    return departmentMatches && typeMatches && timelineMatches && modeMatches && fromMatches && toMatches && searchMatches;
+  });
   return (
-    <div className="admin-dashboard py-4" style={{ backgroundColor: '#F8FAFC', minHeight: '85vh' }}>
+    <div className="admin-dashboard py-4">
       <div className="container-fluid px-lg-4">
 
         {/* Toast Alert Notification */}
@@ -1184,7 +1506,7 @@ const AdminDashboard = () => {
         )}
 
         {/* Dashboard Top Header */}
-        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 pb-3 border-bottom">
+        <div className="admin-console-hero d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
           <div>
             <div className="d-flex align-items-center gap-2">
               {authLoading ? null : isAdmin ? (
@@ -1199,6 +1521,29 @@ const AdminDashboard = () => {
               <span className="text-muted small">Central Operations & Site Customizer</span>
             </div>
             <h3 className="fw-extrabold text-dark mb-0 mt-1">Akal University Command Center</h3>
+            {isSuperAdmin && (
+              <div className="d-flex align-items-center gap-2 mt-2">
+                <Building2 size={16} className="text-primary" />
+                <label htmlFor="super-admin-department" className="small fw-semibold text-muted mb-0">Data scope</label>
+                <select
+                  id="super-admin-department"
+                  className="form-select form-select-sm"
+                  style={{ width: '240px' }}
+                  value={superAdminDepartment}
+                  onChange={(e) => {
+                    const nextDepartment = e.target.value;
+                    setSuperAdminDepartment(nextDepartment);
+                    fetchDashboard(nextDepartment);
+                  }}
+                >
+                  <option value="">Central — All Departments</option>
+                  {(dashboardData?.departments || []).map((department) => <option key={department} value={department}>{department}</option>)}
+                </select>
+              </div>
+            )}
+            {isAdmin && !isSuperAdmin && dashboardData?.department && (
+              <div className="small text-muted mt-1"><Building2 size={14} className="me-1" />Department dashboard: <strong>{dashboardData.department}</strong></div>
+            )}
           </div>
 
           <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -1219,12 +1564,14 @@ const AdminDashboard = () => {
             >
               <Activity size={14} /> Refresh Live Data
             </button>
-            <button
-              onClick={() => { setActiveTab('settings'); }}
-              className="btn btn-sm btn-akal-yellow d-flex align-items-center gap-1 fw-bold"
-            >
-              <Settings size={14} /> Customize Entire Site
-            </button>
+            {hasPermission('manage_settings') && (
+              <button
+                onClick={() => { setActiveTab('settings'); }}
+                className="btn btn-sm btn-akal-yellow d-flex align-items-center gap-1 fw-bold"
+              >
+                <Settings size={14} /> Customize Entire Site
+              </button>
+            )}
           </div>
         </div>
 
@@ -1268,7 +1615,7 @@ const AdminDashboard = () => {
         )}
 
         {/* Navigation Tabs — permission-aware (superadmin sees all) */}
-        <div className="d-flex flex-wrap gap-2 mb-4">
+        <div className="admin-console-nav mb-4">
           <button
             className={`btn btn-sm px-3 rounded-pill fw-semibold ${activeTab === 'analytics' ? 'btn-primary' : 'btn-light border'}`}
             onClick={() => setActiveTab('analytics')}
@@ -1311,6 +1658,15 @@ const AdminDashboard = () => {
             >
               🎒 Manage Students ({usersList.filter(u => u.role === 'student').length})
               {studentsNeedsAction > 0 && <span className="badge bg-warning text-dark ms-1">{studentsNeedsAction}</span>}
+            </button>
+          )}
+
+          {isSuperAdmin && (
+            <button
+              className={`btn btn-sm px-3 rounded-pill fw-semibold ${activeTab === 'mentorship-oversight' ? 'btn-primary' : 'btn-light border'}`}
+              onClick={() => setActiveTab('mentorship-oversight')}
+            >
+              Mentorship Requests ({mentorshipRequests.length})
             </button>
           )}
 
@@ -1406,16 +1762,81 @@ const AdminDashboard = () => {
           )}
         </div>
 
-        {/* Limited-permission notice for admins */}
+        {/* Department scope notice */}
         {isAdmin && !isSuperAdmin && (
           <div className="alert alert-info small rounded-3 mb-4">
-            🔑 You are logged in as <strong>Admin</strong> with limited permissions ({Object.keys(permissions || {}).length} granted). Tabs you cannot access are hidden — contact Super Admin to grant more access.
+            <Building2 size={15} className="me-1" /> This dashboard is limited to <strong>{dashboardData?.department || 'your assigned department'}</strong>. Super Admin retains university-wide access.
           </div>
         )}
-
         {/* TAB 1: Analytics & Reports */}
         {activeTab === 'analytics' && (
-          <div>
+          <div className="admin-analytics">
+            {isSuperAdmin && !superAdminDepartment && (
+              <div className="akal-card p-4 mb-4">
+                <div className="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                  <div>
+                    <h5 className="fw-bold text-dark mb-1">Department Comparison</h5>
+                    <p className="text-muted small mb-0">Choose departments and data points to compare.</p>
+                  </div>
+                  <button className="btn btn-sm btn-outline-primary" onClick={() => setShowDepartmentComparison((shown) => !shown)}>
+                    {showDepartmentComparison ? 'Hide comparison' : 'Open comparison'}
+                  </button>
+                </div>
+                {showDepartmentComparison && <>
+                <div className="row g-3 mb-3">
+                  <div className="col-lg-7">
+                    <div className="small fw-bold text-muted mb-2">DEPARTMENTS <span className="fw-normal">(none selected = all)</span></div>
+                    <div className="d-flex flex-wrap gap-2">
+                      <button className="btn btn-sm btn-light border" onClick={() => setCompareDepartments([])}>All departments</button>
+                      {departmentOptions.map((department) => (
+                        <label key={department} className={'btn btn-sm ' + (compareDepartments.includes(department) ? 'btn-primary' : 'btn-light border')}>
+                          <input className="form-check-input me-1" type="checkbox" checked={compareDepartments.includes(department)} onChange={(event) => setCompareDepartments((current) => event.target.checked ? [...current, department] : current.filter((name) => name !== department))} />
+                          {department}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="col-lg-5">
+                    <div className="small fw-bold text-muted mb-2">DATA TO COMPARE</div>
+                    <div className="d-flex flex-wrap gap-2">
+                      {comparisonMetricOptions.map((metric) => (
+                        <label key={metric.key} className={'btn btn-sm ' + (compareMetrics.includes(metric.key) ? 'btn-outline-primary' : 'btn-light border')}>
+                          <input className="form-check-input me-1" type="checkbox" checked={compareMetrics.includes(metric.key)} onChange={(event) => setCompareMetrics((current) => event.target.checked ? [...current, metric.key] : current.filter((key) => key !== metric.key))} />
+                          {metric.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ height: '360px' }}>
+                  <Bar
+                    data={deptCompareData}
+                    options={{
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      interaction: { mode: 'index', intersect: false },
+                      plugins: { legend: { position: 'bottom' } },
+                      scales: { x: { ticks: { autoSkip: false, maxRotation: 50, minRotation: 25 } }, y: { beginAtZero: true, ticks: { precision: 0 } } },
+                    }}
+                  />
+                </div>
+                <div className="table-responsive mt-4">
+                  <table className="table table-hover align-middle small mb-0">
+                    <thead className="table-light"><tr><th>Department</th>{comparisonMetricOptions.filter((metric) => compareMetrics.includes(metric.key)).map((metric) => <th key={metric.key}>{metric.label}</th>)}<th>Total Community</th></tr></thead>
+                    <tbody>
+                      {visibleComparisonRows.map((row) => (
+                        <tr key={row.department}>
+                          <td className="fw-semibold">{row.department}</td>
+                          {comparisonMetricOptions.filter((metric) => compareMetrics.includes(metric.key)).map((metric) => <td key={metric.key}>{row[metric.key]}</td>)}
+                          <td className="fw-bold">{Number(row.alumni || 0) + Number(row.students || 0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                </>}
+              </div>
+            )}
             {/* KPI Cards */}
             <div className="row g-3 mb-4">
               <div className="col-lg-3 col-sm-6">
@@ -1460,8 +1881,8 @@ const AdminDashboard = () => {
                     <Calendar />
                   </div>
                   <div>
-                    <h4 className="mb-0 fw-bold">{dashboardData?.metrics?.total_events || 0}</h4>
-                    <span className="text-muted small">Published Events</span>
+                    <h4 className="mb-0 fw-bold">{isSuperAdmin ? (dashboardData?.metrics?.total_events || 0) : (dashboardData?.metrics?.total_students || 0)}</h4>
+                    <span className="text-muted small">{isSuperAdmin ? (superAdminDepartment ? 'Department Events' : 'Published Events') : 'Department Students'}</span>
                   </div>
                 </div>
               </div>
@@ -1471,7 +1892,7 @@ const AdminDashboard = () => {
             <div className="row g-4 mb-4">
               <div className="col-lg-8">
                 <div className="akal-card p-4 h-100">
-                  <h6 className="fw-bold text-dark mb-3">Alumni Distribution Across Departments</h6>
+                  <h6 className="fw-bold text-dark mb-3">{isSuperAdmin && !superAdminDepartment ? 'Alumni Distribution Across Departments' : `Alumni Distribution — ${dashboardData?.department || 'Your Department'}`}</h6>
                   <div style={{ height: '280px' }}>
                     <Bar
                       data={deptChartData}
@@ -1494,11 +1915,11 @@ const AdminDashboard = () => {
                         labels: ['Verified Alumni', 'Enrolled Students', 'Career Mentors'],
                         datasets: [{
                           data: [
-                            dashboardData?.metrics?.verified_alumni || 5,
-                            dashboardData?.metrics?.total_students || 10,
-                            dashboardData?.metrics?.total_mentors || 3
+                            dashboardData?.metrics?.verified_alumni ?? 0,
+                            dashboardData?.metrics?.total_students ?? 0,
+                            dashboardData?.metrics?.total_mentors ?? 0
                           ],
-                          backgroundColor: ['#087BB5', '#F9B900', '#10B981']
+                          backgroundColor: ['#244A78', '#D1A94F', '#6382A6']
                         }]
                       }}
                       options={{ responsive: true, maintainAspectRatio: false }}
@@ -1550,6 +1971,86 @@ const AdminDashboard = () => {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Super Admin: Mentorship Request Details */}
+        {activeTab === 'mentorship-oversight' && isSuperAdmin && (
+          <div className="akal-card p-4">
+            <div className="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+              <div>
+                <h5 className="fw-bold text-dark mb-1">Mentorship Requests & Details</h5>
+                <p className="text-muted small mb-0">Review student requests, student contact details, and the alumni mentor assigned to each request.</p>
+              </div>
+              <div className="d-flex align-items-center gap-2">
+                <span className="badge bg-primary-subtle text-primary px-3 py-2">{superAdminDepartment || 'All Departments'} · {mentorshipRequests.length} requests</span>
+                <button type="button" className="btn btn-sm btn-akal-primary d-inline-flex align-items-center gap-2" onClick={downloadMentorshipRequestsCsv} disabled={mentorshipRequestsLoading || !!mentorshipRequestsError || mentorshipRequests.length === 0}><Download size={15} /> Download CSV</button>
+              </div>
+            </div>
+            <div className="d-flex gap-2 flex-wrap mb-3">
+              <button type="button" className={`btn btn-sm rounded-pill ${mentorshipAdminView === 'requests' ? 'btn-primary' : 'btn-light border'}`} onClick={() => setMentorshipAdminView('requests')}>Mentorship Requests ({mentorshipRequests.length})</button>
+              <button type="button" className={`btn btn-sm rounded-pill ${mentorshipAdminView === 'mentors' ? 'btn-primary' : 'btn-light border'}`} onClick={() => setMentorshipAdminView('mentors')}>All Alumni & Mentor Counts</button>
+            </div>
+            {mentorshipAdminView === 'requests' ? <>
+            {mentorshipRequestsLoading ? <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
+              : mentorshipRequestsError ? <div className="alert alert-danger">{mentorshipRequestsError}</div>
+                : mentorshipRequests.length === 0 ? <div className="text-center text-muted py-5">No mentorship requests found for this scope.</div>
+                  : <div className="table-responsive"><table className="table table-hover align-middle small">
+                    <thead className="table-light"><tr><th>Student</th><th>Student Contact</th><th>Alumni Mentor</th><th>Mentor Contact</th><th>Department</th><th>Topic & Message</th><th>Status</th><th>Requested</th></tr></thead>
+                    <tbody>{mentorshipRequests.map((request) => (
+                      <tr key={request.id}>
+                        <td className="fw-semibold">{request.student_first_name} {request.student_last_name}<div className="text-muted">UID: {request.enrollment_no || request.student_user_id}</div><div className="text-muted">{request.degree || 'Student'} · Year {request.current_year || '—'} / Sem {request.semester || '—'}</div></td>
+                        <td>{request.student_email}<div className="text-muted">{request.student_phone || 'No phone'}</div></td>
+                        <td className="fw-semibold">{request.mentor_first_name} {request.mentor_last_name}<div className="text-muted">AUID: {request.mentor_auid || request.alumni_id || request.mentor_user_id}</div><div className="text-muted">{request.current_designation || ''}{request.current_company ? ` · ${request.current_company}` : ''}</div></td>
+                        <td>{request.mentor_email}<div className="text-muted">{request.mentor_phone || 'No phone'}</div></td>
+                        <td><div>Student: {request.student_department || '—'}</div><div className="text-muted">Mentor: {request.mentor_department || '—'}</div></td>
+                        <td><div className="fw-semibold">{request.topic}</div><div className="text-muted" style={{ maxWidth: 260, whiteSpace: 'pre-wrap' }}>{request.message || 'No message provided'}</div>{request.notes && <div className="text-muted mt-1">Notes: {request.notes}</div>}</td>
+                        <td><span className={`badge ${request.status === 'accepted' ? 'bg-success' : request.status === 'completed' ? 'bg-info text-dark' : request.status === 'rejected' ? 'bg-danger' : 'bg-warning text-dark'}`}>{request.status}</span></td>
+                        <td>{request.requested_at ? new Date(request.requested_at).toLocaleString() : '—'}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table></div>}
+            </> : (
+              mentorRosterLoading ? <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
+                : mentorRosterError ? <div className="alert alert-danger">{mentorRosterError}</div>
+                  : mentorRoster.length === 0 ? <div className="text-center text-muted py-5">No alumni found for this department scope.</div>
+                    : <div className="table-responsive"><table className="table table-hover align-middle small">
+                      <thead className="table-light"><tr><th>Sr. No.</th><th>Alumni</th><th>Contact</th><th>Department</th><th>Graduation</th><th>Mentor</th><th>Students</th></tr></thead>
+                      <tbody>{mentorRoster.map((alumni, index) => (
+                        <tr key={alumni.user_id}>
+                          <td>{index + 1}</td>
+                          <td className="fw-semibold">{alumni.first_name} {alumni.last_name}<div className="text-muted">UID: {alumni.auid || alumni.alumni_id || alumni.user_id}</div><div className="text-muted">{alumni.email}</div></td>
+                          <td>{alumni.phone || '—'}</td>
+                          <td>{alumni.department || '—'}</td>
+                          <td>{alumni.degree || '—'}<div className="text-muted">Batch {alumni.batch_year || alumni.graduation_year || '—'}</div></td>
+                          <td><span className={`badge ${Number(alumni.is_mentor) ? 'bg-success' : 'bg-secondary'}`}>{Number(alumni.is_mentor) ? 'Mentor' : 'Not marked mentor'}</span><div className="text-muted">{alumni.account_status} · {alumni.verification_status}</div></td>
+                          <td><button type="button" className="btn btn-sm btn-outline-primary text-nowrap" onClick={() => openMentorStudents(alumni)}><Users size={14} className="me-1" /> View students ({Number(alumni.student_count || 0)})</button></td>
+                        </tr>
+                      ))}</tbody>
+                    </table></div>
+            )}
+            {mentorStudentsView && (
+              createPortal(
+              <div className="admin-event-registration-backdrop" tabIndex="-1" role="dialog" aria-modal="true" onClick={(event) => { if (event.target === event.currentTarget) setMentorStudentsView(null); }}>
+                <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                  <div className="modal-content admin-event-registration-modal border-0 shadow-lg rounded-4" onClick={(event) => event.stopPropagation()}>
+                    <div className="modal-header admin-event-registration-header border-0">
+                      <div><div className="small text-uppercase text-warning fw-bold">Mentorship students</div><h5 className="modal-title fw-bold">{mentorStudentsView.mentor.first_name} {mentorStudentsView.mentor.last_name}</h5><div className="small admin-event-registration-meta">{mentorStudentsView.mentor.department || '—'} · {mentorStudentsView.students.length} students</div></div>
+                      <button type="button" className="btn-close" aria-label="Close" onClick={() => setMentorStudentsView(null)} />
+                    </div>
+                    <div className="modal-body admin-event-registration-body">
+                      {mentorStudentsLoading ? <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
+                        : mentorStudentsError ? <div className="alert alert-danger mb-0">{mentorStudentsError}</div>
+                          : mentorStudentsView.students.length === 0 ? <div className="text-center text-muted py-5">No mentorship students are linked to this alumnus.</div>
+                            : <div className="table-responsive"><table className="table table-hover align-middle small mb-0"><thead><tr><th>Sr. No.</th><th>Student</th><th>Contact</th><th>Department & Program</th><th>Topic / Message</th><th>Status</th><th>Requested</th></tr></thead><tbody>
+                              {mentorStudentsView.students.map((student, index) => <tr key={student.request_id}><td>{index + 1}</td><td className="fw-semibold">{student.student_first_name} {student.student_last_name}<div className="text-muted">UID: {student.enrollment_no || student.student_user_id}</div></td><td>{student.student_email}<div className="text-muted">{student.student_phone || 'No phone'}</div></td><td>{student.student_department || '—'}<div className="text-muted">{student.degree || '—'} · Year {student.current_year || '—'} / Sem {student.semester || '—'}</div></td><td><div className="fw-semibold">{student.topic}</div><div className="text-muted" style={{ maxWidth: 260, whiteSpace: 'pre-wrap' }}>{student.message || 'No message'}</div></td><td><span className={`badge ${student.status === 'accepted' ? 'bg-success' : student.status === 'completed' ? 'bg-info text-dark' : 'bg-warning text-dark'}`}>{student.status}</span></td><td>{student.requested_at ? new Date(student.requested_at).toLocaleString() : '—'}</td></tr>)}
+                            </tbody></table></div>}
+                    </div>
+                    <div className="modal-footer admin-event-registration-footer border-0"><button type="button" className="btn btn-light border" onClick={() => setMentorStudentsView(null)}>Close</button></div>
+                  </div>
+                </div>
+              </div>, document.body)
+            )}
           </div>
         )}
 
@@ -1747,7 +2248,7 @@ const AdminDashboard = () => {
                   maxHeight: `calc(100vh - ${navbarHeight + 8}px - 12px)`,
                   zIndex: 10,
                   borderRadius: '14px',
-                  border: '1px solid rgba(8, 123, 181, 0.06)',
+                  border: '1px solid rgba(118, 84, 214, 0.06)',
                 }}
               >
                 {/* Header */}
@@ -2103,7 +2604,7 @@ const AdminDashboard = () => {
                           <input
                             type="color"
                             className="form-control form-control-color"
-                            value={s.setting_value || '#087BB5'}
+                            value={s.setting_value || '#2C5E91'}
                             onChange={(e) => handleSettingChange(s.setting_key, e.target.value)}
                           />
                           <input
@@ -2512,7 +3013,7 @@ const AdminDashboard = () => {
             <div className="d-flex justify-content-between align-items-center mb-3">
               <h5 className="fw-bold text-dark mb-0">Manage Events & Reunions</h5>
               <button
-                onClick={() => setEditingEvent({ title: '', event_type: 'reunion', venue: '', start_datetime: '', description: '', is_virtual: 0, is_published: 1 })}
+                onClick={() => setEditingEvent({ title: '', event_type: 'reunion', department: '', venue: '', start_datetime: '', description: '', is_virtual: 0, is_published: 1 })}
                 className="btn btn-sm btn-akal-primary d-flex align-items-center gap-1"
               >
                 <PlusCircle size={14} /> Create Event
@@ -2548,6 +3049,14 @@ const AdminDashboard = () => {
                         <option value="sports">Sports</option>
                       </select>
                     </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-bold">Department</label>
+                    <select className="form-select" value={editingEvent.department || ''} onChange={(e) => setEditingEvent({ ...editingEvent, department: e.target.value || null })}>
+                      <option value="">University-wide event</option>
+                      {eventDepartmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}
+                    </select>
                   </div>
 
                   <div className="row g-3 mb-3">
@@ -2615,20 +3124,37 @@ const AdminDashboard = () => {
               </div>
             )}
 
+            <div className="admin-event-filters mb-3">
+              <div className="row g-2">
+                <div className="col-xl-3 col-md-6"><label className="form-label">Search events</label><input className="form-control form-control-sm" type="search" placeholder="Title, venue, department..." value={eventSearch} onChange={(e) => setEventSearch(e.target.value)} /></div>
+                <div className="col-xl-2 col-md-6"><label className="form-label">Event timing</label><select className="form-select form-select-sm" value={eventTimelineFilter} onChange={(e) => setEventTimelineFilter(e.target.value)}><option value="all">All events</option><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="completed">Completed</option></select></div>
+                <div className="col-xl-2 col-md-6"><label className="form-label">Event type</label><select className="form-select form-select-sm" value={eventTypeFilter} onChange={(e) => setEventTypeFilter(e.target.value)}><option value="all">All types</option>{eventTypeOptions.map((type) => <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>)}</select></div>
+                <div className="col-xl-2 col-md-6"><label className="form-label">Department</label><select className="form-select form-select-sm" value={eventDepartmentFilter} onChange={(e) => setEventDepartmentFilter(e.target.value)}><option value="">All departments</option><option value="__university__">University-wide</option>{eventDepartmentOptions.map((department) => <option key={department} value={department}>{department}</option>)}</select></div>
+                <div className="col-xl-2 col-md-6"><label className="form-label">Event format</label><select className="form-select form-select-sm" value={eventModeFilter} onChange={(e) => setEventModeFilter(e.target.value)}><option value="all">Online & on-campus</option><option value="virtual">Online / virtual</option><option value="onsite">On campus</option></select></div>
+                <div className="col-xl-2 col-md-6"><label className="form-label">From date</label><input className="form-control form-control-sm" type="date" value={eventFromDate} onChange={(e) => setEventFromDate(e.target.value)} /></div>
+                <div className="col-xl-2 col-md-6"><label className="form-label">To date</label><input className="form-control form-control-sm" type="date" value={eventToDate} min={eventFromDate || undefined} onChange={(e) => setEventToDate(e.target.value)} /></div>
+              </div>
+              <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+                <span className="small text-muted">Showing <strong>{filteredAdminEvents.length}</strong> of <strong>{events.length}</strong> events</span>
+                <button type="button" className="btn btn-sm btn-light border" onClick={() => { setEventSearch(''); setEventTimelineFilter('all'); setEventTypeFilter('all'); setEventDepartmentFilter(''); setEventModeFilter('all'); setEventFromDate(''); setEventToDate(''); }}>Clear filters</button>
+              </div>
+            </div>
             <div className="table-responsive">
-              <table className="table table-hover align-middle small">
+              <table className="table table-hover align-middle small admin-event-table">
                 <thead className="table-light">
                   <tr>
                     <th>Event</th>
                     <th>Type</th>
                     <th>Date & Time</th>
                     <th>Venue</th>
+                    <th>Department</th>
+                    <th>Registrations</th>
                     <th>Status</th>
                     <th className="text-end">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {events.map((ev) => (
+                  {filteredAdminEvents.map((ev) => (
                     <tr key={ev.id}>
                       <td>
                         <div className="fw-bold">{ev.title}</div>
@@ -2637,6 +3163,12 @@ const AdminDashboard = () => {
                       <td><span className="badge bg-primary-subtle text-primary text-uppercase">{ev.event_type}</span></td>
                       <td>{new Date(ev.start_datetime).toLocaleString()}</td>
                       <td>{ev.venue}</td>
+                      <td>{ev.department || <span className="badge bg-primary-subtle text-primary">University-wide</span>}</td>
+                      <td>
+                        <button type="button" className="btn btn-sm btn-outline-primary rounded-pill text-nowrap" aria-label={`View ${Number(ev.registration_count || 0)} registrations for ${ev.title}`} onClick={() => openEventRegistrations(ev)}>
+                          <Users size={14} className="me-1" />{Number(ev.registration_count || 0)} <span>View</span>
+                        </button>
+                      </td>
                       <td>
                         <span className={`badge ${ev.is_published ? 'bg-success' : 'bg-secondary'}`}>
                           {ev.is_published ? 'Published' : 'Draft'}
@@ -2652,9 +3184,55 @@ const AdminDashboard = () => {
                       </td>
                     </tr>
                   ))}
+                  {filteredAdminEvents.length === 0 && <tr><td colSpan="8" className="text-center text-muted py-5">No events match these filters. Change your filters and try again.</td></tr>}
                 </tbody>
               </table>
             </div>
+
+            {eventRegistrationView && (
+              createPortal(
+              <div className="admin-event-registration-backdrop" tabIndex="-1" role="dialog" aria-modal="true" onClick={(event) => { if (event.target === event.currentTarget) setEventRegistrationView(null); }}>
+                <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                  <div className="modal-content admin-event-registration-modal border-0 shadow-lg rounded-4" onClick={(event) => event.stopPropagation()}>
+                    <div className="modal-header admin-event-registration-header border-0">
+                      <div>
+                        <div className="small text-uppercase text-warning fw-bold">Event registrations</div>
+                        <h5 className="modal-title fw-bold">{eventRegistrationView.event.title}</h5>
+                        <div className="small admin-event-registration-meta">{eventRegistrationView.event.department || 'University-wide'} <span>·</span> {eventRegistrationView.registrations.length} registered</div>
+                      </div>
+                      <button type="button" className="btn-close" aria-label="Close" onClick={() => setEventRegistrationView(null)} />
+                    </div>
+                    <div className="modal-body admin-event-registration-body">
+                      {eventRegistrationLoading ? <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
+                        : eventRegistrationError ? <div className="alert alert-danger mb-0">{eventRegistrationError}</div>
+                          : eventRegistrationView.registrations.length === 0 ? <div className="text-center text-muted py-5">No one has registered for this event yet.</div>
+                            : <div className="table-responsive">
+                              <table className="table table-hover align-middle small mb-0">
+                                <thead><tr><th>Sr. No.</th><th>UID</th><th>Name</th><th>Contact Number</th><th>Alumni / Student</th><th>Email</th><th>Registered At</th></tr></thead>
+                                <tbody>{eventRegistrationView.registrations.map((registration, index) => (
+                                  <tr key={registration.id}>
+                                    <td>{index + 1}</td>
+                                    <td>{registration.uid || '—'}</td>
+                                    <td className="fw-semibold">{registration.name}</td>
+                                    <td>{registration.contact_number || '—'}</td>
+                                    <td><span className={`badge ${registration.member_type === 'Alumni' ? 'bg-primary-subtle text-primary' : registration.member_type === 'Student' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}`}>{registration.member_type}</span></td>
+                                    <td><a href={`mailto:${registration.email}`}>{registration.email}</a></td>
+                                    <td>{registration.registered_at ? new Date(registration.registered_at).toLocaleString() : '—'}</td>
+                                  </tr>
+                                ))}</tbody>
+                              </table>
+                            </div>}
+                    </div>
+                    <div className="modal-footer admin-event-registration-footer border-0">
+                      <button type="button" className="btn btn-akal-primary me-auto d-inline-flex align-items-center gap-2" onClick={downloadEventRegistrations} disabled={eventRegistrationLoading || !!eventRegistrationError || eventRegistrationView.registrations.length === 0}>
+                        <Download size={16} /> Download CSV
+                      </button>
+                      <button type="button" className="btn btn-light border" onClick={() => setEventRegistrationView(null)}>Close</button>
+                    </div>
+                  </div>
+                </div>
+              </div>, document.body)
+            )}
           </div>
         )}
 
@@ -2878,6 +3456,7 @@ const AdminDashboard = () => {
                         <option value="approved">Approved</option>
                         <option value="pending">Pending</option>
                         <option value="closed">Closed</option>
+                        <option value="rejected">Rejected</option>
                       </select>
                     </div>
                   </div>
@@ -2896,7 +3475,9 @@ const AdminDashboard = () => {
                   <tr>
                     <th>Role & Company</th>
                     <th>Type & Location</th>
+                    <th>Department</th>
                     <th>Compensation</th>
+                    <th>Applicants</th>
                     <th>Status</th>
                     <th className="text-end">Actions</th>
                   </tr>
@@ -2912,13 +3493,23 @@ const AdminDashboard = () => {
                         <span className="badge bg-light text-dark border me-1">{j.job_type}</span>
                         <span>{j.location}</span>
                       </td>
+                      <td>{j.department || <span className="badge bg-light text-muted border">University-wide</span>}</td>
                       <td className="text-success fw-semibold">{j.salary_range}</td>
                       <td>
-                        <span className={`badge ${j.status === 'approved' ? 'bg-success' : 'bg-warning text-dark'}`}>
+                        <button onClick={() => openJobApplicants(j)} className="btn btn-sm btn-outline-primary text-nowrap">
+                          <Users size={14} className="me-1" /> View applicants ({Number(j.application_count || 0)})
+                        </button>
+                      </td>
+                      <td>
+                        <span className={`badge ${j.status === 'approved' ? 'bg-success' : j.status === 'rejected' ? 'bg-danger' : j.status === 'closed' ? 'bg-secondary' : 'bg-warning text-dark'}`}>
                           {j.status}
                         </span>
                       </td>
                       <td className="text-end">
+                        {j.status === 'pending' && <>
+                          <button onClick={() => handleSetJobStatus(j, 'approved')} className="btn btn-sm btn-success me-1">Approve</button>
+                          <button onClick={() => handleSetJobStatus(j, 'rejected')} className="btn btn-sm btn-outline-danger me-1">Reject</button>
+                        </>}
                         <button onClick={() => setEditingJob(j)} className="btn btn-sm btn-outline-primary me-1">
                           <Edit size={14} />
                         </button>
@@ -2931,6 +3522,36 @@ const AdminDashboard = () => {
                 </tbody>
               </table>
             </div>
+            {jobApplicantsView && (
+              createPortal(
+              <div className="admin-event-registration-backdrop" tabIndex="-1" role="dialog" aria-modal="true" onClick={(event) => { if (event.target === event.currentTarget) setJobApplicantsView(null); }}>
+                <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                  <div className="modal-content admin-event-registration-modal border-0 shadow-lg rounded-4" onClick={(event) => event.stopPropagation()}>
+                    <div className="modal-header admin-event-registration-header border-0">
+                      <div>
+                        <div className="small text-uppercase text-warning fw-bold">Job applicants</div>
+                        <h5 className="modal-title fw-bold">{jobApplicantsView.job.title}</h5>
+                        <div className="small admin-event-registration-meta">{jobApplicantsView.job.department || 'University-wide'} · {jobApplicantsView.applicants.length} applied</div>
+                      </div>
+                      <button type="button" className="btn-close" aria-label="Close" onClick={() => setJobApplicantsView(null)} />
+                    </div>
+                    <div className="modal-body admin-event-registration-body">
+                      {jobApplicantsLoading ? <div className="text-center py-5"><div className="spinner-border text-primary" /></div>
+                        : jobApplicantsError ? <div className="alert alert-danger mb-0">{jobApplicantsError}</div>
+                          : jobApplicantsView.applicants.length === 0 ? <div className="text-center text-muted py-5">No applications received for this job yet.</div>
+                            : <div className="table-responsive"><table className="table table-hover align-middle small mb-0">
+                              <thead><tr><th>Sr. No.</th><th>UID</th><th>Name</th><th>Contact Number</th><th>Alumni / Student</th><th>Email</th><th>Applied At</th></tr></thead>
+                              <tbody>{jobApplicantsView.applicants.map((applicant, index) => <tr key={applicant.id}><td>{index + 1}</td><td>{applicant.uid || '—'}</td><td className="fw-semibold">{applicant.name}</td><td>{applicant.contact_number || '—'}</td><td>{applicant.member_type}</td><td><a href={`mailto:${applicant.email}`}>{applicant.email}</a></td><td>{applicant.applied_at ? new Date(applicant.applied_at).toLocaleString() : '—'}</td></tr>)}</tbody>
+                            </table></div>}
+                    </div>
+                    <div className="modal-footer admin-event-registration-footer border-0">
+                      <button type="button" className="btn btn-akal-primary me-auto d-inline-flex align-items-center gap-2" onClick={downloadJobApplicants} disabled={jobApplicantsLoading || !!jobApplicantsError || jobApplicantsView.applicants.length === 0}><Download size={16} /> Download CSV</button>
+                      <button type="button" className="btn btn-light border" onClick={() => setJobApplicantsView(null)}>Close</button>
+                    </div>
+                  </div>
+                </div>
+              </div>, document.body)
+            )}
           </div>
         )}
 
@@ -3344,9 +3965,9 @@ const AdminDashboard = () => {
                 {/* ── Premium profile header — cover art + avatar ring + headline (NEVER shrinks) ── */}
                 <div
                   className="position-relative overflow-hidden flex-shrink-0"
-                  style={{ background: 'linear-gradient(120deg,#0D1622 0%,#075985 45%,#087BB5 75%,#29A9E0 100%)', flexShrink: 0 }}
+                  style={{ background: 'linear-gradient(120deg,#13243A 0%,#102B50 45%,#2C5E91 75%,#4F79A8 100%)', flexShrink: 0 }}
                 >
-                  <div className="position-absolute rounded-circle" style={{ width: '220px', height: '220px', top: '-110px', right: '60px', background: 'radial-gradient(circle, rgba(249,185,0,0.35) 0%, transparent 70%)' }}></div>
+                  <div className="position-absolute rounded-circle" style={{ width: '220px', height: '220px', top: '-110px', right: '60px', background: 'radial-gradient(circle, rgba(255,120,107,0.35) 0%, transparent 70%)' }}></div>
                   <div className="position-absolute rounded-circle" style={{ width: '300px', height: '300px', bottom: '-190px', left: '-80px', background: 'radial-gradient(circle, rgba(41,169,224,0.35) 0%, transparent 70%)' }}></div>
                   <div className="position-relative d-flex align-items-center gap-3 p-4">
                     <div
@@ -3565,7 +4186,7 @@ const AdminDashboard = () => {
                             <div className="col-lg-5 col-12">
                               {/* Digital ID Card Preview */}
                               {detailData.id_card && (
-                                <div className="rounded-4 p-3 mb-3 position-relative overflow-hidden text-white" style={{ background: 'linear-gradient(120deg,#0D1622 0%,#172333 45%,#075985 100%)', boxShadow: '0 14px 34px rgba(13,22,34,0.35)', border: '1px solid rgba(249,185,0,0.35)' }}>
+                                <div className="rounded-4 p-3 mb-3 position-relative overflow-hidden text-white" style={{ background: 'linear-gradient(120deg,#13243A 0%,#243247 45%,#102B50 100%)', boxShadow: '0 14px 34px rgba(13,22,34,0.35)', border: '1px solid rgba(255,120,107,0.35)' }}>
                                   <div className="position-absolute rounded-circle" style={{ width: '260px', height: '260px', top: '-140px', right: '-60px', background: 'radial-gradient(circle, rgba(249,185,0,0.28) 0%, transparent 70%)' }}></div>
                                   <div className="position-absolute rounded-circle" style={{ width: '200px', height: '200px', bottom: '-120px', left: '30%', background: 'radial-gradient(circle, rgba(41,169,224,0.25) 0%, transparent 70%)' }}></div>
                                   <div className="position-relative d-flex justify-content-between align-items-start gap-3">
@@ -3586,7 +4207,7 @@ const AdminDashboard = () => {
                                       </div>
                                     </div>
                                     <div className="text-end flex-shrink-0">
-                                      <div className="rounded-2 mx-auto" style={{ width: '38px', height: '28px', background: 'linear-gradient(135deg,#FFDF78,#D49800)', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.2)' }}></div>
+                                      <div className="rounded-2 mx-auto" style={{ width: '38px', height: '28px', background: 'linear-gradient(135deg,#FFD39A,#C95D31)', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.2)' }}></div>
                                       <QrCode size={34} className="mt-2" style={{ color: 'rgba(255,255,255,0.85)' }} />
                                     </div>
                                   </div>
@@ -3666,7 +4287,7 @@ const AdminDashboard = () => {
                         )}
                         {!flagged && <span className="me-auto" />}
                         {flagged && (
-                          <button className="btn btn-sm fw-bold d-flex align-items-center gap-1 px-3 py-2 rounded-pill" style={{ background: 'var(--grad-yellow)', color: 'var(--akal-navy)', border: 'none', boxShadow: '0 4px 14px rgba(249,185,0,0.35)' }} onClick={() => handleAcceptUser(du)}>
+                          <button className="btn btn-sm fw-bold d-flex align-items-center gap-1 px-3 py-2 rounded-pill" style={{ background: 'var(--grad-yellow)', color: 'var(--akal-navy)', border: 'none', boxShadow: '0 4px 14px rgba(255,120,107,0.35)' }} onClick={() => handleAcceptUser(du)}>
                             <UserCheck size={14} /> Accept & Activate
                           </button>
                         )}

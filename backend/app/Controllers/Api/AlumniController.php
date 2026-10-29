@@ -59,6 +59,7 @@ class AlumniController extends BaseController
             'job_type', 'job_organization', 'job_designation', 'job_location',
             // academic record (verified by admin, lekin alumni edit request bhej sakta hai)
             'enrollment_no', 'degree', 'department', 'batch_year', 'graduation_year',
+            'date_of_birth',
         ];
 
         $updateData = [];
@@ -66,6 +67,9 @@ class AlumniController extends BaseController
             if (isset($json[$field])) {
                 $updateData[$field] = $json[$field];
             }
+        }
+        if (isset($updateData['department']) && !in_array($updateData['department'], \App\Libraries\DepartmentCatalog::ALL, true)) {
+            return $this->respondValidationError(['department' => 'Please select a department from the department list']);
         }
 
         // DP photo validation (base64 data-url ya https URL, max ~2MB for base64)
@@ -184,6 +188,11 @@ class AlumniController extends BaseController
             return $this->respondValidationError(['title' => 'Title and company name are required']);
         }
 
+        $alumniProfile = $this->db->table('alumni_profiles')
+            ->select('department')
+            ->where('user_id', (int) $authUser['id'])
+            ->get()->getRowArray();
+
         $data = [
             'title'               => $json['title'],
             'company_name'        => $json['company_name'],
@@ -198,15 +207,65 @@ class AlumniController extends BaseController
             'contact_email'       => $json['contact_email'] ?? $authUser['email'],
             'deadline'            => $json['deadline'] ?? date('Y-m-d', strtotime('+30 days')),
             'posted_by_user_id'   => $authUser['id'],
-            'status'              => 'approved', // Alumni posted jobs active by default
+            'department'          => $alumniProfile['department'] ?? null,
+            'status'              => 'pending',
             'created_at'          => date('Y-m-d H:i:s'),
             'updated_at'          => date('Y-m-d H:i:s'),
         ];
 
-        $this->db->table('jobs')->insert($data);
+        $saved = $this->db->table('jobs')->insert($data);
+        if (!$saved) {
+            return $this->respondError('Job could not be submitted for review. Please try again.', 500);
+        }
         $jobId = $this->db->insertID();
 
-        return $this->respondSuccess(['id' => $jobId], 'Job posted successfully');
+        return $this->respondSuccess(['id' => $jobId, 'status' => 'pending'], 'Job submitted for admin approval');
+    }
+
+    /** Jobs posted by the signed-in alumni, with their application totals. */
+    public function getMyJobs()
+    {
+        $authUser = $this->request->authUser ?? [];
+        $jobs = $this->db->table('jobs')
+            ->select('jobs.*, (SELECT COUNT(*) FROM job_applications WHERE job_applications.job_id = jobs.id) AS application_count', false)
+            ->where('jobs.posted_by_user_id', (int) ($authUser['id'] ?? 0))
+            ->where('jobs.deleted_at IS NULL', null, false)
+            ->orderBy('jobs.created_at', 'DESC')
+            ->get()->getResultArray();
+        return $this->respondSuccess($jobs, 'Your job postings retrieved');
+    }
+
+    /** Alumni may view applicants only for a job they personally posted. */
+    public function getMyJobApplications($jobId)
+    {
+        $authUser = $this->request->authUser ?? [];
+        $job = $this->db->table('jobs')->select('id, title, company_name, status, posted_by_user_id')
+            ->where('id', (int) $jobId)->where('deleted_at IS NULL', null, false)->get()->getRowArray();
+        if (!$job) return $this->respondError('Job posting not found.', 404);
+        if ((int) ($job['posted_by_user_id'] ?? 0) !== (int) ($authUser['id'] ?? 0)) {
+            return $this->respondError('You can only view applicants for jobs you posted.', 403);
+        }
+        $applicants = $this->jobApplicantRows((int) $jobId);
+        return $this->respondSuccess(['job' => $job, 'applicants' => $applicants], 'Job applicants retrieved');
+    }
+
+    private function jobApplicantRows(int $jobId): array
+    {
+        $rows = $this->db->table('job_applications')
+            ->select("job_applications.id, job_applications.created_at AS applied_at, users.id AS user_id, users.email, users.role,
+                COALESCE(NULLIF(CONCAT(alumni_profiles.first_name, ' ', alumni_profiles.last_name), ' '), NULLIF(CONCAT(student_profiles.first_name, ' ', student_profiles.last_name), ' '), users.email) AS name,
+                COALESCE(alumni_profiles.phone, student_profiles.phone) AS contact_number,
+                CASE WHEN users.role = 'alumni' THEN COALESCE(alumni_profiles.auid, alumni_profiles.alumni_id) ELSE student_profiles.enrollment_no END AS uid", false)
+            ->join('users', 'users.id = job_applications.user_id')
+            ->join('alumni_profiles', 'alumni_profiles.user_id = users.id', 'left')
+            ->join('student_profiles', 'student_profiles.user_id = users.id', 'left')
+            ->where('job_applications.job_id', $jobId)
+            ->orderBy('job_applications.created_at', 'ASC')
+            ->get()->getResultArray();
+        return array_map(static function (array $row): array {
+            $row['member_type'] = ucfirst((string) $row['role']);
+            return $row;
+        }, $rows);
     }
 
     /**
@@ -216,7 +275,9 @@ class AlumniController extends BaseController
     {
         $authUser = $this->request->authUser;
         $requests = $this->db->table('mentorship_programs')
-            ->select('mentorship_programs.*, student_profiles.first_name as mentee_first_name, student_profiles.last_name as mentee_last_name, student_profiles.degree, student_profiles.department, student_profiles.current_year, users.email as mentee_email')
+            ->select('mentorship_programs.*, student_profiles.first_name as mentee_first_name, student_profiles.last_name as mentee_last_name,
+                student_profiles.degree, student_profiles.department, student_profiles.current_year, student_profiles.semester,
+                student_profiles.enrollment_no, student_profiles.phone as mentee_phone, users.email as mentee_email')
             ->join('student_profiles', 'student_profiles.user_id = mentorship_programs.mentee_user_id')
             ->join('users', 'users.id = mentorship_programs.mentee_user_id')
             ->where('mentorship_programs.mentor_user_id', $authUser['id'])

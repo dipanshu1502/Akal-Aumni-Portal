@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { ShieldCheck, PlusCircle, Search, Lock, UserPlus, KeyRound } from 'lucide-react';
+import { DEPARTMENTS } from '../../constants/departments';
 const PERM_FALLBACK = {
   verify_alumni: 'Verify alumni accounts (approve / reject)',
   manage_alumni: 'Manage alumni accounts (view, activate / deactivate)',
@@ -15,9 +16,8 @@ const PERM_FALLBACK = {
   manage_donations: 'Manage donation campaigns & view donations',
   manage_settings: 'Edit settings',
   view_reports: 'View reports',
-  view_audit_logs: 'View audit logs',
 };
-const emptyForm = { email: '', password: '', full_name: '', designation: 'Alumni Admin', department: '', phone: '', permissions: {} };
+const emptyForm = { email: '', password: '', full_name: '', designation: 'Alumni Admin', department: '', phone: '', permissions: { manage_jobs: true } };
 const AdminManagement = ({ showToast }) => {
   const [admins, setAdmins] = useState([]);
   const [catalogue, setCatalogue] = useState(PERM_FALLBACK);
@@ -27,6 +27,8 @@ const AdminManagement = ({ showToast }) => {
   const [showForm, setShowForm] = useState(false);
   const [savingId, setSavingId] = useState(null);
   const [draftPerms, setDraftPerms] = useState({});
+  const [draftDepartments, setDraftDepartments] = useState({});
+  const departments = DEPARTMENTS;
   const notify = (m) => { if (showToast) showToast(m); };
   const fetchAll = async () => {
     setLoading(true);
@@ -37,8 +39,10 @@ const AdminManagement = ({ showToast }) => {
       if (aRes && aRes.status) {
         setAdmins(aRes.data || []);
         const d = {};
-        (aRes.data || []).forEach((a) => { d[a.id] = a.permissions || {}; });
+        const departments = {};
+        (aRes.data || []).forEach((a) => { d[a.id] = a.permissions || {}; departments[a.id] = a.department || ''; });
         setDraftPerms(d);
+        setDraftDepartments(departments);
       }
       setCatalogue(cat);
     } catch (e) { notify(e.message || 'Failed to load admins'); }
@@ -71,8 +75,10 @@ const AdminManagement = ({ showToast }) => {
     setSavingId(a.id);
     try {
       const perms = draftPerms[a.id] || {};
-      const res = await api.put('/admin/admins/' + a.id + '/permissions', { permissions: perms });
-      if (res.status) { notify('Permissions updated for ' + a.email); fetchAll(); }
+      const department = (draftDepartments[a.id] || '').trim();
+      if (!department) { notify('Assign a department before saving this admin'); setSavingId(null); return; }
+      const res = await api.put('/admin/admins/' + a.id + '/permissions', { permissions: perms, department });
+      if (res.status) { notify('Department access updated for ' + a.email); fetchAll(); }
     } catch (e) { notify(e.message || 'Failed to save'); }
     finally { setSavingId(null); }
   };
@@ -89,7 +95,7 @@ const AdminManagement = ({ showToast }) => {
     const s = search.toLowerCase();
     return (a.email || '').toLowerCase().includes(s) || (a.full_name || '').toLowerCase().includes(s);
   });
-  const permKeys = Object.keys(catalogue).filter((k) => k !== 'manage_admins' && k !== 'all');
+  const permKeys = Object.keys(catalogue).filter((k) => ['verify_alumni', 'manage_alumni', 'manage_students', 'manage_users', 'view_reports', 'manage_jobs'].includes(k));
   if (loading) return (<div className="text-center py-5 text-muted"><div className="spinner-border text-primary" /></div>);
   return (
     <div className="akal-card p-4">
@@ -116,11 +122,11 @@ const AdminManagement = ({ showToast }) => {
           </div>
           <div className="row g-2">
             <div className="col-md-4"><label className="form-label small fw-bold">Designation</label><input className="form-control form-control-sm" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} /></div>
-            <div className="col-md-4"><label className="form-label small fw-bold">Department</label><input className="form-control form-control-sm" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} /></div>
+            <div className="col-md-4"><label className="form-label small fw-bold">Department *</label><select className="form-select form-select-sm" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} required><option value="">Select department</option>{departments.map((department) => <option key={department} value={department}>{department}</option>)}</select></div>
             <div className="col-md-4"><label className="form-label small fw-bold">Phone</label><input className="form-control form-control-sm" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
           </div>
           <div className="mt-3">
-            <div className="small fw-bold mb-2"><KeyRound size={13} className="me-1" />Permissions:</div>
+            <div className="small fw-bold mb-2"><KeyRound size={13} className="me-1" />Department access:</div>
             <div className="d-flex flex-wrap gap-2">
               {permKeys.map((perm) => (
                 <label key={perm} className={'badge rounded-pill px-3 py-2 border ' + (form.permissions[perm] ? 'bg-success text-white border-success' : 'bg-white text-dark')} style={{ cursor: 'pointer' }} title={catalogue[perm]}>
@@ -129,6 +135,7 @@ const AdminManagement = ({ showToast }) => {
               ))}
             </div>
           </div>
+          <div className="small text-muted mt-2">This admin will only see alumni and student records from the assigned department. Super Admin retains full access.</div>
           <div className="mt-3 d-flex gap-2">
             <button type="submit" className="btn btn-sm btn-danger fw-bold">Create Admin</button>
             <button type="button" className="btn btn-sm btn-light border" onClick={() => setShowForm(false)}>Cancel</button>
@@ -137,15 +144,17 @@ const AdminManagement = ({ showToast }) => {
       )}
       <div className="table-responsive mt-2">
         <table className="table table-hover align-middle small">
-          <thead className="table-light"><tr><th>Admin</th><th>Role</th><th>Permissions</th><th className="text-end">Actions</th></tr></thead>
+          <thead className="table-light"><tr><th>Admin</th><th>Department</th><th>Role</th><th>Permissions</th><th className="text-end">Actions</th></tr></thead>
           <tbody>
             {filtered.map((a) => {
               const isSuper = a.role === 'superadmin';
               const draft = draftPerms[a.id] || {};
-              const dirty = JSON.stringify(draft) !== JSON.stringify(a.permissions || {});
+              const department = draftDepartments[a.id] || '';
+              const dirty = JSON.stringify(draft) !== JSON.stringify(a.permissions || {}) || department !== (a.department || '');
               return (
                 <tr key={a.id}>
                   <td><div className="fw-bold text-dark">{a.full_name || a.email}</div><div className="text-muted font-monospace" style={{ fontSize: '0.75rem' }}>{a.email}</div><div className="text-muted" style={{ fontSize: '0.75rem' }}>{a.designation || ''}</div></td>
+                  <td>{isSuper ? <span className="text-muted">All departments</span> : <select className="form-select form-select-sm" aria-label={'Department for ' + a.email} value={department} onChange={(e) => setDraftDepartments((d) => ({ ...d, [a.id]: e.target.value }))}><option value="">Select department</option>{departments.map((option) => <option key={option} value={option}>{option}</option>)}</select>}</td>
                   <td><span className={'badge ' + (isSuper ? 'bg-danger' : 'bg-primary')}>{String(a.role).toUpperCase()}</span><div className="mt-1"><span className={'badge ' + (a.status === 'active' ? 'bg-success' : 'bg-secondary')}>{a.status}</span></div></td>
                   <td>
                     {isSuper ? (<span className="badge bg-danger-subtle text-danger border px-3 py-2">FULL ACCESS</span>) : (
@@ -165,11 +174,11 @@ const AdminManagement = ({ showToast }) => {
                 </tr>
               );
             })}
-            {filtered.length === 0 && (<tr><td colSpan="4" className="text-center py-4 text-muted">No admins found.</td></tr>)}
+            {filtered.length === 0 && (<tr><td colSpan="5" className="text-center py-4 text-muted">No admins found.</td></tr>)}
           </tbody>
         </table>
       </div>
-      <div className="alert alert-info small mb-0 mt-2">Tick permissions then Save. Remove demotes to alumni; Delete deletes.</div>
+      <div className="alert alert-info small mb-0 mt-2">Tick department permissions then Save. Remove demotes to alumni; Delete deletes. Super Admin access is unchanged.</div>
     </div>
   );
 };

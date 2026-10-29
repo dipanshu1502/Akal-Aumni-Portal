@@ -60,6 +60,9 @@ class StudentController extends BaseController
                 $updateData[$field] = $json[$field];
             }
         }
+        if (isset($updateData['department']) && !in_array($updateData['department'], \App\Libraries\DepartmentCatalog::ALL, true)) {
+            return $this->respondValidationError(['department' => 'Please select a department from the department list']);
+        }
         $updateData['updated_at'] = date('Y-m-d H:i:s');
 
         $this->db->table('student_profiles')->where('user_id', $authUser['id'])->update($updateData);

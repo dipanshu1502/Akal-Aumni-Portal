@@ -51,26 +51,26 @@ const StudentDashboard = () => {
   }
 
   return (
-    <div className="student-dashboard py-4">
+    <div className="student-dashboard py-4 bg-white min-vh-100">
       <div className="container">
         {/* Welcome Header */}
-        <div className="bg-primary text-white rounded-4 p-4 p-md-5 mb-4 shadow" style={{ background: 'var(--grad-primary)' }}>
+        <div className="text-white rounded-4 p-4 p-md-5 mb-4 shadow-sm" style={{ backgroundColor: 'var(--akal-navy)', borderBottom: '3px solid var(--akal-yellow)' }}>
           <div className="row align-items-center g-4">
             <div className="col-lg-8">
               <div className="d-flex align-items-center gap-2 text-warning small fw-bold text-uppercase mb-2">
                 <GraduationCap size={16} />
                 <span>STUDENT HUB & CAREER ACCELERATOR</span>
               </div>
-              <h2 className="fw-bold mb-2">
+              <h2 className="fw-bold mb-2 text-white">
                 Hello, {profile?.first_name}{profile?.last_name ? ` ${profile.last_name}` : ''}!
               </h2>
-              <p className="text-light text-opacity-85 mb-0">
+              <p className="text-white-50 mb-0">
                 {profile?.degree} • Year {profile?.current_year} (Semester {profile?.semester}) • Enrollment: {profile?.enrollment_no || 'AU-2023'}
               </p>
             </div>
 
             <div className="col-lg-4 text-lg-end">
-              <Link to="/mentorship" className="btn btn-akal-yellow d-inline-flex align-items-center gap-2 shadow">
+              <Link to="/mentorship" className="btn btn-akal-yellow d-inline-flex align-items-center gap-2 shadow-sm">
                 <Award size={18} />
                 <span>Find an Alumni Mentor</span>
               </Link>

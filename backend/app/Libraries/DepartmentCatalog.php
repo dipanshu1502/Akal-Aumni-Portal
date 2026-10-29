@@ -1,0 +1,13 @@
+<?php
+
+namespace App\Libraries;
+
+final class DepartmentCatalog
+{
+    public const ALL = [
+        'Akal Business School', 'Chemistry', 'Commerce', 'CS', 'CSE', 'Education',
+        'English', 'Economics', 'History', 'Mathematics', 'Liberal Arts',
+        'Life Sciences', 'MLS', 'Physical Sciences', 'Physics', 'Psychology',
+        'Punjabi', 'Physiotherapy', 'Social Sciences', 'SGGS',
+    ];
+}
