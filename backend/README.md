@@ -67,3 +67,57 @@ Additionally, make sure that the following extensions are enabled in your PHP:
 - json (enabled by default - don't turn it off)
 - [mysqlnd](http://php.net/manual/en/mysqlnd.install.php) if you plan to use MySQL
 - [libcurl](http://php.net/manual/en/curl.requirements.php) if you plan to use the HTTP\CURLRequest library
+
+## Automatic alumni birthday emails
+
+Birthday email settings are available in the admin console to administrators granted the
+`manage_birthday_emails` permission and to superadmins. The template editor accepts plain text;
+the application escapes the message and renders it in the branded HTML email. Available
+placeholders are `{{name}}` and `{{university_name}}`. Test emails are sent only to the
+fixed test address `dipanshu150206@gmail.com`. Only authenticated admins with the
+`manage_birthday_emails` permission (and superadmins) can trigger a test; sends are limited to
+one per minute.
+
+For Gmail delivery, the backend `.env` must use CodeIgniter's exact setting names (case
+matters). Set `email.SMTPUser` to the Gmail sender account and `email.SMTPPass` to that
+account's Google App Password (not the normal Google account password). The password key must
+be named `email.SMTPPass`; a differently named password setting will not enable SMTP
+authentication. Never commit or share the App Password. Gmail's `530 Authentication
+Required` response means SMTP authentication was not performed; the test endpoint now reports
+an actionable configuration error when either credential is missing.
+
+Run the database migration from the backend directory:
+
+```powershell
+php spark migrate
+```
+
+The CLI command reads the application timezone configured by `app.appTimezone` and should be
+scheduled once daily. It selects only active, verified, non-deleted accounts with the exact
+`alumni` role. February 29 birthdays are observed on February 28 in non-leap years. Each
+user/year gets one delivery attempt (including failed attempts), enforced by a unique database
+key. `--dry-run` checks candidates and duplicates without sending or recording emails, even
+while automation is disabled:
+
+```powershell
+php spark birthday:send --dry-run
+php spark birthday:send
+```
+
+### Windows Task Scheduler (XAMPP)
+
+Create a daily task with a 9:00 AM trigger. Set **Program/script** to
+`C:\xampp\php\php.exe`, **Add arguments** to `spark birthday:send`, and **Start in** to
+`C:\Users\dipan\Desktop\Akal Aumni Portal\backend`. The working directory must be the backend
+folder so CodeIgniter loads its `.env` and `spark` entry point. Use **Run whether user is logged
+on or not** if the task should run while the desktop session is closed. Test the task first with
+`spark birthday:send --dry-run`.
+
+### Linux cron
+
+For Linux hosting, schedule the PHP CLI command at 9:00 AM server time (configure the
+application timezone to match the server's intended birthday date):
+
+```cron
+0 9 * * * cd /path/to/backend && /usr/bin/php spark birthday:send >> writable/logs/birthday-cron.log 2>&1
+```

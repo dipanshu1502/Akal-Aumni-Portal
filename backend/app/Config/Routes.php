@@ -64,6 +64,12 @@ $routes->group('api', function ($routes) {
 
     // Admin & Super Admin Authenticated Routes
     $routes->group('admin', ['filter' => 'auth:admin,superadmin'], function ($routes) {
+        $routes->get('birthday-emails', 'Api\BirthdayEmailController::getSettings', ['filter' => 'permission:manage_birthday_emails']);
+        $routes->put('birthday-emails', 'Api\BirthdayEmailController::saveSettings', ['filter' => 'permission:manage_birthday_emails']);
+        $routes->post('birthday-emails/preview', 'Api\BirthdayEmailController::preview', ['filter' => 'permission:manage_birthday_emails']);
+        $routes->post('birthday-emails/test', 'Api\BirthdayEmailController::sendTest', ['filter' => 'permission:manage_birthday_emails']);
+        $routes->get('birthday-emails/history', 'Api\BirthdayEmailController::history', ['filter' => 'permission:manage_birthday_emails']);
+
         $routes->get('dashboard', 'Api\AdminController::getDashboard');
         $routes->get('mentorship-requests', 'Api\AdminController::getMentorshipRequests');
         $routes->get('alumni-mentors', 'Api\AdminController::getAlumniMentorRoster');
@@ -136,4 +142,3 @@ $routes->group('api', function ($routes) {
         $routes->get('audit-logs', 'Api\AdminController::getAuditLogs', ['filter' => 'permission:view_audit_logs']);
     });
 });
-

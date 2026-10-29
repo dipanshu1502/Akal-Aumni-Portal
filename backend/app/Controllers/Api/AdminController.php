@@ -29,13 +29,16 @@ class AdminController extends BaseController
         return trim((string) ($profile['department'] ?? ''));
     }
 
-    private function departmentAdminPermissions($input): array
+    private function grantableAdminPermissions($input): array
     {
         $permissions = is_array($input)
             ? \App\Filters\PermissionFilter::sanitize($input)
             : \App\Filters\PermissionFilter::normalize($input);
-        $departmentPermissions = \App\Filters\PermissionFilter::DEPARTMENT_ADMIN_PERMISSIONS;
-        return array_intersect_key($permissions, array_flip($departmentPermissions));
+        $grantablePermissions = array_merge(
+            \App\Filters\PermissionFilter::DEPARTMENT_ADMIN_PERMISSIONS,
+            \App\Filters\PermissionFilter::GLOBAL_ADMIN_PERMISSIONS,
+        );
+        return array_intersect_key($permissions, array_flip($grantablePermissions));
     }
 
     private function isAllowedAdminDepartment(string $department): bool
@@ -1033,8 +1036,11 @@ class AdminController extends BaseController
         if (!$authUser || ($authUser['role'] ?? '') !== 'superadmin') {
             return $this->respondError('Forbidden: only Super Admin can view permissions', 403);
         }
-        $departmentPermissions = ['verify_alumni', 'manage_alumni', 'manage_students', 'manage_users', 'view_reports', 'manage_jobs'];
-        return $this->respondSuccess(array_intersect_key(\App\Filters\PermissionFilter::AVAILABLE, array_flip($departmentPermissions)), 'Department admin permissions catalogue');
+        $grantablePermissions = array_merge(
+            \App\Filters\PermissionFilter::DEPARTMENT_ADMIN_PERMISSIONS,
+            \App\Filters\PermissionFilter::GLOBAL_ADMIN_PERMISSIONS,
+        );
+        return $this->respondSuccess(array_intersect_key(\App\Filters\PermissionFilter::AVAILABLE, array_flip($grantablePermissions)), 'Admin permissions catalogue');
     }
 
     /**
@@ -1055,7 +1061,7 @@ class AdminController extends BaseController
         foreach ($rows as &$r) {
             $raw = $r['permissions'] ?? null;
             unset($r['permissions']);
-            $r['permissions'] = ($r['role'] === 'superadmin') ? ['all' => true] : $this->departmentAdminPermissions($raw ?? '');
+            $r['permissions'] = ($r['role'] === 'superadmin') ? ['all' => true] : $this->grantableAdminPermissions($raw ?? '');
         }
         unset($r);
         return $this->respondSuccess($rows, 'Admins retrieved');
@@ -1097,7 +1103,7 @@ class AdminController extends BaseController
         if ($exists) {
             return $this->respondError('An account with this email already exists', 409);
         }
-        $permissions = $this->departmentAdminPermissions($json['permissions'] ?? []);
+        $permissions = $this->grantableAdminPermissions($json['permissions'] ?? []);
         $now = date('Y-m-d H:i:s');
         $this->db->table('users')->insert([
             'email' => $email, 'password_hash' => password_hash($password, PASSWORD_BCRYPT),
@@ -1140,7 +1146,7 @@ class AdminController extends BaseController
             return $this->respondError('Permissions can only be edited for admin accounts', 400);
         }
         $json = $this->request->getJSON(true) ?? [];
-        $permissions = $this->departmentAdminPermissions($json['permissions'] ?? []);
+        $permissions = $this->grantableAdminPermissions($json['permissions'] ?? []);
         $profileData = ['updated_at' => date('Y-m-d H:i:s'), 'permissions' => json_encode($permissions)];
         if (isset($json['full_name']) && trim((string) $json['full_name']) !== '') {
             $profileData['full_name'] = mb_substr(trim((string) $json['full_name']), 0, 150);

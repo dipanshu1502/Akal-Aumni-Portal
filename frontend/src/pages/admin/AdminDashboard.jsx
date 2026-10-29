@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import AdminManagement from './AdminManagement';
+import BirthdayEmailManagement from './BirthdayEmailManagement';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { DEPARTMENTS } from '../../constants/departments';
@@ -1632,6 +1633,15 @@ const AdminDashboard = () => {
             </button>
           )}
 
+          {hasPermission('manage_birthday_emails') && (
+            <button
+              className={`btn btn-sm px-3 rounded-pill fw-semibold ${activeTab === 'birthday-emails' ? 'btn-primary' : 'btn-light border'}`}
+              onClick={() => setActiveTab('birthday-emails')}
+            >
+              <Mail size={15} className="me-1" /> Birthday Emails
+            </button>
+          )}
+
           {hasPermission('manage_users') && (
             <button
               className={`btn btn-sm px-3 rounded-pill fw-semibold ${activeTab === 'users' ? 'btn-primary' : 'btn-light border'}`}
@@ -2234,6 +2244,10 @@ const AdminDashboard = () => {
         {/* TAB: Admin Accounts & Permissions (superadmin only) */}
         {activeTab === 'admins' && isSuperAdmin && (
           <AdminManagement showToast={showToast} />
+        )}
+
+        {activeTab === 'birthday-emails' && hasPermission('manage_birthday_emails') && (
+          <BirthdayEmailManagement />
         )}
 
         {/* TAB 4: MASTER SITE CUSTOMIZER & SYSTEM SETTINGS */}
