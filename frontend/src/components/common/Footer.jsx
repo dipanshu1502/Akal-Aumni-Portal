@@ -28,9 +28,11 @@ const Footer = () => {
           {/* Col 1: University Identity */}
           <div className="col-lg-4 col-md-6">
             <div className="d-flex align-items-center gap-3 mb-3">
-              <div className="university-crest" style={{ width: "44px", height: "44px", fontSize: "18px" }}>
-                AU
-              </div>
+              <img
+              className="university-logo-image"
+              src="/Akal%20Logo.png"
+              alt="Akal University Alumni Association"
+              />
               <div>
                 <h5 className="mb-0 text-white fw-bold">{universityName}</h5>
                 <span className="text-akal-yellow small text-uppercase fw-semibold" style={{ letterSpacing: "0.1em" }}>Alumni Association</span>

@@ -766,15 +766,53 @@ a:hover {
 /* Digital ID Card (AU Official Blue & Gold) */
 .digital-id-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 680px;
   border-radius: 16px;
   background: var(--grad-navy);
   color: #FFFFFF;
-  padding: 24px;
+  padding: 30px 36px;
   box-shadow: 0 16px 36px rgba(23, 35, 51, 0.25);
   position: relative;
   overflow: hidden;
   border: 1.5px solid var(--akal-yellow);
+}
+.digital-id-dialog {
+  width: min(760px, calc(100vw - 1.5rem));
+  max-width: none;
+}
+.digital-id-header { min-height: 58px; margin-bottom: 26px !important; }
+.digital-id-header > div:first-child { min-width: 0; }
+.digital-id-header > div:first-child > div:last-child { font-size: 1.1rem; }
+.digital-id-member-info { min-width: 0; }
+.digital-id-member-info h5 { font-size: clamp(1.15rem, 2.5vw, 1.55rem); }
+.digital-id-member-info > div:nth-child(2) { font-size: clamp(0.95rem, 2vw, 1.2rem); }
+.digital-id-ids { font-size: 0.8rem; overflow-wrap: anywhere; }
+.digital-id-logo-wrap { width: 56px; height: 56px; flex: 0 0 56px; display: flex; align-items: center; justify-content: center; }
+.digital-id-logo { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+.digital-id-qr { width: 88px; }
+.digital-id-card-number,
+.digital-id-status { font-size: clamp(0.9rem, 2vw, 1.15rem); }
+.digital-id-modal-body { overflow-x: hidden; }
+@media (max-width: 575.98px) {
+  .digital-id-dialog { width: calc(100vw - 1rem); margin: 0.5rem auto; }
+  .digital-id-card { padding: 24px 18px; }
+  .digital-id-header { gap: 0.6rem; margin-bottom: 18px !important; }
+  .digital-id-header > div:first-child { gap: 0.5rem !important; }
+  .digital-id-header > div:first-child > div:last-child { font-size: 0.82rem; }
+  .digital-id-header .badge-akal-distinguished { flex-shrink: 0; padding: 0.35rem 0.55rem !important; font-size: 0.65rem !important; }
+  .digital-id-member { align-items: flex-start !important; gap: 0.85rem !important; }
+  .digital-id-logo-wrap { width: 42px; height: 42px; flex-basis: 42px; }
+  .digital-id-member > div:nth-child(2) img,
+  .digital-id-member > div:nth-child(2) > div { width: 64px !important; height: 64px !important; }
+  .digital-id-member > div:nth-child(2) > div { font-size: 24px !important; }
+  .digital-id-member-info h5 { font-size: 1.05rem; overflow-wrap: anywhere; }
+  .digital-id-member-info > div:nth-child(2) { font-size: 0.9rem; overflow-wrap: anywhere; }
+  .digital-id-member-info > div:nth-child(3) { font-size: 0.78rem; }
+  .digital-id-ids { font-size: 0.68rem; }
+  .digital-id-qr { width: 64px; }
+  .digital-id-qr svg { width: 56px; height: 56px; }
+  .digital-id-card-number,
+  .digital-id-status { font-size: 0.8rem; }
 }
 .digital-id-card .id-card-label {
   font-size: 0.65rem;

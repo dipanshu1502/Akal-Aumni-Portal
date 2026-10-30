@@ -30,6 +30,10 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const displayName = profile?.first_name
+    ? `${profile.first_name}${profile.last_name ? ` ${profile.last_name}` : ""}`
+    : (profile?.full_name || user?.first_name || user?.full_name || "User");
+  const avatarInitial = profile?.first_name?.[0] || user?.first_name?.[0] || displayName[0] || "";
 
   const handleLogout = () => {
     logout();
@@ -312,11 +316,19 @@ const Navbar = () => {
                   >
                     <div className="akal-avatar-ring">
                       <div className="akal-avatar-inner" style={{ width: 28, height: 28, backgroundColor: "var(--akal-blue)" }}>
-                        {user.first_name?.[0] || "U"}{user.last_name ? user.last_name[0] : ""}
+                        {(profile?.profile_photo || user?.profile_photo) ? (
+                          <img
+                            src={profile?.profile_photo || user.profile_photo}
+                            alt={`${displayName} profile`}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        ) : (
+                          avatarInitial
+                        )}
                       </div>
                     </div>
                     <div className="d-flex flex-column text-start">
-                      <div className="user-chip-name">{profile?.first_name ? `${profile.first_name}${profile.last_name ? ` ${profile.last_name}` : ""}` : (user.first_name || "User")}</div>
+                      <div className="user-chip-name">{displayName}</div>
                       <div className="user-chip-role">{(user.role || "").toUpperCase()}</div>
                     </div>
                   </div>
