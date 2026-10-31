@@ -239,6 +239,66 @@
   border-radius: 16px;
 }
 
+/* The event report is portaled to <body>; keep its header and actions visible
+   while scrolling the report fields inside the viewport-sized dialog. */
+.admin-event-report-backdrop {
+  z-index: 3000;
+  overflow: hidden;
+}
+.admin-event-report-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden;
+  color: #172333 !important;
+  background: #fff !important;
+}
+.admin-event-report-modal .modal-body {
+  color: #172333 !important;
+  background: #fff !important;
+}
+.admin-event-report-modal .modal-body .form-label,
+.admin-event-report-modal .modal-body label {
+  color: #172333 !important;
+}
+.admin-event-report-modal .modal-body .form-text { color: #64748b !important; }
+.admin-event-report-modal .modal-footer {
+  color: #172333;
+  background: #f8fafc;
+}
+.admin-event-report-modal .modal-header {
+  flex: 0 0 auto;
+  color: #fff;
+  background: var(--akal-navy) !important;
+  padding: 1rem 1.5rem !important;
+}
+.admin-event-report-modal .modal-title { color: #fff; }
+.admin-event-report-modal form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.admin-event-report-modal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.5rem !important;
+}
+.admin-event-report-modal .modal-footer {
+  flex: 0 0 auto;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem !important;
+}
+
+@media (max-width: 575.98px) {
+  .admin-event-report-modal .modal-header { padding: 0.85rem 1rem !important; }
+  .admin-event-report-modal .modal-body { padding: 1rem !important; }
+  .admin-event-report-modal .modal-footer { padding: 0.75rem 1rem !important; }
+}
+
 .admin-event-registration-header {
   display: flex;
   align-items: center;

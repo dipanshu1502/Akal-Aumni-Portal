@@ -311,8 +311,16 @@ class PublicController extends BaseController
     public function getGallery()
     {
         $gallery = $this->db->table('gallery_albums')
-            ->where('is_published', 1)
-            ->orderBy('event_date', 'DESC')
+            ->select('gallery_albums.id, gallery_albums.title, gallery_albums.category, gallery_albums.cover_image, gallery_albums.description, gallery_albums.event_date, gallery_albums.is_published, gallery_albums.photos_json,
+                event_reports.email_address as report_email, event_reports.coordinators as report_coordinators,
+                event_reports.department as report_department, event_reports.event_type as report_event_type,
+                event_reports.event_date as report_event_date, event_reports.speaker_name as report_speaker_name,
+                event_reports.speaker_uid as report_speaker_uid, event_reports.batch as report_batch,
+                event_reports.participants_count as report_participants_count, event_reports.detailed_report as report_details,
+                event_reports.photos_json as report_photos_json')
+            ->join('event_reports', 'event_reports.event_id = gallery_albums.event_id', 'left')
+            ->where('gallery_albums.is_published', 1)
+            ->orderBy('gallery_albums.event_date', 'DESC')
             ->get()->getResultArray();
 
         return $this->respondSuccess($gallery, 'Gallery albums retrieved');

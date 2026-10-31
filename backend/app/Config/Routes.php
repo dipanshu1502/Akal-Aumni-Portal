@@ -12,6 +12,8 @@ $routes->group('api', function ($routes) {
 
     // Options preflight handler for CORS
     $routes->options('(:any)', fn () => Services::response()->setStatusCode(200));
+    $routes->get('event-report-photo/(:segment)', 'Api\AdminController::getEventReportPhoto/$1');
+    $routes->get('public/event-report-photo/(:segment)', 'Api\AdminController::getEventReportPhoto/$1');
 
     // Public Routes
     $routes->group('public', function ($routes) {
@@ -100,6 +102,8 @@ $routes->group('api', function ($routes) {
         $routes->post('events', 'Api\AdminController::saveEvent', ['filter' => 'permission:manage_events']);
         $routes->delete('events/(:num)', 'Api\AdminController::deleteEvent/$1', ['filter' => 'permission:manage_events']);
         $routes->get('events/(:num)/registrations', 'Api\AdminController::getEventRegistrations/$1', ['filter' => 'permission:manage_events']);
+        $routes->get('events/(:num)/report', 'Api\AdminController::getEventReport/$1', ['filter' => 'permission:manage_events']);
+        $routes->post('events/(:num)/report', 'Api\AdminController::saveEventReport/$1', ['filter' => 'permission:manage_events']);
 
         // Settings (requires manage_settings)
         $routes->get('settings', 'Api\AdminController::getSettings', ['filter' => 'permission:manage_settings']);

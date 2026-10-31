@@ -1757,12 +1757,81 @@ class AdminController extends BaseController
         return $this->respondSuccess([], 'Job deleted');
     }
 
+    /** Retrieve the submitted report for an event. */
+    public function getEventReport($eventId)
+    {
+        $event = $this->db->table('events')->select('id, title, department, event_type, start_datetime')->where('id', (int) $eventId)->get()->getRowArray();
+        if (!$event) return $this->respondError('Event not found.', 404);
+        $report = $this->db->table('event_reports')->where('event_id', (int) $eventId)->get()->getRowArray();
+        return $this->respondSuccess(['event' => $event, 'report' => $report], 'Event report retrieved');
+    }
+
+    /** Publicly readable event report photo stored under writable/uploads. */
+    public function getEventReportPhoto($filename)
+    {
+        $filename = basename((string) $filename);
+        $path = WRITEPATH . 'uploads/event-reports/' . $filename;
+        if (!is_file($path)) return $this->respondError('Photo not found.', 404);
+        return $this->response->setHeader('Content-Type', mime_content_type($path) ?: 'application/octet-stream')
+            ->setHeader('Cache-Control', 'public, max-age=86400')->setBody(file_get_contents($path));
+    }
+
+    /** Save report metadata and photos, then publish the matching gallery album. */
+    public function saveEventReport($eventId)
+    {
+        $event = $this->db->table('events')->where('id', (int) $eventId)->get()->getRowArray();
+        if (!$event) return $this->respondError('Event not found.', 404);
+        $authUser = $this->request->authUser ?? [];
+        if (($authUser['role'] ?? '') !== 'superadmin') {
+            $department = $this->getDepartmentScope($authUser);
+            if ($department === '' || ($event['department'] ?? '') !== $department) return $this->respondError('You can only manage reports for events in your department.', 403);
+        }
+        $fields = $this->request->getPost();
+        if (empty($fields) && $this->request->getJSON(true)) $fields = $this->request->getJSON(true);
+        $fields['email_address'] = trim((string) ($fields['email_address'] ?? ''));
+        $fields['coordinators'] = trim((string) ($fields['coordinators'] ?? ''));
+        $fields['department'] = trim((string) ($fields['department'] ?? $event['department'] ?? ''));
+        $fields['event_type'] = trim((string) ($fields['event_type'] ?? $event['event_type'] ?? ''));
+        $fields['event_date'] = trim((string) ($fields['event_date'] ?? substr((string) $event['start_datetime'], 0, 10)));
+        $fields['speaker_name'] = trim((string) ($fields['speaker_name'] ?? ''));
+        $fields['speaker_uid'] = trim((string) ($fields['speaker_uid'] ?? ''));
+        $fields['batch'] = trim((string) ($fields['batch'] ?? ''));
+        $fields['participants_count'] = max(0, (int) ($fields['participants_count'] ?? 0));
+        $fields['detailed_report'] = trim((string) ($fields['detailed_report'] ?? ''));
+        $words = preg_split('/\s+/', $fields['detailed_report'], -1, PREG_SPLIT_NO_EMPTY);
+        if (!$fields['email_address'] || !$fields['coordinators'] || !$fields['department'] || !$fields['event_type'] || !$fields['event_date'] || !$fields['batch'] || !$fields['participants_count'] || count($words) < 300 || count($words) > 400) return $this->respondValidationError(['report' => 'Complete required fields and keep the detailed report between 300 and 400 words.']);
+        $photoPaths = [];
+        for ($i = 1; $i <= 4; $i++) {
+            $photoPaths[$i] = $fields['photo' . $i . '_path'] ?? null;
+            $file = $this->request->getFile('photo' . $i);
+            if ($file && $file->isValid() && !$file->hasMoved()) {
+                if (!in_array($file->getMimeType(), ['image/jpeg', 'image/png', 'image/webp'], true) || $file->getSizeByUnit('mb') > 8) return $this->respondValidationError(['photo' . $i => 'Photos must be JPG, PNG, or WebP and no larger than 8 MB.']);
+                $directory = WRITEPATH . 'uploads/event-reports';
+                if (!is_dir($directory)) mkdir($directory, 0755, true);
+                $safeName = bin2hex(random_bytes(12)) . '.' . strtolower($file->getExtension());
+                $file->move($directory, $safeName);
+                $photoPaths[$i] = rtrim(base_url(), '/') . '/api/event-report-photo/' . rawurlencode($safeName);
+            }
+        }
+        $photos = [];
+        for ($i = 1; $i <= 4; $i++) $photos[] = ['path' => $photoPaths[$i], 'caption' => trim((string) ($fields['caption' . $i] ?? ''))];
+        $data = ['event_id' => (int) $eventId, 'email_address' => $fields['email_address'], 'coordinators' => $fields['coordinators'], 'department' => $fields['department'], 'event_type' => $fields['event_type'], 'event_date' => $fields['event_date'], 'speaker_name' => $fields['speaker_name'], 'speaker_uid' => $fields['speaker_uid'], 'batch' => $fields['batch'], 'participants_count' => $fields['participants_count'], 'detailed_report' => $fields['detailed_report'], 'photos_json' => json_encode($photos), 'updated_at' => date('Y-m-d H:i:s')];
+        $existing = $this->db->table('event_reports')->where('event_id', (int) $eventId)->get()->getRowArray();
+        if ($existing) $this->db->table('event_reports')->where('event_id', (int) $eventId)->update($data);
+        else { $data['created_at'] = date('Y-m-d H:i:s'); $this->db->table('event_reports')->insert($data); }
+        $album = $this->db->table('gallery_albums')->where('event_id', (int) $eventId)->get()->getRowArray();
+        $albumData = ['title' => $event['title'], 'category' => $fields['event_type'], 'description' => $fields['detailed_report'], 'event_date' => $fields['event_date'], 'cover_image' => $photoPaths[1], 'photos_json' => json_encode($photos), 'event_id' => (int) $eventId, 'is_published' => 1, 'updated_at' => date('Y-m-d H:i:s')];
+        if ($album) $this->db->table('gallery_albums')->where('id', $album['id'])->update($albumData);
+        else { $albumData['created_at'] = date('Y-m-d H:i:s'); $this->db->table('gallery_albums')->insert($albumData); }
+        return $this->respondSuccess([], 'Event report saved and gallery album created');
+    }
+
     /**
      * CMS: Gallery Albums Management
      */
     public function getGallery()
     {
-        $gallery = $this->db->table('gallery_albums')->orderBy('id', 'DESC')->get()->getResultArray();
+        $gallery = $this->db->table('gallery_albums')->select('id, title, category, cover_image, description, event_date, is_published, created_at, updated_at, photos_json')->orderBy('id', 'DESC')->get()->getResultArray();
         return $this->respondSuccess($gallery, 'Gallery albums retrieved');
     }
 

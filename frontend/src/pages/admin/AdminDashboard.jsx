@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { jsPDF } from 'jspdf';
 import api from '../../services/api';
 import AdminManagement from './AdminManagement';
 import BirthdayEmailManagement from './BirthdayEmailManagement';
@@ -63,7 +64,8 @@ import {
   Award,
   QrCode,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ClipboardList
 } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
@@ -356,6 +358,14 @@ const AdminDashboard = () => {
   const [eventRegistrationView, setEventRegistrationView] = useState(null);
   const [eventRegistrationLoading, setEventRegistrationLoading] = useState(false);
   const [eventRegistrationError, setEventRegistrationError] = useState('');
+  const [eventReport, setEventReport] = useState(null);
+  const [eventReportLoading, setEventReportLoading] = useState(false);
+  const [eventReportError, setEventReportError] = useState('');
+  const [eventReportSaving, setEventReportSaving] = useState(false);
+  const [eventReportPdfPreview, setEventReportPdfPreview] = useState(null);
+  const [eventReportSavedIds, setEventReportSavedIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('akal_event_reports') || '[]').map(Number); } catch { return []; }
+  });
   const [jobApplicantsView, setJobApplicantsView] = useState(null);
   const [jobApplicantsLoading, setJobApplicantsLoading] = useState(false);
   const [jobApplicantsError, setJobApplicantsError] = useState('');
@@ -1300,6 +1310,292 @@ const AdminDashboard = () => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const openEventReport = async (event, keepModalOpen = false) => {
+    setEventReportLoading(true);
+    setEventReportError('');
+    setEventReport({
+      event,
+      report: {
+        email_address: '', coordinators: '', department: event.department || '',
+        event_type: event.event_type || '', event_date: event.start_datetime?.slice(0, 10) || '',
+        speaker_name: '', speaker_uid: '', batch: '', participants_count: '', detailed_report: '',
+      },
+      photos: Array.from({ length: 4 }, () => ({ path: '', caption: '', file: null })),
+      albumCreated: false,
+    });
+    try {
+      const response = await api.get(`/admin/events/${event.id}/report`);
+      if (!response.status) throw new Error(response.message || 'Could not load event report.');
+      const report = response.data.report || {};
+      const savedPhotos = report.photos_json ? JSON.parse(report.photos_json) : [];
+      const photos = Array.from({ length: 4 }, (_, index) => savedPhotos[index] || { path: '', caption: '', file: null });
+      if (report.id) setEventReportSavedIds((current) => { const next = [...new Set([...current, Number(event.id)])]; localStorage.setItem('akal_event_reports', JSON.stringify(next)); return next; });
+      setEventReport({ event: response.data.event, report, photos, albumCreated: !!report.id });
+    } catch (error) {
+      const message = error.message || 'Could not load event report.';
+      setEventReportError(message);
+      showToast(message);
+    } finally {
+      setEventReportLoading(false);
+    }
+  };
+
+  const handleEventReportAction = async (event) => {
+    if (eventReportSavedIds.includes(Number(event.id))) {
+      try {
+        const response = await api.get(`/admin/events/${event.id}/report`);
+        if (response.data?.report?.id) {
+          await downloadEventReportPdf(response.data.report, event);
+          return;
+        }
+        setEventReportSavedIds((current) => {
+          const next = current.filter((id) => id !== Number(event.id));
+          localStorage.setItem('akal_event_reports', JSON.stringify(next));
+          return next;
+        });
+      } catch (error) {
+        showToast(error.message || 'Could not load event report.');
+        return;
+      }
+    }
+    await openEventReport(event);
+  };
+
+  const closeEventReportPdfPreview = () => {
+    if (eventReportPdfPreview?.url) URL.revokeObjectURL(eventReportPdfPreview.url);
+    setEventReportPdfPreview(null);
+  };
+
+  const saveEventReport = async (event) => {
+    event.preventDefault();
+    if (!eventReport) return;
+    const detailedWordCount = (eventReport.report.detailed_report || '').trim().split(/\s+/).filter(Boolean).length;
+    const missingFields = [
+      ['Email Address', eventReport.report.email_address],
+      ['Name of Coordinator(s)', eventReport.report.coordinators],
+      ['Department', eventReport.report.department],
+      ['Event Type', eventReport.report.event_type],
+      ['Date of Event', eventReport.report.event_date],
+      ['Batch', eventReport.report.batch],
+      ['Number of Participants', eventReport.report.participants_count],
+    ].filter(([, value]) => !String(value ?? '').trim()).map(([label]) => label);
+    if (missingFields.length) {
+      const message = `Please complete: ${missingFields.join(', ')}.`;
+      setEventReportError(message);
+      showToast(message);
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(eventReport.report.email_address)) {
+      setEventReportError('Enter a valid email address before submitting the event report.');
+      return;
+    }
+    if (Number(eventReport.report.participants_count) < 1) {
+      setEventReportError('Number of participants must be at least 1.');
+      return;
+    }
+    if (detailedWordCount < 300 || detailedWordCount > 400) {
+      const message = `Detailed report must contain 300–400 words. Current count: ${detailedWordCount}.`;
+      setEventReportError(message);
+      showToast(message);
+      return;
+    }
+    setEventReportSaving(true);
+    setEventReportError('');
+    try {
+      const form = new FormData();
+      Object.entries(eventReport.report).forEach(([key, value]) => { if (value !== null && value !== undefined && key !== 'photos_json' && key !== 'created_at' && key !== 'updated_at') form.append(key, String(value)); });
+      eventReport.photos.forEach((photo, index) => {
+        if (photo.file) form.append(`photo${index + 1}`, photo.file);
+        else if (photo.path) form.append(`photo${index + 1}_path`, photo.path);
+        form.append(`caption${index + 1}`, photo.caption || '');
+      });
+      const response = await api.post(`/admin/events/${eventReport.event.id}/report`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      if (!response.status) throw new Error(response.message || 'Could not save event report.');
+      showToast('Event report saved and Photo Gallery album published.');
+      await openEventReport(eventReport.event, true);
+      setEventReportSavedIds((current) => [...new Set([...current, Number(eventReport.event.id)])]);
+      fetchCMSContent();
+    } catch (error) {
+      const details = Array.isArray(error.errors) ? error.errors.filter(Boolean).join(' ') : '';
+      const message = details || error.message || 'Could not save event report.';
+      setEventReportError(message);
+      showToast(message);
+    } finally {
+      setEventReportSaving(false);
+    }
+  };
+
+  const downloadEventReportPdf = async (report, event) => {
+    if (!report?.detailed_report) {
+      try {
+        const response = await api.get(`/admin/events/${event.id}/report`);
+        if (!response.data.report) { setEventReportSavedIds((current) => { const next = current.filter((id) => id !== Number(event.id)); localStorage.setItem('akal_event_reports', JSON.stringify(next)); return next; }); showToast('This event does not have a submitted report yet.'); return; }
+        setEventReport({ event: response.data.event, report: response.data.report, photos: JSON.parse(response.data.report.photos_json || '[]'), albumCreated: true });
+        report = response.data.report;
+      } catch (error) { showToast(error.message || 'Could not load event report.'); return; }
+    }
+    const photos = report.photos_json ? JSON.parse(report.photos_json) : [];
+    try {
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 18;
+      const textWidth = pageWidth - margin * 2;
+      let y = 19;
+      const drawPageHeader = () => {
+        pdf.setFont('times', 'bold');
+        pdf.setFontSize(14);
+        pdf.setTextColor(25, 35, 55);
+        pdf.text('Akal University, Talwandi Sabo', margin + 28, 21);
+        pdf.setDrawColor(55, 55, 55);
+        pdf.setLineWidth(0.25);
+        pdf.line(margin, 32, pageWidth - margin, 32);
+      };
+      const ensureSpace = (height) => {
+        if (y + height > pageHeight - 20) {
+          pdf.addPage();
+          drawPageHeader();
+          y = 42;
+        }
+      };
+
+      try {
+        const logoResponse = await fetch('/Akal Logo.png');
+        if (logoResponse.ok) {
+          const bitmap = await createImageBitmap(await logoResponse.blob());
+          const canvas = document.createElement('canvas');
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
+          canvas.getContext('2d').drawImage(bitmap, 0, 0);
+          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin + 2, 8, 17, 20);
+          bitmap.close();
+        }
+      } catch { /* University name remains as the report header. */ }
+      drawPageHeader();
+      y = 43;
+      pdf.setTextColor(160, 30, 30);
+      pdf.setFont('times', 'bold');
+      pdf.setFontSize(11);
+      pdf.text(`Reference No: ${report.id || event.id}`, margin + 4, y);
+      y += 8;
+      pdf.setTextColor(20, 20, 20);
+      pdf.setFontSize(12);
+      pdf.text('Event Details for Newspaper and Social Media Post', pageWidth / 2, y, { align: 'center' });
+      y += 11;
+
+      const fields = [
+        ['Department', report.department || event.department || 'University-wide'],
+        ['Event Name', event.title], ['Event Type', report.event_type || event.event_type],
+        ['Date', report.event_date], ['No. of Participants', report.participants_count],
+        ['Name of Guest/Speaker', report.speaker_name || 'Not applicable'],
+        ['Name of Event Coordinator', report.coordinators], ['Speaker UID', report.speaker_uid || '-'],
+        ['Batch', report.batch || '-'], ['Report Email', report.email_address || '-'],
+      ];
+      const labelX = margin + 4;
+      const colonX = margin + 58;
+      const valueX = margin + 62;
+      pdf.setFontSize(10.5);
+      for (const [label, value] of fields) {
+        const valueLines = pdf.splitTextToSize(String(value || '-'), pageWidth - margin - valueX - 4);
+        const rowHeight = Math.max(valueLines.length * 5.6, 7);
+        ensureSpace(rowHeight + 1);
+        pdf.setTextColor(25, 25, 25);
+        pdf.setFont('times', 'bold');
+        pdf.text(label, labelX, y);
+        pdf.setFont('times', 'normal');
+        pdf.text(':', colonX, y);
+        pdf.text(valueLines, valueX, y);
+        y += rowHeight + 1;
+      }
+
+      ensureSpace(14);
+      y += 3;
+      pdf.setFont('times', 'bold');
+      pdf.setFontSize(11);
+      pdf.text('About the Event', pageWidth / 2, y, { align: 'center' });
+      y += 8;
+      pdf.setFont('times', 'normal');
+      pdf.setFontSize(10.5);
+      pdf.setTextColor(30, 30, 30);
+      const reportLines = pdf.splitTextToSize(String(report.detailed_report || ''), textWidth - 8);
+      for (const line of reportLines) {
+        ensureSpace(5.6);
+        pdf.text(line, margin + 4, y);
+        y += 5.6;
+      }
+
+      const reportPhotos = photos.filter((photo) => photo.path);
+      if (reportPhotos.length) {
+        ensureSpace(16);
+        y += 5;
+        pdf.setFont('times', 'bold');
+        pdf.setFontSize(11);
+        pdf.setTextColor(20, 20, 20);
+        pdf.text('Some Glimpses', pageWidth / 2, y, { align: 'center' });
+        y += 8;
+        const columnGap = 8;
+        const imageWidth = (textWidth - columnGap) / 2;
+        let rowHeight = 0;
+        let rowCaptionHeight = 0;
+        for (let index = 0; index < reportPhotos.length; index++) {
+          const photo = reportPhotos[index];
+          try {
+            const response = await fetch(photo.path);
+            if (!response.ok) throw new Error('Could not load photo');
+            const bitmap = await createImageBitmap(await response.blob());
+            const scale = Math.min(1, 1200 / bitmap.width, 900 / bitmap.height);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+            canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+            canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            bitmap.close();
+            const imageData = canvas.toDataURL('image/jpeg', 0.88);
+            const imageHeight = Math.min(76, imageWidth * canvas.height / canvas.width);
+            const column = index % 2;
+            if (column === 0) {
+              ensureSpace(imageHeight + 18);
+              rowHeight = 0;
+              rowCaptionHeight = 0;
+            }
+            const x = margin + column * (imageWidth + columnGap);
+            pdf.addImage(imageData, 'JPEG', x, y, imageWidth, imageHeight, undefined, 'FAST');
+            pdf.setFont('times', 'normal');
+            pdf.setFontSize(9);
+            pdf.setTextColor(45, 45, 45);
+            const captionLines = pdf.splitTextToSize(String(photo.caption || ''), imageWidth);
+            pdf.text(captionLines, x, y + imageHeight + 4);
+            rowHeight = Math.max(rowHeight, imageHeight);
+            rowCaptionHeight = Math.max(rowCaptionHeight, captionLines.length * 4);
+            if (column === 1 || index === reportPhotos.length - 1) y += rowHeight + rowCaptionHeight + 10;
+          } catch {
+            ensureSpace(8);
+            pdf.setFont('times', 'normal');
+            pdf.setFontSize(9);
+            pdf.text(`Photo ${index + 1} could not be embedded. ${photo.caption || ''}`, margin, y);
+            y += 6;
+          }
+        }
+      }
+
+      const totalPages = pdf.getNumberOfPages();
+      for (let page = 1; page <= totalPages; page++) {
+        pdf.setPage(page);
+        pdf.setFont('times', 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(80, 80, 80);
+        pdf.text(`Page ${page} of ${totalPages}`, pageWidth / 2, pageHeight - 9, { align: 'center' });
+      }
+      const safeTitle = String(event.title || 'Event').replace(/[\\/:*?"<>|]/g, '').trim();
+      const datePart = String(report.event_date || '').split('-').reverse().join('-');
+      const filename = `${report.id || event.id}_${datePart}_${safeTitle}_Report.pdf`;
+      const pdfBlob = pdf.output('blob');
+      if (eventReportPdfPreview?.url) URL.revokeObjectURL(eventReportPdfPreview.url);
+      setEventReportPdfPreview({ url: URL.createObjectURL(pdfBlob), filename, title: event.title });
+    } catch (error) {
+      showToast(error.message || 'Could not generate the event report PDF.');
+    }
+  };
+
   const downloadEventsListCsv = () => {
     if (!filteredAdminEvents || filteredAdminEvents.length === 0) {
       showToast('No events match the active filters to export.');
@@ -1592,6 +1888,11 @@ const AdminDashboard = () => {
     })),
   };
   const eventTypeOptions = [...new Set(events.map((event) => event.event_type).filter(Boolean))].sort();
+  const eventReportBatchOptions = [...new Set([
+    ...usersList.filter((user) => user.role === 'alumni').map((user) => String(user.a_batch || '').trim()).filter(Boolean),
+    ...Array.from({ length: new Date().getFullYear() - 1969 }, (_, index) => String(new Date().getFullYear() - index)),
+  ])]
+    .sort((a, b) => b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' }));
   const eventDepartmentOptions = [...new Set([...(dashboardData?.departments || []), dashboardData?.department].filter(Boolean))];
   const filteredAdminEvents = events.filter((event) => {
     const start = new Date(event.start_datetime).getTime();
@@ -3341,7 +3642,8 @@ const AdminDashboard = () => {
                         </span>
                       </td>
                       <td className="text-end">
-                        <button onClick={() => setEditingEvent(ev)} className="btn btn-sm btn-outline-primary me-1">
+                        {hasPermission('manage_events') && <button type="button" onClick={() => handleEventReportAction(ev)} className="btn btn-sm btn-outline-success me-1" title={eventReportSavedIds.includes(Number(ev.id)) ? 'Download event report PDF' : 'Generate event report'} aria-label={`Generate or download report for ${ev.title}`}>{eventReportSavedIds.includes(Number(ev.id)) ? <Download size={14} /> : <ClipboardList size={14} />}</button>}
+                        <button onClick={() => setEditingEvent(ev)} className="btn btn-sm btn-outline-primary me-1" title="Edit event">
                           <Edit size={14} />
                         </button>
                         <button onClick={() => handleDeleteEvent(ev.id)} className="btn btn-sm btn-outline-danger">
@@ -3354,6 +3656,14 @@ const AdminDashboard = () => {
                 </tbody>
               </table>
             </div>
+
+            {eventReportPdfPreview && createPortal(<div role="dialog" aria-modal="true" aria-label="Event report PDF preview" onClick={(event) => { if (event.target === event.currentTarget) closeEventReportPdfPreview(); }} style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(15,23,42,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}><div className="bg-white rounded-4 shadow-lg d-flex flex-column overflow-hidden" style={{ width: 'min(1100px, 100%)', height: 'min(92vh, 100%)' }}><div className="d-flex align-items-center justify-content-between gap-3 p-3 border-bottom"><div className="fw-bold text-dark text-truncate">PDF Preview · {eventReportPdfPreview.title}</div><div className="d-flex align-items-center gap-2 flex-shrink-0"><a className="btn btn-akal-primary d-inline-flex align-items-center gap-2" href={eventReportPdfPreview.url} download={eventReportPdfPreview.filename}><Download size={16} /> Download PDF</a><button type="button" className="btn btn-light border" onClick={closeEventReportPdfPreview}>Close</button></div></div><iframe title="Event report PDF preview" src={eventReportPdfPreview.url} style={{ flex: 1, width: '100%', border: 0 }} /></div></div>, document.body)}
+            {eventReportLoading && !eventReport && <div className="admin-event-registration-backdrop" role="dialog" aria-modal="true"><div className="modal-dialog modal-dialog-centered"><div className="modal-content p-5 text-center"><div className="spinner-border text-primary mx-auto" /><div className="mt-3">Loading event report…</div></div></div></div>}
+            {eventReport && createPortal(<div className="admin-event-registration-backdrop admin-event-report-backdrop" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setEventReport(null); }}><div className="modal-dialog modal-xl modal-dialog-centered"><div className="modal-content admin-event-report-modal border-0 shadow-lg rounded-4" onClick={(e) => e.stopPropagation()}><div className="modal-header bg-dark text-white"><div><div className="small text-uppercase text-warning fw-bold">Completed event report</div><h5 className="modal-title fw-bold">{eventReport.event.title}</h5></div><button type="button" className="btn-close btn-close-white" aria-label="Close" onClick={() => setEventReport(null)} /></div><form noValidate onSubmit={saveEventReport}><div className="modal-body">{eventReportLoading && <div className="alert alert-info py-2">Loading saved report…</div>}<div className="row g-3">{eventReport.photos.map((photo, index) => <div className="col-md-6" key={index}><label className="form-label fw-semibold">Upload Photo {index + 1}</label><input className="form-control mb-2" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setEventReport({ ...eventReport, photos: eventReport.photos.map((item, i) => i === index ? { ...item, file: e.target.files?.[0], path: e.target.files?.[0] ? '' : item.path } : item) })} />{photo.path && <div className="small text-success mb-2">Photo already uploaded</div>}<label className="form-label small">Caption for Photo {index + 1}</label><input className="form-control" value={photo.caption || ''} onChange={(e) => setEventReport({ ...eventReport, photos: eventReport.photos.map((item, i) => i === index ? { ...item, caption: e.target.value } : item) })} /></div>)}{[
+              ['email_address', 'Email Address', 'email', true], ['coordinators', 'Name of Coordinator(s)', 'text', true], ['department', 'Department', 'department', true], ['event_type', 'Event Type', 'text', true], ['event_date', 'Date of Event', 'date', true], ['speaker_name', 'Name of Speaker (if applicable)', 'text', false], ['speaker_uid', "Speaker's UID", 'text', false], ['batch', 'Batch', 'batch', true], ['participants_count', 'Number of Participants', 'number', true]
+            ].map(([key, label, type, required]) => <div className="col-md-6" key={key}><label className="form-label fw-semibold">{label}{required ? ' *' : ''}</label>{type === 'department' ? <select className="form-select" required value={eventReport.report[key] ?? eventReport.event.department ?? ''} onChange={(e) => setEventReport({ ...eventReport, report: { ...eventReport.report, [key]: e.target.value } })}><option value="">Select department</option>{eventReport.report[key] && !DEPARTMENTS.includes(eventReport.report[key]) && <option value={eventReport.report[key]}>{eventReport.report[key]}</option>}{DEPARTMENTS.map((department) => <option key={department} value={department}>{department}</option>)}</select> : type === 'batch' ? <select className="form-select" required value={eventReport.report[key] || ''} onChange={(e) => setEventReport({ ...eventReport, report: { ...eventReport.report, [key]: e.target.value } })}><option value="">Select batch</option>{eventReport.report[key] && !eventReportBatchOptions.includes(String(eventReport.report[key])) && <option value={eventReport.report[key]}>{eventReport.report[key]}</option>}{eventReportBatchOptions.map((batch) => <option key={batch} value={batch}>{batch}</option>)}</select> : <input className="form-control" type={type} min={type === 'number' ? 1 : undefined} required={required} value={eventReport.report[key] ?? (key === 'event_type' ? eventReport.event.event_type || '' : key === 'event_date' ? eventReport.event.start_datetime?.slice(0, 10) || '' : '')} onChange={(e) => setEventReport({ ...eventReport, report: { ...eventReport.report, [key]: e.target.value } })} />}</div>)}
+              <div className="col-12"><label className="form-label fw-semibold">Detailed Report of the Event (300–400 words) *</label><textarea className="form-control" rows="7" required value={eventReport.report.detailed_report || ''} onChange={(e) => setEventReport({ ...eventReport, report: { ...eventReport.report, detailed_report: e.target.value } })} /><div className="form-text">{(eventReport.report.detailed_report || '').trim().split(/\s+/).filter(Boolean).length} / 300–400 words</div></div>
+              </div>{eventReportError && <div className="alert alert-danger mt-3 mb-0">{eventReportError}</div>}{eventReport.albumCreated && <div className="alert alert-success mt-3 mb-0">Report submitted. Photo Gallery album is published; download the PDF from this event’s actions.</div>}</div><div className="modal-footer"><button type="button" className="btn btn-light border" onClick={() => setEventReport(null)}>Close</button>{eventReport.albumCreated && <button type="button" className="btn btn-outline-success d-flex align-items-center gap-2" onClick={() => downloadEventReportPdf(eventReport.report, eventReport.event)}><Download size={15} /> Preview Report PDF</button>}<button type="submit" className="btn btn-akal-primary" disabled={eventReportSaving}>{eventReportSaving ? 'Saving…' : eventReport.albumCreated ? 'Update Report' : 'Submit Report'}</button></div></form></div></div></div>, document.body)}
 
             {eventRegistrationView && (
               createPortal(
