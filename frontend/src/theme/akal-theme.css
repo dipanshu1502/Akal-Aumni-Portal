@@ -461,6 +461,14 @@ a:hover {
   letter-spacing: -0.02em;
 }
 
+.university-logo-image-card {
+  width: 110%;
+  height: 110%;
+  object-fit: contain;
+  padding: 3px;
+  display: block;
+}
+
 .university-logo-image {
   width: 70px;
   /* height: 42px; */

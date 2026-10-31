@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import AdminManagement from './AdminManagement';
 import BirthdayEmailManagement from './BirthdayEmailManagement';
+import AlumniReportModal, { downloadAlumniCsv, sortBatchesDescending, formatAlumniRecord } from '../../components/admin/AlumniReportModal';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { DEPARTMENTS } from '../../constants/departments';
@@ -61,7 +62,8 @@ import {
   Landmark,
   Award,
   QrCode,
-  Download
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
@@ -291,6 +293,7 @@ const AdminDashboard = () => {
   const { refreshSettings } = useSettings();
 
   const [dashboardData, setDashboardData] = useState(null);
+  const [showAlumniReportModal, setShowAlumniReportModal] = useState(false);
   const [mentorshipRequests, setMentorshipRequests] = useState([]);
   const [mentorshipRequestsLoading, setMentorshipRequestsLoading] = useState(false);
   const [mentorshipRequestsError, setMentorshipRequestsError] = useState('');
@@ -798,6 +801,16 @@ const AdminDashboard = () => {
         </h5>
         <div className="d-flex align-items-center gap-2 flex-wrap">
           {roleKey === 'alumni' && (
+            <button
+              type="button"
+              className="btn btn-sm btn-success fw-bold d-flex align-items-center gap-1 shadow-sm px-3"
+              onClick={() => handleGenerateAlumniReport(manageAlumniList)}
+              title="Generate & download report for currently filtered alumni in batch descending order"
+            >
+              <FileSpreadsheet size={15} /> Generate Report ({manageAlumniList.length})
+            </button>
+          )}
+          {roleKey === 'alumni' && (
             <>
               <select className="form-select form-select-sm" style={{ width: '170px' }} value={alumniDepartmentFilter} onChange={(e) => setAlumniDepartmentFilter(e.target.value)}>
                 <option value="">All Departments</option>
@@ -1287,6 +1300,77 @@ const AdminDashboard = () => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  const downloadEventsListCsv = () => {
+    if (!filteredAdminEvents || filteredAdminEvents.length === 0) {
+      showToast('No events match the active filters to export.');
+      return;
+    }
+
+    const headers = [
+      'Sr. No.',
+      'Event Title',
+      'Event Type',
+      'Department',
+      'Date & Time',
+      'Venue',
+      'Event Format',
+      'Total Registrations',
+      'Status',
+      'Description',
+    ];
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '""';
+      const text = String(val);
+      const safeText = /^[\s]*[=+\-@]/.test(text) ? `'${text}` : text;
+      return `"${safeText.replace(/"/g, '""')}"`;
+    };
+
+    const rows = filteredAdminEvents.map((ev, index) => {
+      const dtStr = ev.start_datetime ? new Date(ev.start_datetime).toLocaleString() : 'N/A';
+      const deptStr = ev.department || 'University-wide';
+      const formatStr = Number(ev.is_virtual) === 1 ? 'Online / Virtual' : 'On Campus';
+      const statusStr = Number(ev.is_published) === 1 ? 'Published' : 'Draft';
+      const cleanDesc = (ev.description || '').replace(/\r?\n/g, ' ').trim();
+
+      return [
+        escapeCsv(index + 1),
+        escapeCsv(ev.title),
+        escapeCsv(ev.event_type ? ev.event_type.toUpperCase() : 'EVENT'),
+        escapeCsv(deptStr),
+        escapeCsv(dtStr),
+        escapeCsv(ev.venue || 'N/A'),
+        escapeCsv(formatStr),
+        escapeCsv(Number(ev.registration_count || 0)),
+        escapeCsv(statusStr),
+        escapeCsv(cleanDesc),
+      ].join(',');
+    });
+
+    const csvContent = '\uFEFF' + [headers.map(escapeCsv).join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    const filterTags = [
+      'Akal_Events_Report',
+      eventDepartmentFilter ? (eventDepartmentFilter === '__university__' ? 'UniversityWide' : eventDepartmentFilter.replace(/[^a-zA-Z0-9]/g, '_')) : '',
+      eventTypeFilter && eventTypeFilter !== 'all' ? eventTypeFilter : '',
+      eventTimelineFilter && eventTimelineFilter !== 'all' ? eventTimelineFilter : '',
+      eventModeFilter && eventModeFilter !== 'all' ? eventModeFilter : '',
+    ].filter(Boolean).join('_');
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.setAttribute('download', `${filterTags}_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast(`✅ Exported ${filteredAdminEvents.length} events to CSV!`);
+  };
+
   // CMS Gallery Handlers
   const handleSaveGallery = async (e) => {
     e.preventDefault();
@@ -1368,6 +1452,40 @@ const AdminDashboard = () => {
 
   const manageAlumniList = filteredManageUsers('alumni');
   const manageStudentsList = filteredManageUsers('student');
+
+  const activeAlumniFilterLabels = [
+    alumniDepartmentFilter ? `Department: ${alumniDepartmentFilter}` : '',
+    alumniBatchFilter ? `Batch: ${alumniBatchFilter}` : '',
+    alumniGraduationFilter ? `Grad Year: ${alumniGraduationFilter}` : '',
+    alumniPathFilter ? `Path: ${alumniPathFilter === 'job' ? 'Employed' : alumniPathFilter === 'higher_study' ? 'Higher Studies' : alumniPathFilter}` : '',
+    alumniJobTypeFilter ? `Sector: ${alumniJobTypeFilter}` : '',
+    alumniCountryFilter ? `Country: ${alumniCountryFilter}` : '',
+    alumniVerificationFilter ? `Verification: ${alumniVerificationFilter}` : '',
+    manageStatusFilter ? `Status: ${manageStatusFilter}` : '',
+    alumniMentorFilter ? `Mentor: ${alumniMentorFilter === 'yes' ? 'Mentors Only' : 'Non-mentors'}` : '',
+    alumniDistinguishedFilter ? `Distinguished: ${alumniDistinguishedFilter === 'yes' ? 'Distinguished' : 'Standard'}` : '',
+    manageSearch ? `Search: "${manageSearch}"` : '',
+  ].filter(Boolean);
+
+  const alumniReportFilePrefix = [
+    'Akal_Alumni_Report',
+    alumniDepartmentFilter ? alumniDepartmentFilter.replace(/[^a-zA-Z0-9]/g, '_') : '',
+    alumniBatchFilter ? `Batch_${alumniBatchFilter.replace(/[^a-zA-Z0-9]/g, '_')}` : '',
+    alumniGraduationFilter ? `Grad_${alumniGraduationFilter}` : '',
+    alumniPathFilter ? `Path_${alumniPathFilter}` : '',
+    alumniJobTypeFilter ? `Sector_${alumniJobTypeFilter}` : '',
+    alumniVerificationFilter ? `Verif_${alumniVerificationFilter}` : '',
+    manageStatusFilter ? `Status_${manageStatusFilter}` : '',
+    manageSearch ? `Search_${manageSearch.slice(0, 15).replace(/[^a-zA-Z0-9]/g, '_')}` : '',
+  ].filter(Boolean).join('_');
+
+  const handleGenerateAlumniReport = (listToExport) => {
+    if (!listToExport || listToExport.length === 0) {
+      showToast('No alumni records match the active filters on this page.');
+      return;
+    }
+    setShowAlumniReportModal(true);
+  };
 
   // Rejected/pending accounts that admin can accept later
   const needsAction = (u) =>
@@ -1847,6 +1965,18 @@ const AdminDashboard = () => {
                 </>}
               </div>
             )}
+            <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <h6 className="fw-bold text-dark mb-0 text-uppercase tracking-wider small text-muted">Platform Overview & Metrics</h6>
+              <button
+                type="button"
+                className="btn btn-sm btn-success fw-bold d-flex align-items-center gap-2 shadow-sm px-3"
+                onClick={() => handleGenerateAlumniReport(manageAlumniList)}
+                title="Generate & download comprehensive alumni report"
+              >
+                <FileSpreadsheet size={16} /> Generate Alumni Report
+              </button>
+            </div>
+
             {/* KPI Cards */}
             <div className="row g-3 mb-4">
               <div className="col-lg-3 col-sm-6">
@@ -3024,14 +3154,25 @@ const AdminDashboard = () => {
         {/* CMS TAB: Events Management */}
         {activeTab === 'cms-events' && (
           <div className="akal-card p-4">
-            <div className="d-flex justify-content-between align-items-center mb-3">
+            <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
               <h5 className="fw-bold text-dark mb-0">Manage Events & Reunions</h5>
-              <button
-                onClick={() => setEditingEvent({ title: '', event_type: 'reunion', department: '', venue: '', start_datetime: '', description: '', is_virtual: 0, is_published: 1 })}
-                className="btn btn-sm btn-akal-primary d-flex align-items-center gap-1"
-              >
-                <PlusCircle size={14} /> Create Event
-              </button>
+              <div className="d-flex align-items-center gap-2">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-success fw-bold d-flex align-items-center gap-1 shadow-sm px-3"
+                  onClick={downloadEventsListCsv}
+                  disabled={filteredAdminEvents.length === 0}
+                  title="Download filtered events list as CSV"
+                >
+                  <Download size={14} /> Download CSV ({filteredAdminEvents.length})
+                </button>
+                <button
+                  onClick={() => setEditingEvent({ title: '', event_type: 'reunion', department: '', venue: '', start_datetime: '', description: '', is_virtual: 0, is_published: 1 })}
+                  className="btn btn-sm btn-akal-primary d-flex align-items-center gap-1"
+                >
+                  <PlusCircle size={14} /> Create Event
+                </button>
+              </div>
             </div>
 
             {editingEvent && (
@@ -3150,7 +3291,18 @@ const AdminDashboard = () => {
               </div>
               <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
                 <span className="small text-muted">Showing <strong>{filteredAdminEvents.length}</strong> of <strong>{events.length}</strong> events</span>
-                <button type="button" className="btn btn-sm btn-light border" onClick={() => { setEventSearch(''); setEventTimelineFilter('all'); setEventTypeFilter('all'); setEventDepartmentFilter(''); setEventModeFilter('all'); setEventFromDate(''); setEventToDate(''); }}>Clear filters</button>
+                <div className="d-flex align-items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-success fw-semibold d-flex align-items-center gap-1"
+                    onClick={downloadEventsListCsv}
+                    disabled={filteredAdminEvents.length === 0}
+                    title="Export currently filtered events as CSV"
+                  >
+                    <Download size={13} /> Export Events CSV
+                  </button>
+                  <button type="button" className="btn btn-sm btn-light border" onClick={() => { setEventSearch(''); setEventTimelineFilter('all'); setEventTypeFilter('all'); setEventDepartmentFilter(''); setEventModeFilter('all'); setEventFromDate(''); setEventToDate(''); }}>Clear filters</button>
+                </div>
               </div>
             </div>
             <div className="table-responsive">
@@ -4324,6 +4476,15 @@ const AdminDashboard = () => {
             </div>
           </div>
         )}
+
+        <AlumniReportModal
+          isOpen={showAlumniReportModal}
+          onClose={() => setShowAlumniReportModal(false)}
+          showToast={showToast}
+          sourceRecords={manageAlumniList}
+          activeFilters={activeAlumniFilterLabels}
+          filePrefix={alumniReportFilePrefix}
+        />
 
       </div>
     </div>

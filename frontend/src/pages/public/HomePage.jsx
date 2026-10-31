@@ -3,17 +3,17 @@ import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import AlumniCard from '../../components/common/AlumniCard';
 import { useSettings } from '../../context/SettingsContext';
-import { 
-  Users, 
-  Award, 
-  Calendar, 
-  Briefcase, 
-  Globe, 
-  Sparkles, 
-  ArrowRight, 
-  ShieldCheck, 
-  HeartHandshake, 
-  CheckCircle2, 
+import {
+  Users,
+  Award,
+  Calendar,
+  Briefcase,
+  Globe,
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
+  HeartHandshake,
+  CheckCircle2,
   GraduationCap,
   Bell,
   ChevronRight,
@@ -162,7 +162,13 @@ const HomePage = () => {
                 {/* Header */}
                 <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom border-akal-border-grey">
                   <div className="d-flex align-items-center gap-2">
-                    <div className="university-crest">AU</div>
+                    <div className="university-crest">
+                      <img
+                        className="university-logo-image-card"
+                        src="/Akal%20Logo.png"
+                        alt="Akal University Alumni Association"
+                      />
+                    </div>
                     <div>
                       <h6 className="mb-0 fw-bold text-akal-navy">Akal University Alumni Portal</h6>
                       <span className="text-akal-muted small" style={{ fontSize: '0.75rem' }}>Official Alumni Credentials</span>
@@ -674,12 +680,12 @@ const HomePage = () => {
                           <span className="text-akal-muted">Goal: ₹{target.toLocaleString('en-IN')}</span>
                         </div>
                         <div className="progress mb-3" style={{ height: '8px', backgroundColor: 'var(--akal-border-grey)' }}>
-                          <div 
-                            className="progress-bar" 
-                            role="progressbar" 
-                            style={{ width: `${percent}%`, backgroundColor: 'var(--akal-blue)' }} 
-                            aria-valuenow={percent} 
-                            aria-valuemin="0" 
+                          <div
+                            className="progress-bar"
+                            role="progressbar"
+                            style={{ width: `${percent}%`, backgroundColor: 'var(--akal-blue)' }}
+                            aria-valuenow={percent}
+                            aria-valuemin="0"
                             aria-valuemax="100"
                           />
                         </div>
@@ -742,7 +748,11 @@ const HomePage = () => {
       <section className="py-5" style={{ backgroundColor: 'var(--akal-navy)', color: '#FFFFFF' }}>
         <div className="container text-center py-4">
           <div className="university-crest mx-auto mb-3" style={{ width: '52px', height: '52px', fontSize: '22px' }}>
-            AU
+            <img
+              className="university-logo-image-card"
+              src="/Akal%20Logo.png"
+              alt="Akal University Alumni Association"
+            />
           </div>
           <h2 className="display-6 fw-bold text-white mb-3">Ready to Reconnect with Akal University?</h2>
           <p className="lead text-white-50 mx-auto mb-4" style={{ maxWidth: '640px', fontSize: '1.1rem' }}>

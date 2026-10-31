@@ -507,6 +507,8 @@ class AdminController extends BaseController
                       alumni_profiles.is_mentor as a_is_mentor, alumni_profiles.is_distinguished as a_is_distinguished,
                       alumni_profiles.distinguished_title as a_distinguished_title,
                       alumni_profiles.current_status as a_current_status, alumni_profiles.job_type as a_job_type,
+                      alumni_profiles.job_organization as a_job_org, alumni_profiles.job_designation as a_job_desig,
+                      alumni_profiles.job_location as a_job_loc, alumni_profiles.gender as a_gender,
                       alumni_profiles.study_institution as a_study_institution, alumni_profiles.study_course as a_study_course,
                       alumni_profiles.study_location as a_study_location,
                       alumni_profiles.admin_notes as a_admin_notes,
@@ -586,6 +588,274 @@ class AdminController extends BaseController
         unset($u);
 
         return $this->respondSuccess($users, 'Users retrieved');
+    }
+
+    /**
+     * Alumni Report with comprehensive filtering and export
+     * Format matches NAAC / NIRF / University Alumni accreditation reports
+     * Columns: Pass-Out Batch, Sr. No., Department, AUID, Name of Student, UG/PG/PhD, Gender, Mobile Student, Email Address, Current Status, Details of the Current JOB/Institute Details
+     */
+    public function getAlumniReport()
+    {
+        $authUser = $this->request->authUser ?? null;
+        $actorRole = $authUser['role'] ?? '';
+        $perms = ($actorRole === 'admin') ? \App\Filters\PermissionFilter::getPermissionsForUser((int) ($authUser['id'] ?? 0)) : [];
+
+        $department = $this->getDepartmentScope($authUser ?? []);
+        if ($actorRole === 'superadmin') {
+            $reqDept = trim((string) ($this->request->getGet('department') ?? ''));
+            $department = $reqDept !== '' ? $reqDept : null;
+        }
+
+        // Check permission if admin
+        if ($actorRole === 'admin' && empty($perms['view_reports']) && empty($perms['manage_alumni']) && empty($perms['manage_users']) && empty($perms['verify_alumni']) && $department === '') {
+            return $this->respondError('Forbidden: missing report viewing permission', 403);
+        }
+
+        $batch = trim((string) ($this->request->getGet('batch') ?? ''));
+        $level = trim((string) ($this->request->getGet('education_level') ?? ''));
+        $status = trim((string) ($this->request->getGet('current_status') ?? ''));
+        $jobType = trim((string) ($this->request->getGet('job_type') ?? ''));
+        $gender = trim((string) ($this->request->getGet('gender') ?? ''));
+        $search = trim((string) ($this->request->getGet('search') ?? ''));
+        $userStatus = trim((string) ($this->request->getGet('user_status') ?? ''));
+
+        $builder = $this->db->table('alumni_profiles')
+            ->select('alumni_profiles.*, users.email, users.status as user_status, users.verification_status')
+            ->join('users', 'users.id = alumni_profiles.user_id')
+            ->where('users.role', 'alumni');
+
+        if ($department !== null) {
+            $builder->where('alumni_profiles.department', $department);
+        }
+
+        if ($batch !== '') {
+            $builder->groupStart()
+                ->where('alumni_profiles.batch_year', $batch)
+                ->orWhere('alumni_profiles.graduation_year', $batch)
+                ->groupEnd();
+        }
+
+        if ($status !== '') {
+            $builder->where('alumni_profiles.current_status', $status);
+        }
+
+        if ($jobType !== '') {
+            $builder->where('alumni_profiles.job_type', $jobType);
+        }
+
+        if ($gender !== '') {
+            $builder->where('alumni_profiles.gender', $gender);
+        }
+
+        if ($userStatus !== '') {
+            $builder->where('users.status', $userStatus);
+        }
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('users.email', $search)
+                ->orLike('alumni_profiles.first_name', $search)
+                ->orLike('alumni_profiles.last_name', $search)
+                ->orLike('alumni_profiles.auid', $search)
+                ->orLike('alumni_profiles.enrollment_no', $search)
+                ->orLike('alumni_profiles.phone', $search)
+                ->orLike('alumni_profiles.department', $search)
+                ->orLike('alumni_profiles.current_company', $search)
+                ->orLike('alumni_profiles.job_organization', $search)
+                ->orLike('alumni_profiles.study_institution', $search)
+                ->groupEnd();
+        }
+
+        $records = $builder->orderBy('alumni_profiles.id', 'ASC')->get()->getResultArray();
+
+        // Load educations for level resolution
+        $educationsMap = [];
+        if ($this->db->tableExists('user_educations') && !empty($records)) {
+            $userIds = array_unique(array_filter(array_column($records, 'user_id')));
+            if (!empty($userIds)) {
+                $edRows = $this->db->table('user_educations')
+                    ->whereIn('user_id', $userIds)
+                    ->orderBy('id', 'ASC')
+                    ->get()->getResultArray();
+                foreach ($edRows as $er) {
+                    $uId = (int) $er['user_id'];
+                    $educationsMap[$uId][] = $er;
+                }
+            }
+        }
+
+        $levelPriority = ['PhD' => 4, 'PG' => 3, 'UG' => 2, 'Diploma' => 1, 'Other' => 0];
+
+        $report = [];
+        $srNo = 1;
+
+        foreach ($records as $row) {
+            $userId = (int) ($row['user_id'] ?? 0);
+
+            // Determine UG/PG/PhD
+            $resolvedLevel = 'UG';
+            if (!empty($educationsMap[$userId])) {
+                $bestLevel = 'UG';
+                $bestScore = -1;
+                foreach ($educationsMap[$userId] as $edu) {
+                    $lvl = strtoupper(trim((string) ($edu['education_level'] ?? '')));
+                    $score = $levelPriority[$lvl] ?? 1;
+                    if ($score > $bestScore) {
+                        $bestScore = $score;
+                        $bestLevel = in_array($lvl, ['UG', 'PG', 'PHD'], true) ? ($lvl === 'PHD' ? 'PhD' : $lvl) : $lvl;
+                    }
+                }
+                $resolvedLevel = $bestLevel;
+            } else {
+                $deg = strtoupper((string) ($row['degree'] ?? ''));
+                if (strpos($deg, 'PHD') !== false || strpos($deg, 'PH.D') !== false || strpos($deg, 'DOCTOR') !== false) {
+                    $resolvedLevel = 'PhD';
+                } elseif (strpos($deg, 'M.') !== false || strpos($deg, 'MASTER') !== false || strpos($deg, 'MBA') !== false || strpos($deg, 'MCA') !== false || strpos($deg, 'MTECH') !== false || strpos($deg, 'MSC') !== false) {
+                    $resolvedLevel = 'PG';
+                } else {
+                    $resolvedLevel = 'UG';
+                }
+            }
+
+            // Filter by education level if requested
+            if ($level !== '' && strtoupper($resolvedLevel) !== strtoupper($level)) {
+                continue;
+            }
+
+            // Resolve gender
+            $g = trim((string) ($row['gender'] ?? ''));
+            if ($g === '') {
+                $fullName = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
+                if (stripos($fullName, 'Kaur') !== false) {
+                    $g = 'Female';
+                } elseif (stripos($fullName, 'Singh') !== false) {
+                    $g = 'Male';
+                } else {
+                    $g = 'Other';
+                }
+            }
+
+            // AUID
+            $auid = trim((string) ($row['auid'] ?? ''));
+            if ($auid === '') {
+                $auid = trim((string) ($row['enrollment_no'] ?? '')) ?: (trim((string) ($row['alumni_id'] ?? '')) ?: ('AU-' . str_pad((string) $row['id'], 5, '0', STR_PAD_LEFT)));
+            }
+
+            // Pass-out batch
+            $batchYear = trim((string) ($row['batch_year'] ?? ''));
+            if ($batchYear === '') {
+                $gradYear = trim((string) ($row['graduation_year'] ?? ''));
+                $batchYear = $gradYear !== '' ? (($gradYear - 4) . '-' . $gradYear) : 'N/A';
+            }
+
+            // Full Name
+            $studentName = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
+
+            // Current Status & Current Details
+            $rawStatus = trim((string) ($row['current_status'] ?? ''));
+            $statusLabel = 'Employed';
+            $details = '';
+
+            if ($rawStatus === 'job' || ($rawStatus === '' && (!empty($row['current_company']) || !empty($row['job_organization'])))) {
+                $statusLabel = 'Job';
+                $org = trim((string) ($row['job_organization'] ?: ($row['current_company'] ?: '')));
+                $desig = trim((string) ($row['job_designation'] ?: ($row['current_designation'] ?: '')));
+                $loc = trim((string) ($row['job_location'] ?: ($row['location_city'] ?: '')));
+                $jType = trim((string) ($row['job_type'] ?? ''));
+                $parts = [];
+                if ($desig !== '') $parts[] = $desig;
+                if ($org !== '') $parts[] = 'at ' . $org;
+                if ($loc !== '') $parts[] = '(' . $loc . ')';
+                if ($jType !== '') $parts[] = '[' . ucfirst($jType) . ' Job]';
+                $details = implode(' ', $parts);
+            } elseif ($rawStatus === 'higher_study') {
+                $statusLabel = 'Higher Studies';
+                $inst = trim((string) ($row['study_institution'] ?? ''));
+                $course = trim((string) ($row['study_course'] ?? ''));
+                $loc = trim((string) ($row['study_location'] ?? ''));
+                $parts = [];
+                if ($course !== '') $parts[] = 'Course: ' . $course;
+                if ($inst !== '') $parts[] = 'at ' . $inst;
+                if ($loc !== '') $parts[] = '(' . $loc . ')';
+                $details = implode(' ', $parts);
+            } elseif ($rawStatus === 'other') {
+                $statusLabel = 'Other';
+                $details = trim((string) ($row['industry'] ?: ($row['admin_notes'] ?: 'Self-Employed / Other')));
+            } else {
+                $statusLabel = 'Alumni';
+                $details = trim((string) ($row['current_company'] ?: ($row['admin_notes'] ?: '-')));
+            }
+
+            if ($details === '') {
+                $details = '-';
+            }
+
+            $report[] = [
+                'sr_no'               => $srNo++,
+                'pass_out_batch'      => $batchYear,
+                'department'          => trim((string) ($row['department'] ?? 'General')),
+                'auid'                => $auid,
+                'name_of_student'     => $studentName,
+                'degree_level'        => $resolvedLevel,
+                'degree'              => trim((string) ($row['degree'] ?? '')),
+                'gender'              => $g,
+                'mobile_student'      => trim((string) ($row['phone'] ?? '')),
+                'email_address'       => trim((string) ($row['email'] ?? '')),
+                'current_status'      => $statusLabel,
+                'current_details'     => $details,
+                'raw_status'          => $rawStatus,
+                'user_id'             => $userId,
+            ];
+        }
+
+        // CSV export stream if requested
+        if ($this->request->getGet('format') === 'csv') {
+            $filename = 'Akal_Alumni_Report_' . date('Ymd_His') . '.csv';
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+            $output = fopen('php://output', 'w');
+            fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF)); // UTF-8 BOM
+
+            fputcsv($output, [
+                'Pass-Out Batch',
+                'Sr. No.',
+                'Department',
+                'AUID',
+                'Name of Student',
+                'UG/PG/PhD',
+                'Gender',
+                'Mobile Student',
+                'Email Address',
+                'Current Status',
+                'Details of the Current JOB/Institute Details',
+            ]);
+
+            foreach ($report as $r) {
+                fputcsv($output, [
+                    $r['pass_out_batch'],
+                    $r['sr_no'],
+                    $r['department'],
+                    $r['auid'],
+                    $r['name_of_student'],
+                    $r['degree_level'],
+                    $r['gender'],
+                    $r['mobile_student'],
+                    $r['email_address'],
+                    $r['current_status'],
+                    $r['current_details'],
+                ]);
+            }
+            fclose($output);
+            exit;
+        }
+
+        return $this->respondSuccess([
+            'report'            => $report,
+            'total'             => count($report),
+            'scoped_department' => $department,
+        ], 'Alumni report generated');
     }
 
     /**

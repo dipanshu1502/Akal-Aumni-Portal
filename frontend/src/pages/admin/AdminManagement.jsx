@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
-import { ShieldCheck, PlusCircle, Search, Lock, UserPlus, KeyRound } from 'lucide-react';
+import { ShieldCheck, PlusCircle, Search, Lock, UserPlus, KeyRound, FileSpreadsheet } from 'lucide-react';
+import AlumniReportModal from '../../components/admin/AlumniReportModal';
 import { DEPARTMENTS } from '../../constants/departments';
 const PERM_FALLBACK = {
   verify_alumni: 'Verify alumni accounts (approve / reject)',
@@ -25,6 +26,20 @@ const AdminManagement = ({ showToast }) => {
   const [search, setSearch] = useState('');
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportData, setReportData] = useState([]);
+
+  const handleOpenReport = async () => {
+    try {
+      const res = await api.get('/admin/reports/alumni');
+      if (res && res.status && res.data) {
+        setReportData(res.data.report || []);
+        setShowReportModal(true);
+      }
+    } catch (e) {
+      notify(e.message || 'Failed to load report');
+    }
+  };
   const [savingId, setSavingId] = useState(null);
   const [draftPerms, setDraftPerms] = useState({});
   const [draftDepartments, setDraftDepartments] = useState({});
@@ -109,6 +124,14 @@ const AdminManagement = ({ showToast }) => {
             <span className="input-group-text bg-white"><Search size={14} /></span>
             <input className="form-control" placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-success fw-bold d-flex align-items-center gap-1 shadow-sm"
+            onClick={handleOpenReport}
+            title="Generate & download alumni report with custom filters"
+          >
+            <FileSpreadsheet size={15} /> Generate Report
+          </button>
           <button className="btn btn-sm btn-danger fw-bold d-flex align-items-center gap-1" onClick={() => setShowForm(!showForm)}><UserPlus size={14} /> {showForm ? 'Close' : 'Add Admin'}</button>
         </div>
       </div>
@@ -179,6 +202,14 @@ const AdminManagement = ({ showToast }) => {
         </table>
       </div>
       <div className="alert alert-info small mb-0 mt-2">Tick department permissions then Save. Remove demotes to alumni; Delete deletes. Super Admin access is unchanged.</div>
+
+      <AlumniReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        showToast={showToast}
+        sourceRecords={reportData}
+        activeFilters={['All University Alumni']}
+      />
     </div>
   );
 };

@@ -80,6 +80,7 @@ $routes->group('api', function ($routes) {
         
         // Users Management (requires manage_users OR manage_alumni OR manage_students)
         $routes->get('users', 'Api\AdminController::getAllUsers', ['filter' => 'permission:manage_users,manage_alumni,manage_students']);
+        $routes->get('reports/alumni', 'Api\AdminController::getAlumniReport');
         // Full profile of any user (alumni / student / admin) — Manage tabs ke "Full Info" modal ke liye
         $routes->get('users/(:num)/detail', 'Api\AdminController::getUserDetail/$1', ['filter' => 'permission:manage_users,manage_alumni,manage_students']);
         // Role changes are superadmin-only (checked inside controller);
