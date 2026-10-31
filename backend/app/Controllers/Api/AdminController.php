@@ -1798,8 +1798,9 @@ class AdminController extends BaseController
         $fields['batch'] = trim((string) ($fields['batch'] ?? ''));
         $fields['participants_count'] = max(0, (int) ($fields['participants_count'] ?? 0));
         $fields['detailed_report'] = trim((string) ($fields['detailed_report'] ?? ''));
+        $fields['learning_outcomes'] = trim((string) ($fields['learning_outcomes'] ?? ''));
         $words = preg_split('/\s+/', $fields['detailed_report'], -1, PREG_SPLIT_NO_EMPTY);
-        if (!$fields['email_address'] || !$fields['coordinators'] || !$fields['department'] || !$fields['event_type'] || !$fields['event_date'] || !$fields['batch'] || !$fields['participants_count'] || count($words) < 300 || count($words) > 400) return $this->respondValidationError(['report' => 'Complete required fields and keep the detailed report between 300 and 400 words.']);
+        if (!$fields['email_address'] || !$fields['coordinators'] || !$fields['department'] || !$fields['event_type'] || !$fields['event_date'] || !$fields['batch'] || !$fields['participants_count'] || !$fields['learning_outcomes'] || count($words) < 300 || count($words) > 400) return $this->respondValidationError(['report' => 'Complete all required fields, including Learning Outcomes, and keep the detailed report between 300 and 400 words.']);
         $photoPaths = [];
         for ($i = 1; $i <= 4; $i++) {
             $photoPaths[$i] = $fields['photo' . $i . '_path'] ?? null;
@@ -1815,7 +1816,7 @@ class AdminController extends BaseController
         }
         $photos = [];
         for ($i = 1; $i <= 4; $i++) $photos[] = ['path' => $photoPaths[$i], 'caption' => trim((string) ($fields['caption' . $i] ?? ''))];
-        $data = ['event_id' => (int) $eventId, 'email_address' => $fields['email_address'], 'coordinators' => $fields['coordinators'], 'department' => $fields['department'], 'event_type' => $fields['event_type'], 'event_date' => $fields['event_date'], 'speaker_name' => $fields['speaker_name'], 'speaker_uid' => $fields['speaker_uid'], 'batch' => $fields['batch'], 'participants_count' => $fields['participants_count'], 'detailed_report' => $fields['detailed_report'], 'photos_json' => json_encode($photos), 'updated_at' => date('Y-m-d H:i:s')];
+        $data = ['event_id' => (int) $eventId, 'email_address' => $fields['email_address'], 'coordinators' => $fields['coordinators'], 'department' => $fields['department'], 'event_type' => $fields['event_type'], 'event_date' => $fields['event_date'], 'speaker_name' => $fields['speaker_name'], 'speaker_uid' => $fields['speaker_uid'], 'batch' => $fields['batch'], 'participants_count' => $fields['participants_count'], 'detailed_report' => $fields['detailed_report'], 'learning_outcomes' => $fields['learning_outcomes'], 'photos_json' => json_encode($photos), 'updated_at' => date('Y-m-d H:i:s')];
         $existing = $this->db->table('event_reports')->where('event_id', (int) $eventId)->get()->getRowArray();
         if ($existing) $this->db->table('event_reports')->where('event_id', (int) $eventId)->update($data);
         else { $data['created_at'] = date('Y-m-d H:i:s'); $this->db->table('event_reports')->insert($data); }

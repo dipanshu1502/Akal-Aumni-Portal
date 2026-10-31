@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { jsPDF } from 'jspdf';
+import { AlignmentType, BorderStyle, Document, Footer, Header, ImageRun, PageNumber, Packer, Paragraph, TabStopType, TextRun } from 'docx';
 import api from '../../services/api';
 import AdminManagement from './AdminManagement';
 import BirthdayEmailManagement from './BirthdayEmailManagement';
@@ -65,6 +66,7 @@ import {
   QrCode,
   Download,
   FileSpreadsheet,
+  FileText,
   ClipboardList
 } from 'lucide-react';
 
@@ -363,6 +365,7 @@ const AdminDashboard = () => {
   const [eventReportError, setEventReportError] = useState('');
   const [eventReportSaving, setEventReportSaving] = useState(false);
   const [eventReportPdfPreview, setEventReportPdfPreview] = useState(null);
+  const [eventReportWordDownloading, setEventReportWordDownloading] = useState(false);
   const [eventReportSavedIds, setEventReportSavedIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem('akal_event_reports') || '[]').map(Number); } catch { return []; }
   });
@@ -1318,7 +1321,7 @@ const AdminDashboard = () => {
       report: {
         email_address: '', coordinators: '', department: event.department || '',
         event_type: event.event_type || '', event_date: event.start_datetime?.slice(0, 10) || '',
-        speaker_name: '', speaker_uid: '', batch: '', participants_count: '', detailed_report: '',
+        speaker_name: '', speaker_uid: '', batch: '', participants_count: '', detailed_report: '', learning_outcomes: '',
       },
       photos: Array.from({ length: 4 }, () => ({ path: '', caption: '', file: null })),
       albumCreated: false,
@@ -1366,6 +1369,86 @@ const AdminDashboard = () => {
     setEventReportPdfPreview(null);
   };
 
+  const downloadEventReportWord = async () => {
+    if (!eventReportPdfPreview?.report || !eventReportPdfPreview?.event) return;
+    setEventReportWordDownloading(true);
+    try {
+      const { report, event } = eventReportPdfPreview;
+      const paragraphs = [];
+      try {
+        const response = await fetch('/Akal Logo.png');
+        if (response.ok) {
+          const blob = await response.blob();
+          const bitmap = await createImageBitmap(blob);
+          const data = new Uint8Array(await blob.arrayBuffer());
+          const scale = Math.min(1, 90 / bitmap.width, 90 / bitmap.height);
+          paragraphs.push(new Paragraph({ alignment: AlignmentType.LEFT, spacing: { after: 80 }, children: [new ImageRun({ data, transformation: { width: Math.round(bitmap.width * scale), height: Math.round(bitmap.height * scale) } })] }));
+          bitmap.close();
+        }
+      } catch { /* The document title is still present if the logo can't load. */ }
+      paragraphs.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [new TextRun({ text: 'Akal University, Talwandi Sabo', bold: true, size: 34, font: 'Times New Roman' })] }));
+      paragraphs.push(new Paragraph({ border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: '333333', space: 1 } }, spacing: { after: 180 }, children: [new TextRun(' ')] }));
+      paragraphs.push(new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: `Reference No: ${report.id || event.id}`, bold: true, color: 'A02020', font: 'Times New Roman' })] }));
+      paragraphs.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 }, children: [new TextRun({ text: 'Event Details for Newspaper and Social Media Post', bold: true, underline: {}, font: 'Times New Roman' })] }));
+
+      const details = [
+        ['Department', report.department || event.department || 'University-wide'], ['Event Name', event.title],
+        ['Event Type', report.event_type || event.event_type], ['Date', report.event_date],
+        ['No. of Participants', report.participants_count], ['Name of Guest/Speaker', report.speaker_name || 'Not applicable'],
+        ['Name of Event Coordinator', report.coordinators], ["Speaker's UID", report.speaker_uid || '-'],
+        ['Batch', report.batch || '-'], ['Report Email', report.email_address || '-'],
+      ];
+      details.forEach(([label, value]) => paragraphs.push(new Paragraph({ tabStops: [{ type: TabStopType.LEFT, position: 3100 }, { type: TabStopType.LEFT, position: 3500 }], spacing: { after: 100 }, children: [new TextRun({ text: label, bold: true, font: 'Times New Roman' }), new TextRun({ text: '\t:\t', font: 'Times New Roman' }), new TextRun({ text: String(value || '-'), font: 'Times New Roman' })] })));
+      paragraphs.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 260, after: 160 }, children: [new TextRun({ text: 'About the Event', bold: true, font: 'Times New Roman' })] }));
+      const cleanDetailedReport = String(report.detailed_report || '')
+        .replace(/^\s*#{1,6}\s*/gm, '')
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/^\s*[-*+]\s+/gm, '')
+        .trim();
+      cleanDetailedReport.split(/\r?\n/).filter(Boolean).forEach((line) => paragraphs.push(new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 100, line: 300 }, children: [new TextRun({ text: line, font: 'Times New Roman', size: 22 })] })));
+      paragraphs.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 260, after: 160 }, children: [new TextRun({ text: 'Learning Outcomes', bold: true, font: 'Times New Roman' })] }));
+      String(report.learning_outcomes || '').split(/\r?\n/).map((line) => line.trim().replace(/^(?:[•*-]\s*|\d+[.)]\s*)/, '')).filter(Boolean).forEach((line) => paragraphs.push(new Paragraph({ bullet: { level: 0 }, alignment: AlignmentType.JUSTIFIED, spacing: { after: 100, line: 300 }, children: [new TextRun({ text: line, font: 'Times New Roman', size: 22 })] })));
+
+      let photos = [];
+      try { photos = JSON.parse(report.photos_json || '[]').filter((photo) => photo.path); } catch { photos = []; }
+      if (photos.length) {
+        paragraphs.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 260, after: 200 }, children: [new TextRun({ text: 'Some Glimpses', bold: true, font: 'Times New Roman' })] }));
+        for (const [index, photo] of photos.entries()) {
+          try {
+            const response = await fetch(photo.path);
+            if (!response.ok) continue;
+            const blob = await response.blob();
+            const bitmap = await createImageBitmap(blob);
+            const scale = Math.min(1, 540 / bitmap.width, 420 / bitmap.height);
+            const imageData = new Uint8Array(await blob.arrayBuffer());
+            paragraphs.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 140, after: 80 }, children: [new ImageRun({ data: imageData, transformation: { width: Math.round(bitmap.width * scale), height: Math.round(bitmap.height * scale) } })] }));
+            bitmap.close();
+            if (photo.caption) paragraphs.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 180 }, children: [new TextRun({ text: photo.caption, italics: true, size: 20, font: 'Times New Roman' })] }));
+          } catch { paragraphs.push(new Paragraph({ children: [new TextRun({ text: `Photo ${index + 1}: ${photo.caption || 'Photo could not be embedded.'}` })] })); }
+        }
+      }
+
+      const repeatedHeader = new Header({ children: [new Paragraph({ alignment: AlignmentType.CENTER, border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: '333333', space: 1 } }, children: [new TextRun({ text: 'Akal University, Talwandi Sabo', bold: true, size: 28, font: 'Times New Roman' })] })] });
+      const firstHeader = new Header({ children: [new Paragraph({ children: [new TextRun(' ')] })] });
+      const pageFooter = new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun('Page '), PageNumber.CURRENT, new TextRun(' of '), PageNumber.TOTAL_PAGES] })] });
+      const documentFile = new Document({ sections: [{ properties: { page: { margin: { top: 1100, right: 900, bottom: 900, left: 900 } } }, headers: { first: firstHeader, default: repeatedHeader }, footers: { default: pageFooter, first: pageFooter }, children: paragraphs }] });
+      const blob = await Packer.toBlob(documentFile);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = eventReportPdfPreview.wordFilename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (error) {
+      showToast(error.message || 'Could not create the Word document.');
+    } finally {
+      setEventReportWordDownloading(false);
+    }
+  };
+
   const saveEventReport = async (event) => {
     event.preventDefault();
     if (!eventReport) return;
@@ -1378,6 +1461,7 @@ const AdminDashboard = () => {
       ['Date of Event', eventReport.report.event_date],
       ['Batch', eventReport.report.batch],
       ['Number of Participants', eventReport.report.participants_count],
+      ['Learning Outcomes', eventReport.report.learning_outcomes],
     ].filter(([, value]) => !String(value ?? '').trim()).map(([label]) => label);
     if (missingFields.length) {
       const message = `Please complete: ${missingFields.join(', ')}.`;
@@ -1442,7 +1526,9 @@ const AdminDashboard = () => {
       const margin = 18;
       const textWidth = pageWidth - margin * 2;
       let y = 19;
+      let logoData = null;
       const drawPageHeader = () => {
+        if (logoData) pdf.addImage(logoData, 'PNG', margin + 2, 8, 17, 20);
         pdf.setFont('times', 'bold');
         pdf.setFontSize(14);
         pdf.setTextColor(25, 35, 55);
@@ -1453,9 +1539,15 @@ const AdminDashboard = () => {
       };
       const ensureSpace = (height) => {
         if (y + height > pageHeight - 20) {
+          const previousFont = pdf.getFont();
+          const previousSize = pdf.getFontSize();
+          const previousColor = pdf.getTextColor();
           pdf.addPage();
           drawPageHeader();
           y = 42;
+          pdf.setFont(previousFont.fontName || 'times', previousFont.fontStyle || 'normal');
+          pdf.setFontSize(previousSize);
+          pdf.setTextColor(previousColor);
         }
       };
 
@@ -1467,7 +1559,7 @@ const AdminDashboard = () => {
           canvas.width = bitmap.width;
           canvas.height = bitmap.height;
           canvas.getContext('2d').drawImage(bitmap, 0, 0);
-          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin + 2, 8, 17, 20);
+          logoData = canvas.toDataURL('image/png');
           bitmap.close();
         }
       } catch { /* University name remains as the report header. */ }
@@ -1517,11 +1609,36 @@ const AdminDashboard = () => {
       pdf.setFont('times', 'normal');
       pdf.setFontSize(10.5);
       pdf.setTextColor(30, 30, 30);
-      const reportLines = pdf.splitTextToSize(String(report.detailed_report || ''), textWidth - 8);
+      const cleanDetailedReport = String(report.detailed_report || '')
+        .replace(/^\s*#{1,6}\s*/gm, '')
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/^\s*[-*+]\s+/gm, '')
+        .trim();
+      const reportLines = pdf.splitTextToSize(cleanDetailedReport, textWidth - 8);
       for (const line of reportLines) {
         ensureSpace(5.6);
         pdf.text(line, margin + 4, y);
         y += 5.6;
+      }
+
+      ensureSpace(14);
+      y += 3;
+      pdf.setFont('times', 'bold');
+      pdf.setFontSize(11);
+      pdf.text('Learning Outcomes', pageWidth / 2, y, { align: 'center' });
+      y += 8;
+      pdf.setFont('times', 'normal');
+      pdf.setFontSize(10.5);
+      const outcomes = String(report.learning_outcomes || '').split(/\r?\n/).map((line) => line.trim().replace(/^(?:[•*-]\s*|\d+[.)]\s*)/, '')).filter(Boolean);
+      for (const outcome of outcomes) {
+        const outcomeLines = pdf.splitTextToSize(outcome, textWidth - 16);
+        ensureSpace(outcomeLines.length * 5.6);
+        pdf.setFont('times', 'bold');
+        pdf.text('-', margin + 4, y);
+        pdf.setFont('times', 'normal');
+        pdf.text(outcomeLines, margin + 10, y);
+        y += outcomeLines.length * 5.6 + 2;
       }
 
       const reportPhotos = photos.filter((photo) => photo.path);
@@ -1590,7 +1707,7 @@ const AdminDashboard = () => {
       const filename = `${report.id || event.id}_${datePart}_${safeTitle}_Report.pdf`;
       const pdfBlob = pdf.output('blob');
       if (eventReportPdfPreview?.url) URL.revokeObjectURL(eventReportPdfPreview.url);
-      setEventReportPdfPreview({ url: URL.createObjectURL(pdfBlob), filename, title: event.title });
+      setEventReportPdfPreview({ url: URL.createObjectURL(pdfBlob), filename, wordFilename: filename.replace(/\.pdf$/i, '.docx'), title: event.title, report, event });
     } catch (error) {
       showToast(error.message || 'Could not generate the event report PDF.');
     }
@@ -3657,12 +3774,13 @@ const AdminDashboard = () => {
               </table>
             </div>
 
-            {eventReportPdfPreview && createPortal(<div role="dialog" aria-modal="true" aria-label="Event report PDF preview" onClick={(event) => { if (event.target === event.currentTarget) closeEventReportPdfPreview(); }} style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(15,23,42,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}><div className="bg-white rounded-4 shadow-lg d-flex flex-column overflow-hidden" style={{ width: 'min(1100px, 100%)', height: 'min(92vh, 100%)' }}><div className="d-flex align-items-center justify-content-between gap-3 p-3 border-bottom"><div className="fw-bold text-dark text-truncate">PDF Preview · {eventReportPdfPreview.title}</div><div className="d-flex align-items-center gap-2 flex-shrink-0"><a className="btn btn-akal-primary d-inline-flex align-items-center gap-2" href={eventReportPdfPreview.url} download={eventReportPdfPreview.filename}><Download size={16} /> Download PDF</a><button type="button" className="btn btn-light border" onClick={closeEventReportPdfPreview}>Close</button></div></div><iframe title="Event report PDF preview" src={eventReportPdfPreview.url} style={{ flex: 1, width: '100%', border: 0 }} /></div></div>, document.body)}
+            {eventReportPdfPreview && createPortal(<div role="dialog" aria-modal="true" aria-label="Event report PDF preview" onClick={(event) => { if (event.target === event.currentTarget) closeEventReportPdfPreview(); }} style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(15,23,42,.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}><div className="bg-white rounded-4 shadow-lg d-flex flex-column overflow-hidden" style={{ width: 'min(1100px, 100%)', height: 'min(92vh, 100%)' }}><div className="d-flex align-items-center justify-content-between gap-3 p-3 border-bottom"><div className="fw-bold text-dark text-truncate">PDF Preview · {eventReportPdfPreview.title}</div><div className="d-flex align-items-center gap-2 flex-shrink-0"><a className="btn btn-akal-primary d-inline-flex align-items-center gap-2" href={eventReportPdfPreview.url} download={eventReportPdfPreview.filename}><Download size={16} /> Download PDF</a><button type="button" className="btn btn-outline-primary d-inline-flex align-items-center gap-2" onClick={downloadEventReportWord} disabled={eventReportWordDownloading}><FileText size={16} /> {eventReportWordDownloading ? 'Creating Word…' : 'Download Word'}</button><button type="button" className="btn btn-light border" onClick={closeEventReportPdfPreview}>Close</button></div></div><iframe title="Event report PDF preview" src={eventReportPdfPreview.url} style={{ flex: 1, width: '100%', border: 0 }} /></div></div>, document.body)}
             {eventReportLoading && !eventReport && <div className="admin-event-registration-backdrop" role="dialog" aria-modal="true"><div className="modal-dialog modal-dialog-centered"><div className="modal-content p-5 text-center"><div className="spinner-border text-primary mx-auto" /><div className="mt-3">Loading event report…</div></div></div></div>}
             {eventReport && createPortal(<div className="admin-event-registration-backdrop admin-event-report-backdrop" role="dialog" aria-modal="true" onClick={(e) => { if (e.target === e.currentTarget) setEventReport(null); }}><div className="modal-dialog modal-xl modal-dialog-centered"><div className="modal-content admin-event-report-modal border-0 shadow-lg rounded-4" onClick={(e) => e.stopPropagation()}><div className="modal-header bg-dark text-white"><div><div className="small text-uppercase text-warning fw-bold">Completed event report</div><h5 className="modal-title fw-bold">{eventReport.event.title}</h5></div><button type="button" className="btn-close btn-close-white" aria-label="Close" onClick={() => setEventReport(null)} /></div><form noValidate onSubmit={saveEventReport}><div className="modal-body">{eventReportLoading && <div className="alert alert-info py-2">Loading saved report…</div>}<div className="row g-3">{eventReport.photos.map((photo, index) => <div className="col-md-6" key={index}><label className="form-label fw-semibold">Upload Photo {index + 1}</label><input className="form-control mb-2" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setEventReport({ ...eventReport, photos: eventReport.photos.map((item, i) => i === index ? { ...item, file: e.target.files?.[0], path: e.target.files?.[0] ? '' : item.path } : item) })} />{photo.path && <div className="small text-success mb-2">Photo already uploaded</div>}<label className="form-label small">Caption for Photo {index + 1}</label><input className="form-control" value={photo.caption || ''} onChange={(e) => setEventReport({ ...eventReport, photos: eventReport.photos.map((item, i) => i === index ? { ...item, caption: e.target.value } : item) })} /></div>)}{[
               ['email_address', 'Email Address', 'email', true], ['coordinators', 'Name of Coordinator(s)', 'text', true], ['department', 'Department', 'department', true], ['event_type', 'Event Type', 'text', true], ['event_date', 'Date of Event', 'date', true], ['speaker_name', 'Name of Speaker (if applicable)', 'text', false], ['speaker_uid', "Speaker's UID", 'text', false], ['batch', 'Batch', 'batch', true], ['participants_count', 'Number of Participants', 'number', true]
             ].map(([key, label, type, required]) => <div className="col-md-6" key={key}><label className="form-label fw-semibold">{label}{required ? ' *' : ''}</label>{type === 'department' ? <select className="form-select" required value={eventReport.report[key] ?? eventReport.event.department ?? ''} onChange={(e) => setEventReport({ ...eventReport, report: { ...eventReport.report, [key]: e.target.value } })}><option value="">Select department</option>{eventReport.report[key] && !DEPARTMENTS.includes(eventReport.report[key]) && <option value={eventReport.report[key]}>{eventReport.report[key]}</option>}{DEPARTMENTS.map((department) => <option key={department} value={department}>{department}</option>)}</select> : type === 'batch' ? <select className="form-select" required value={eventReport.report[key] || ''} onChange={(e) => setEventReport({ ...eventReport, report: { ...eventReport.report, [key]: e.target.value } })}><option value="">Select batch</option>{eventReport.report[key] && !eventReportBatchOptions.includes(String(eventReport.report[key])) && <option value={eventReport.report[key]}>{eventReport.report[key]}</option>}{eventReportBatchOptions.map((batch) => <option key={batch} value={batch}>{batch}</option>)}</select> : <input className="form-control" type={type} min={type === 'number' ? 1 : undefined} required={required} value={eventReport.report[key] ?? (key === 'event_type' ? eventReport.event.event_type || '' : key === 'event_date' ? eventReport.event.start_datetime?.slice(0, 10) || '' : '')} onChange={(e) => setEventReport({ ...eventReport, report: { ...eventReport.report, [key]: e.target.value } })} />}</div>)}
               <div className="col-12"><label className="form-label fw-semibold">Detailed Report of the Event (300–400 words) *</label><textarea className="form-control" rows="7" required value={eventReport.report.detailed_report || ''} onChange={(e) => setEventReport({ ...eventReport, report: { ...eventReport.report, detailed_report: e.target.value } })} /><div className="form-text">{(eventReport.report.detailed_report || '').trim().split(/\s+/).filter(Boolean).length} / 300–400 words</div></div>
+              <div className="col-12"><label className="form-label fw-semibold">Learning Outcomes *</label><textarea className="form-control" rows="4" required placeholder="Enter each learning outcome on a new line." value={eventReport.report.learning_outcomes || ''} onChange={(e) => setEventReport({ ...eventReport, report: { ...eventReport.report, learning_outcomes: e.target.value } })} /><div className="form-text">Add one outcome per line; they will appear as bullet points in the report.</div></div>
               </div>{eventReportError && <div className="alert alert-danger mt-3 mb-0">{eventReportError}</div>}{eventReport.albumCreated && <div className="alert alert-success mt-3 mb-0">Report submitted. Photo Gallery album is published; download the PDF from this event’s actions.</div>}</div><div className="modal-footer"><button type="button" className="btn btn-light border" onClick={() => setEventReport(null)}>Close</button>{eventReport.albumCreated && <button type="button" className="btn btn-outline-success d-flex align-items-center gap-2" onClick={() => downloadEventReportPdf(eventReport.report, eventReport.event)}><Download size={15} /> Preview Report PDF</button>}<button type="submit" className="btn btn-akal-primary" disabled={eventReportSaving}>{eventReportSaving ? 'Saving…' : eventReport.albumCreated ? 'Update Report' : 'Submit Report'}</button></div></form></div></div></div>, document.body)}
 
             {eventRegistrationView && (
