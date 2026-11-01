@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { Calendar, MapPin, Clock, Users, Video, CheckCircle2, UserPlus, X } from 'lucide-react';
 
 const EventsPage = () => {
+  const { user, profile } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -54,7 +56,10 @@ const EventsPage = () => {
     setRegistrationSaving(true);
     setRegistrationError('');
     try {
-      const response = await api.post(`/public/events/${registrationEvent.id}/register`, registrationForm);
+      const registrationPath = user?.role === 'student'
+        ? `/student/events/${registrationEvent.id}/register`
+        : `/public/events/${registrationEvent.id}/register`;
+      const response = await api.post(registrationPath, registrationForm);
       if (!response.status) throw new Error(response.message || 'Registration failed');
       setRegisteredEventIds((current) => [...new Set([...current, registrationEvent.id])]);
       setEvents((current) => current.map((item) => item.id === registrationEvent.id
@@ -203,7 +208,15 @@ const EventsPage = () => {
                         <CheckCircle2 size={16} /> Registered
                       </button>
                     ) : (
-                      <button onClick={() => { setRegistrationEvent(ev); setRegistrationError(''); }} className="btn btn-akal-primary w-100 justify-content-center">
+                      <button onClick={() => {
+                        setRegistrationEvent(ev);
+                        setRegistrationError('');
+                        setRegistrationForm({
+                          attendee_name: [profile?.first_name, profile?.last_name].filter(Boolean).join(' '),
+                          attendee_email: user?.email || '',
+                          attendee_phone: profile?.phone || '',
+                        });
+                      }} className="btn btn-akal-primary w-100 justify-content-center">
                         <UserPlus size={16} /> <span>Register for Event</span>
                       </button>
                     )}

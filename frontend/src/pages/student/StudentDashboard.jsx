@@ -1,30 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import { GraduationCap, Award, MessageSquare, Briefcase, CheckCircle2, Clock, User, Save, ArrowRight } from 'lucide-react';
+import { GraduationCap, Award, Briefcase, Calendar, CheckCircle2, MapPin, Save } from 'lucide-react';
 
 const StudentDashboard = () => {
-  const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [mentorships, setMentorships] = useState([]);
+  const [activities, setActivities] = useState({ applications: [], events: [] });
+  const [activitiesError, setActivitiesError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     const fetchStudentData = async () => {
-      try {
-        const [profileRes, mentorshipsRes] = await Promise.all([
+      const results = await Promise.allSettled([
           api.get('/student/profile'),
-          api.get('/student/my-mentorships')
-        ]);
-        if (profileRes.status) setProfile(profileRes.data);
-        if (mentorshipsRes.status) setMentorships(mentorshipsRes.data);
-      } catch (err) {
-        console.error('Error fetching student data:', err);
-      } finally {
-        setLoading(false);
+          api.get('/student/my-mentorships'),
+          api.get('/student/my-activities')
+      ]);
+
+      const [profileResult, mentorshipsResult, activitiesResult] = results;
+      if (profileResult.status === 'fulfilled' && profileResult.value.status) {
+        setProfile(profileResult.value.data);
+      } else if (profileResult.status === 'rejected') {
+        console.error('Error fetching student profile:', profileResult.reason);
       }
+
+      if (mentorshipsResult.status === 'fulfilled' && mentorshipsResult.value.status) {
+        setMentorships(mentorshipsResult.value.data);
+      } else if (mentorshipsResult.status === 'rejected') {
+        console.error('Error fetching student mentorships:', mentorshipsResult.reason);
+      }
+
+      if (activitiesResult.status === 'fulfilled' && activitiesResult.value.status) {
+        setActivities(activitiesResult.value.data);
+      } else {
+        const error = activitiesResult.status === 'rejected'
+          ? activitiesResult.reason
+          : activitiesResult.value;
+        console.error('Error fetching student activities:', error);
+        setActivitiesError(error?.message || 'Could not load your applications and event registrations.');
+      }
+
+      setLoading(false);
     };
     fetchStudentData();
   }, []);
@@ -197,6 +215,78 @@ const StudentDashboard = () => {
             </div>
           </div>
         </div>
+
+        <div className="row g-4 mt-1">
+            <div className="col-lg-6">
+              <div className="akal-card p-4 h-100">
+                <div className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                  <h5 className="fw-bold text-dark mb-0">My Job Applications</h5>
+                  <Link to="/jobs" className="btn btn-sm btn-link text-primary text-decoration-none">Browse jobs</Link>
+                </div>
+                {activitiesError ? (
+                  <div className="alert alert-warning small mb-0" role="alert">{activitiesError}</div>
+                ) : activities.applications.length === 0 ? (
+                  <div className="text-center py-4 text-muted">
+                    <Briefcase size={36} className="opacity-50 mb-2" />
+                    <p className="mb-0">You have not applied for any jobs yet.</p>
+                  </div>
+                ) : (
+                  <div className="d-flex flex-column gap-3">
+                    {activities.applications.map((application) => (
+                      <div key={application.id} className="p-3 bg-light rounded-3 border">
+                        <div className="d-flex justify-content-between align-items-start gap-2">
+                          <div>
+                            <div className="fw-bold text-dark">{application.title}</div>
+                            <div className="text-primary small">{application.company_name}</div>
+                          </div>
+                          <span className="badge bg-success">Applied</span>
+                        </div>
+                        <div className="small text-muted mt-2 d-flex flex-wrap gap-3">
+                          {application.location && <span><MapPin size={13} className="me-1" />{application.location}</span>}
+                          {application.applied_at && <span>Applied {new Date(application.applied_at).toLocaleDateString()}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="col-lg-6">
+              <div className="akal-card p-4 h-100">
+                <div className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                  <h5 className="fw-bold text-dark mb-0">My Event Registrations</h5>
+                  <Link to="/events" className="btn btn-sm btn-link text-primary text-decoration-none">Browse events</Link>
+                </div>
+                {activitiesError ? (
+                  <div className="alert alert-warning small mb-0" role="alert">{activitiesError}</div>
+                ) : activities.events.length === 0 ? (
+                  <div className="text-center py-4 text-muted">
+                    <Calendar size={36} className="opacity-50 mb-2" />
+                    <p className="mb-0">You are not registered for any events yet.</p>
+                  </div>
+                ) : (
+                  <div className="d-flex flex-column gap-3">
+                    {activities.events.map((registration) => (
+                      <div key={registration.id} className="p-3 bg-light rounded-3 border">
+                        <div className="d-flex justify-content-between align-items-start gap-2">
+                          <div>
+                            <div className="fw-bold text-dark">{registration.title}</div>
+                            <div className="text-primary small text-capitalize">{registration.event_type}</div>
+                          </div>
+                          <span className="badge bg-info text-dark">Registered</span>
+                        </div>
+                        <div className="small text-muted mt-2 d-flex flex-wrap gap-3">
+                          {registration.start_datetime && <span><Calendar size={13} className="me-1" />{new Date(registration.start_datetime).toLocaleString()}</span>}
+                          {registration.location && <span><MapPin size={13} className="me-1" />{registration.location}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
       </div>
     </div>
   );

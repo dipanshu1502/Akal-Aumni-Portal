@@ -129,4 +129,42 @@ class StudentController extends BaseController
 
         return $this->respondSuccess($mentorships, 'Mentorship list retrieved');
     }
+
+    /**
+     * Get a student's job applications and event registrations.
+     */
+    public function getMyActivities()
+    {
+        $userId = (int) $this->request->authUser['id'];
+        $student = $this->db->table('users')
+            ->select('email')
+            ->where('id', $userId)
+            ->get()->getRowArray();
+        $applications = $this->db->table('job_applications')
+            ->select('job_applications.id, job_applications.created_at as applied_at, jobs.id as job_id, jobs.title, jobs.company_name, jobs.job_type, jobs.location, jobs.salary_range, jobs.deadline, jobs.status')
+            ->join('jobs', 'jobs.id = job_applications.job_id')
+            ->where('job_applications.user_id', $userId)
+            ->orderBy('job_applications.created_at', 'DESC')
+            ->get()->getResultArray();
+
+        $eventsQuery = $this->db->table('event_registrations')
+            ->select('event_registrations.id, event_registrations.created_at as registered_at, event_registrations.tickets_count, events.id as event_id, events.title, events.event_type, events.start_datetime, events.end_datetime, events.venue as location, events.is_virtual')
+            ->join('events', 'events.id = event_registrations.event_id')
+            ->groupStart()
+            ->where('event_registrations.user_id', $userId);
+        if (!empty($student['email'])) {
+            $eventsQuery->orGroupStart()
+                ->where('event_registrations.user_id', null)
+                ->where('event_registrations.attendee_email', $student['email'])
+                ->groupEnd();
+        }
+        $events = $eventsQuery->groupEnd()
+            ->orderBy('event_registrations.created_at', 'DESC')
+            ->get()->getResultArray();
+
+        return $this->respondSuccess([
+            'applications' => $applications,
+            'events' => $events,
+        ], 'Student activities retrieved');
+    }
 }

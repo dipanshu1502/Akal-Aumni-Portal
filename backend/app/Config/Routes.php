@@ -62,6 +62,8 @@ $routes->group('api', function ($routes) {
         $routes->put('profile', 'Api\StudentController::updateProfile');
         $routes->post('mentorship-request', 'Api\StudentController::requestMentorship');
         $routes->get('my-mentorships', 'Api\StudentController::getMyMentorships');
+        $routes->get('my-activities', 'Api\StudentController::getMyActivities');
+        $routes->post('events/(:num)/register', 'Api\PublicController::registerForEvent/$1');
     });
 
     // Admin & Super Admin Authenticated Routes

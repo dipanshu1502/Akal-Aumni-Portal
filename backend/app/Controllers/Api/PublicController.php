@@ -171,10 +171,18 @@ class PublicController extends BaseController
         if (!empty($event['registration_deadline']) && strtotime($event['registration_deadline']) < time()) {
             return $this->respondError('Registration for this event has closed.', 400);
         }
-        $duplicate = $this->db->table('event_registrations')
-            ->where('event_id', (int) $eventId)
-            ->where('attendee_email', $email)
-            ->countAllResults();
+        $authUser = $this->request->authUser ?? null;
+        $duplicateQuery = $this->db->table('event_registrations')
+            ->where('event_id', (int) $eventId);
+        if (!empty($authUser['id'])) {
+            $duplicateQuery->groupStart()
+                ->where('attendee_email', $email)
+                ->orWhere('user_id', (int) $authUser['id'])
+                ->groupEnd();
+        } else {
+            $duplicateQuery->where('attendee_email', $email);
+        }
+        $duplicate = $duplicateQuery->countAllResults();
         if ($duplicate > 0) {
             return $this->respondError('This email is already registered for the event.', 409);
         }
@@ -194,7 +202,7 @@ class PublicController extends BaseController
         $now = date('Y-m-d H:i:s');
         $saved = $this->db->table('event_registrations')->insert([
             'event_id' => (int) $eventId,
-            'user_id' => null,
+            'user_id' => !empty($authUser['id']) ? (int) $authUser['id'] : null,
             'attendee_name' => $name,
             'attendee_email' => $email,
             'attendee_phone' => $phone !== '' ? $phone : null,
