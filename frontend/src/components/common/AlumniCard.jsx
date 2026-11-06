@@ -6,7 +6,7 @@ const getPhotoSrc = (photo) => {
   return photo;
 };
 
-const AlumniCard = ({ alumni, onConnect }) => {
+const AlumniCard = ({ alumni, onConnect, isRequested = false }) => {
   const fullName = `${alumni.first_name} ${alumni.last_name || ""}`;
   const isDistinguished = Boolean(Number(alumni.is_distinguished));
   const isMentor = Boolean(Number(alumni.is_mentor));
@@ -158,9 +158,10 @@ const AlumniCard = ({ alumni, onConnect }) => {
           {isMentor ? (
             <button
               onClick={() => onConnect && onConnect(alumni)}
-              className="btn btn-sm btn-akal-yellow"
+              className={`btn btn-sm ${isRequested ? "btn-success" : "btn-akal-yellow"}`}
+              disabled={isRequested}
             >
-              Request Mentorship
+              {isRequested ? "Requested" : "Request Mentorship"}
             </button>
           ) : (
             <button
@@ -177,4 +178,3 @@ const AlumniCard = ({ alumni, onConnect }) => {
 };
 
 export default AlumniCard;
-

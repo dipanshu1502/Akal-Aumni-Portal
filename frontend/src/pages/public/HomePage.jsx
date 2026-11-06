@@ -268,7 +268,7 @@ const HomePage = () => {
       {/* ─────────────────────────────────────────────────────────────
          2. Alumni Statistics Section (Database-Driven)
          ───────────────────────────────────────────────────────────── */}
-      <section className="py-5" style={{ backgroundColor: 'var(--akal-soft-white)' }}>
+      {/* <section className="py-5" style={{ backgroundColor: 'var(--akal-soft-white)' }}>
         <div className="container">
           <div className="row g-3">
             <div className="col-lg-3 col-sm-6">
@@ -320,7 +320,7 @@ const HomePage = () => {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* ─────────────────────────────────────────────────────────────
          3. Core Ecosystem Pillars ("What You Can Do")

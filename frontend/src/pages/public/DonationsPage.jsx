@@ -4,15 +4,16 @@ import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import {
   HeartHandshake,
-  Users,
   Target,
   Calendar,
   Gift,
   CheckCircle2,
   Sparkles,
   X,
-  ArrowRight
+  Upload,
+  Landmark,
 } from 'lucide-react';
+import { useSettings } from '../../context/SettingsContext';
 
 const formatINR = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
@@ -21,12 +22,28 @@ const DonationsPage = () => {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
   const [donateTarget, setDonateTarget] = useState(null);
-  const [donationForm, setDonationForm] = useState({ amount: '', message: '', is_anonymous: false });
+  const [donationForm, setDonationForm] = useState({
+    amount: '',
+    message: '',
+    is_anonymous: false,
+    transaction_id: '',
+    payment_proof: null,
+  });
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const { getSetting } = useSettings();
+  const paymentDetails = {
+    accountName: getSetting('donation_account_name'),
+    bankName: getSetting('donation_bank_name'),
+    accountNumber: getSetting('donation_account_number'),
+    ifscCode: getSetting('donation_ifsc_code'),
+    upiId: getSetting('donation_upi_id'),
+    qrUrl: getSetting('donation_upi_qr_url'),
+  };
+  const hasPaymentAccount = Boolean(paymentDetails.accountNumber || paymentDetails.upiId);
 
   useEffect(() => {
     const fetchCampaigns = async () => {
@@ -54,7 +71,7 @@ const DonationsPage = () => {
       return;
     }
     setDonateTarget(campaign);
-    setDonationForm({ amount: '', message: '', is_anonymous: false });
+    setDonationForm({ amount: '', message: '', is_anonymous: false, transaction_id: '', payment_proof: null });
     setErrorMsg('');
     setSuccessMsg('');
   };
@@ -69,21 +86,33 @@ const DonationsPage = () => {
     }
     setSubmitting(true);
     try {
-      const res = await api.post('/user/donate', {
-        campaign_id: donateTarget.id,
-        amount,
-        message: donationForm.message,
-        is_anonymous: donationForm.is_anonymous,
-        payment_method: 'online',
+      if (!donationForm.payment_proof) {
+        setErrorMsg('Please upload a screenshot of your payment.');
+        return;
+      }
+
+      const payload = new FormData();
+      payload.append('campaign_id', String(donateTarget.id));
+      payload.append('amount', String(amount));
+      payload.append('message', donationForm.message);
+      payload.append('is_anonymous', donationForm.is_anonymous ? '1' : '0');
+      payload.append('transaction_id', donationForm.transaction_id);
+      payload.append('payment_proof', donationForm.payment_proof);
+      const res = await api.post('/user/donate', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       if (res.status) {
-        setSuccessMsg(res.message || 'Thank you for your generous contribution!');
-        const refresh = await api.get('/public/donations');
-        if (refresh.status) setCampaigns(refresh.data);
+        setSuccessMsg(res.message || 'Payment proof submitted for verification.');
+        try {
+          const refresh = await api.get('/public/donations');
+          if (refresh.status) setCampaigns(refresh.data);
+        } catch (refreshError) {
+          console.error('Donation was submitted, but campaign totals could not be refreshed:', refreshError);
+        }
         setTimeout(() => {
           setDonateTarget(null);
           setSuccessMsg('');
-        }, 2500);
+        }, 3500);
       } else {
         setErrorMsg(res.message || 'Donation failed. Please try again.');
       }
@@ -285,11 +314,33 @@ const DonationsPage = () => {
                     <div className="text-center py-4 text-success">
                       <CheckCircle2 size={56} className="text-success mb-3 mx-auto" />
                       <h5 className="fw-bold text-akal-navy">{successMsg}</h5>
-                      <p className="text-akal-secondary small mb-0">Your contribution has been recorded in the portal records.</p>
+                      <p className="text-akal-secondary small mb-0">Your donation will appear in the campaign total after an admin verifies your payment.</p>
                     </div>
                   ) : (
                     <>
                       {errorMsg && <div className="alert alert-danger py-2 small mb-3">{errorMsg}</div>}
+
+                      {!hasPaymentAccount ? (
+                        <div className="alert alert-warning small">
+                          Donation payment details are not configured yet. Please try again later.
+                        </div>
+                      ) : (
+                        <div className="p-3 border rounded-3 mb-3" style={{ backgroundColor: 'var(--akal-soft-white)' }}>
+                          <div className="d-flex align-items-center gap-2 mb-2">
+                            <Landmark size={17} className="text-akal-blue" />
+                            <strong className="text-akal-navy">Pay to this account</strong>
+                          </div>
+                          {paymentDetails.accountName && <div className="small"><strong>Account name:</strong> {paymentDetails.accountName}</div>}
+                          {paymentDetails.bankName && <div className="small"><strong>Bank:</strong> {paymentDetails.bankName}</div>}
+                          {paymentDetails.accountNumber && <div className="small"><strong>Account number:</strong> {paymentDetails.accountNumber}</div>}
+                          {paymentDetails.ifscCode && <div className="small"><strong>IFSC:</strong> {paymentDetails.ifscCode}</div>}
+                          {paymentDetails.upiId && <div className="small"><strong>UPI ID:</strong> {paymentDetails.upiId}</div>}
+                          {paymentDetails.qrUrl && (
+                            <img src={`${api.defaults.baseURL}/public/donation-payment-qr`} alt="Donation UPI QR code" className="mt-2 border rounded" style={{ width: 150, height: 150, objectFit: 'contain' }} />
+                          )}
+                          <div className="small text-muted mt-2">Transfer your donation first, then upload the payment screenshot below.</div>
+                        </div>
+                      )}
 
                       <div className="mb-3">
                         <label className="form-label small fw-bold">Donation Amount (₹) *</label>
@@ -315,6 +366,33 @@ const DonationsPage = () => {
                             </button>
                           ))}
                         </div>
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label small fw-bold">Transaction / UTR ID</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          maxLength={255}
+                          value={donationForm.transaction_id}
+                          onChange={(e) => setDonationForm({ ...donationForm, transaction_id: e.target.value })}
+                          placeholder="Enter your payment reference number"
+                          required
+                        />
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label small fw-bold">Payment Screenshot * (JPG, PNG, WebP; max 5 MB)</label>
+                        <input
+                          type="file"
+                          className="form-control"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={(e) => setDonationForm({ ...donationForm, payment_proof: e.target.files?.[0] || null })}
+                          required
+                        />
+                        {donationForm.payment_proof && (
+                          <div className="small text-muted mt-1"><Upload size={13} className="me-1" />{donationForm.payment_proof.name}</div>
+                        )}
                       </div>
 
                       <div className="mb-3">
@@ -344,9 +422,9 @@ const DonationsPage = () => {
                       <div className="p-3 border rounded-3 small text-akal-secondary" style={{ backgroundColor: 'var(--akal-soft-white)' }}>
                         <div className="d-flex align-items-center gap-2 mb-1">
                           <Gift size={14} className="text-warning" />
-                          <strong className="text-akal-navy">Contributing Account:</strong> {user?.email}
+                          <strong className="text-akal-navy">Submitting as:</strong> {user?.email}
                         </div>
-                        Your donation is acknowledged and securely tracked.
+                        The contribution stays pending until an administrator verifies the proof.
                       </div>
                     </>
                   )}
@@ -356,11 +434,11 @@ const DonationsPage = () => {
                     <button type="button" className="btn btn-akal-outline btn-sm" onClick={() => setDonateTarget(null)}>
                       Cancel
                     </button>
-                    <button type="submit" className="btn btn-akal-yellow btn-sm" disabled={submitting}>
+                    <button type="submit" className="btn btn-akal-yellow btn-sm" disabled={submitting || !hasPaymentAccount}>
                       {submitting ? (
-                        <><span className="spinner-border spinner-border-sm me-1"></span> Processing…</>
+                        <><span className="spinner-border spinner-border-sm me-1"></span> Submitting…</>
                       ) : (
-                        <><HeartHandshake size={16} /> Donate {donationForm.amount ? formatINR(donationForm.amount) : ''}</>
+                        <><HeartHandshake size={16} /> Submit donation {donationForm.amount ? formatINR(donationForm.amount) : ''}</>
                       )}
                     </button>
                   </div>

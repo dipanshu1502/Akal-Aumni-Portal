@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { Briefcase, Building, MapPin, DollarSign, Clock, ExternalLink, CheckCircle2 } from 'lucide-react';
 
 const JobsPage = () => {
+  const { user, isAuthenticated } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedType, setSelectedType] = useState('all');
-  const [appliedJobIds, setAppliedJobIds] = useState(() => new Set());
+  const [applicationState, setApplicationState] = useState({ userId: null, jobIds: new Set() });
   const [applyingJobId, setApplyingJobId] = useState(null);
   const [applyMessage, setApplyMessage] = useState('');
+  const currentUserId = user?.id ? Number(user.id) : null;
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -24,6 +27,35 @@ const JobsPage = () => {
     fetchJobs();
   }, []);
 
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+
+    let cancelled = false;
+    const userId = currentUserId;
+    const fetchApplications = async () => {
+      try {
+        const res = await api.get('/user/my-activities');
+        if (!cancelled && res.status) {
+          setApplicationState({
+            userId,
+            jobIds: new Set((res.data.applications || []).map((application) => Number(application.job_id))),
+          });
+        }
+      } catch (error) {
+        if (!cancelled) console.error('Failed to load job applications:', error);
+      }
+    };
+
+    fetchApplications();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, currentUserId, user?.id]);
+
+  const appliedJobIds = applicationState.userId === currentUserId
+    ? applicationState.jobIds
+    : new Set();
+
   const filteredJobs = jobs.filter(j => {
     if (selectedType === 'all') return true;
     return j.job_type === selectedType;
@@ -34,10 +66,16 @@ const JobsPage = () => {
     setApplyMessage('');
     try {
       await api.post(`/user/jobs/${jobId}/apply`);
-      setAppliedJobIds((current) => new Set([...current, Number(jobId)]));
+      setApplicationState((current) => ({
+        userId: currentUserId,
+        jobIds: new Set([...(current.userId === currentUserId ? current.jobIds : []), Number(jobId)]),
+      }));
     } catch (error) {
       if ((error.message || '').toLowerCase().includes('already applied')) {
-        setAppliedJobIds((current) => new Set([...current, Number(jobId)]));
+        setApplicationState((current) => ({
+          userId: currentUserId,
+          jobIds: new Set([...(current.userId === currentUserId ? current.jobIds : []), Number(jobId)]),
+        }));
       }
       setApplyMessage(error.message || 'Please sign in as an alumni or student to apply.');
     } finally {

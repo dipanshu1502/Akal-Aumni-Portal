@@ -130,9 +130,7 @@ class StudentController extends BaseController
         return $this->respondSuccess($mentorships, 'Mentorship list retrieved');
     }
 
-    /**
-     * Get a student's job applications and event registrations.
-     */
+    /** Get the authenticated user's job applications, event registrations, and donations. */
     public function getMyActivities()
     {
         $userId = (int) $this->request->authUser['id'];
@@ -161,10 +159,31 @@ class StudentController extends BaseController
         $events = $eventsQuery->groupEnd()
             ->orderBy('event_registrations.created_at', 'DESC')
             ->get()->getResultArray();
+        $donations = $this->getDonationRows($userId);
 
         return $this->respondSuccess([
             'applications' => $applications,
             'events' => $events,
+            'donations' => $donations,
         ], 'Student activities retrieved');
+    }
+
+    /** Get only the authenticated user's donation records. */
+    public function getMyDonations()
+    {
+        return $this->respondSuccess(
+            $this->getDonationRows((int) $this->request->authUser['id']),
+            'Your donations retrieved'
+        );
+    }
+
+    private function getDonationRows(int $userId): array
+    {
+        return $this->db->table('donations')
+            ->select('donations.id, donations.campaign_id, donations.amount, donations.message, donations.transaction_id, donations.status, donations.created_at, donation_campaigns.title AS campaign_title')
+            ->join('donation_campaigns', 'donation_campaigns.id = donations.campaign_id', 'left')
+            ->where('donations.user_id', $userId)
+            ->orderBy('donations.created_at', 'DESC')
+            ->get()->getResultArray();
     }
 }

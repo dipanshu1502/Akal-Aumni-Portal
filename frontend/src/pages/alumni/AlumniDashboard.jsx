@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import DigitalIdModal from '../../components/common/DigitalIdModal';
@@ -15,6 +16,7 @@ import {
   PlusCircle, 
   Save, 
   Send,
+  HeartHandshake,
   Building,
   GraduationCap,
   Download
@@ -24,6 +26,7 @@ const AlumniDashboard = () => {
   const { user, profile: authProfile } = useAuth();
   const [profile, setProfile] = useState(null);
   const [mentees, setMentees] = useState([]);
+  const [myDonations, setMyDonations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
   const [showIdModal, setShowIdModal] = useState(false);
@@ -54,6 +57,12 @@ const AlumniDashboard = () => {
         if (profileRes.status) setProfile(profileRes.data);
         if (menteesRes.status) setMentees(menteesRes.data);
         if (jobsRes.status) setMyJobs(jobsRes.data || []);
+        try {
+          const donationsRes = await api.get('/user/donations');
+          if (donationsRes.status) setMyDonations(donationsRes.data || []);
+        } catch (donationError) {
+          console.error('Could not load alumni donations:', donationError);
+        }
       } catch (err) {
         console.error('Error fetching alumni data:', err);
       } finally {
@@ -245,7 +254,51 @@ const AlumniDashboard = () => {
             <Briefcase size={15} className="me-1" />
             Post Career Opportunity
           </button>
+          <button
+            className={`filter-chip ${activeTab === 'donations' ? 'active' : ''}`}
+            onClick={() => setActiveTab('donations')}
+          >
+            <HeartHandshake size={15} className="me-1" />
+            My Donations ({myDonations.length})
+          </button>
         </div>
+
+        {activeTab === 'donations' && (
+          <div className="akal-card p-4">
+            <div className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+              <h5 className="fw-bold text-dark mb-0">My Donations</h5>
+              <Link to="/donations" className="btn btn-sm btn-link text-primary text-decoration-none">Browse campaigns</Link>
+            </div>
+            {myDonations.length === 0 ? (
+              <div className="text-center py-4 text-muted">
+                <HeartHandshake size={36} className="opacity-50 mb-2" />
+                <p className="mb-0">You have not submitted any donations yet.</p>
+              </div>
+            ) : (
+              <div className="d-flex flex-column gap-3">
+                {myDonations.map((donation) => {
+                  const statusLabel = donation.status === 'completed' ? 'Approved' : donation.status === 'failed' ? 'Rejected' : 'Pending verification';
+                  const statusClass = donation.status === 'completed' ? 'bg-success' : donation.status === 'failed' ? 'bg-danger' : 'bg-warning text-dark';
+                  return (
+                    <div key={donation.id} className="p-3 bg-light rounded-3 border d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                      <div>
+                        <div className="fw-bold text-dark">{donation.campaign_title || 'Donation campaign'}</div>
+                        <div className="small text-muted mt-1">
+                          {donation.created_at && <span>{new Date(donation.created_at).toLocaleDateString()}</span>}
+                          {donation.transaction_id && <span className="ms-3">Txn: {donation.transaction_id}</span>}
+                        </div>
+                      </div>
+                      <div className="text-end">
+                        <div className="fw-bold text-dark">₹{Number(donation.amount || 0).toLocaleString('en-IN')}</div>
+                        <span className={`badge ${statusClass}`}>{statusLabel}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* TAB 1: Profile Editor */}
         {activeTab === 'profile' && profile && (

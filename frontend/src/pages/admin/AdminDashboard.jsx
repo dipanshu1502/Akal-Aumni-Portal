@@ -343,6 +343,20 @@ const AdminDashboard = () => {
   const [donationsList, setDonationsList] = useState([]);
   const [editingDonation, setEditingDonation] = useState(null);
   const [donationSubTab, setDonationSubTab] = useState('campaigns');
+  const [donationPaymentDetails, setDonationPaymentDetails] = useState({
+    donation_account_name: '',
+    donation_bank_name: '',
+    donation_account_number: '',
+    donation_ifsc_code: '',
+    donation_upi_id: '',
+    donation_upi_qr_url: '',
+  });
+  const [savingDonationPaymentDetails, setSavingDonationPaymentDetails] = useState(false);
+  const [donationQrFile, setDonationQrFile] = useState(null);
+  const [removeDonationQr, setRemoveDonationQr] = useState(false);
+  const [reviewingDonationId, setReviewingDonationId] = useState(null);
+  const [donationProofLoadingId, setDonationProofLoadingId] = useState(null);
+  const [donationProofView, setDonationProofView] = useState(null);
 
   // CMS Modal / Form states
   const [editingStory, setEditingStory] = useState(null);
@@ -594,15 +608,29 @@ const AdminDashboard = () => {
   // Donation campaigns + donations (admin only, needs manage_donations permission)
   const fetchDonations = async () => {
     if (!hasPermission('manage_donations')) return;
-    try {
-      const [campRes, donRes] = await Promise.all([
-        api.get('/admin/donation-campaigns'),
-        api.get('/admin/donations'),
-      ]);
-      if (campRes.status) setDonationCampaigns(campRes.data);
-      if (donRes.status) setDonationsList(donRes.data);
-    } catch (err) {
-      console.error('Error fetching donation data:', err);
+    const results = await Promise.allSettled([
+      api.get('/admin/donation-campaigns'),
+      api.get('/admin/donations'),
+      api.get('/admin/donation-payment-details'),
+    ]);
+
+    const [campaignResult, donationsResult, paymentResult] = results;
+    if (campaignResult.status === 'fulfilled' && campaignResult.value.status) {
+      setDonationCampaigns(campaignResult.value.data);
+    } else if (campaignResult.status === 'rejected') {
+      console.error('Error fetching donation campaigns:', campaignResult.reason);
+    }
+
+    if (donationsResult.status === 'fulfilled' && donationsResult.value.status) {
+      setDonationsList(donationsResult.value.data);
+    } else if (donationsResult.status === 'rejected') {
+      console.error('Error fetching donation records:', donationsResult.reason);
+    }
+
+    if (paymentResult.status === 'fulfilled' && paymentResult.value.status) {
+      setDonationPaymentDetails(paymentResult.value.data);
+    } else if (paymentResult.status === 'rejected') {
+      console.error('Error fetching donation payment details:', paymentResult.reason);
     }
   };
 
@@ -634,6 +662,68 @@ const AdminDashboard = () => {
       alert(err.message || 'Failed to delete campaign');
     }
   };
+
+  const handleSaveDonationPaymentDetails = async (event) => {
+    event.preventDefault();
+    setSavingDonationPaymentDetails(true);
+    try {
+      const payload = new FormData();
+      Object.entries(donationPaymentDetails).forEach(([key, value]) => {
+        if (key !== 'donation_upi_qr_url') payload.append(key, value || '');
+      });
+      if (donationQrFile) payload.append('donation_upi_qr', donationQrFile);
+      payload.append('remove_donation_upi_qr', removeDonationQr ? '1' : '0');
+      const response = await api.post('/admin/donation-payment-details', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (response.status) {
+        setDonationPaymentDetails(response.data);
+        setDonationQrFile(null);
+        setRemoveDonationQr(false);
+        showToast('Donation payment details saved.');
+        refreshSettings();
+      }
+    } catch (error) {
+      alert(error.message || 'Failed to save donation payment details.');
+    } finally {
+      setSavingDonationPaymentDetails(false);
+    }
+  };
+
+  const handleDonationReview = async (donation, decision) => {
+    const action = decision === 'approve' ? 'approve' : 'reject';
+    if (action === 'reject' && !window.confirm('Reject this donation proof? It will not be included in campaign totals.')) return;
+    setReviewingDonationId(donation.id);
+    try {
+      const response = await api.put(`/admin/donations/${donation.id}/review`, { decision: action });
+      if (response.status) {
+        showToast(`Donation ${action === 'approve' ? 'approved' : 'rejected'}.`);
+        await fetchDonations();
+      }
+    } catch (error) {
+      alert(error.message || `Failed to ${action} donation.`);
+    } finally {
+      setReviewingDonationId(null);
+    }
+  };
+
+  const handleOpenDonationProof = async (donation) => {
+    setDonationProofLoadingId(donation.id);
+    try {
+      const proof = await api.get(`/admin/donations/${donation.id}/proof`, { responseType: 'blob' });
+      setDonationProofView({ url: URL.createObjectURL(proof), donor: donation.donor_name });
+    } catch (error) {
+      alert(error.message || 'Could not load payment proof.');
+    } finally {
+      setDonationProofLoadingId(null);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (donationProofView?.url) URL.revokeObjectURL(donationProofView.url);
+    };
+  }, [donationProofView]);
 
   useEffect(() => {
     fetchDashboard();
@@ -4269,7 +4359,71 @@ const AdminDashboard = () => {
 
             {/* Sub-tab: Campaign Management */}
             {donationSubTab === 'campaigns' && (
-              <div className="akal-card p-4">
+              <div>
+                <div className="akal-card p-4 mb-3">
+                  <h5 className="fw-bold text-dark mb-1">Donation Payment Account</h5>
+                  <p className="small text-muted mb-3">These bank and UPI details are shown to donors when they choose a campaign.</p>
+                  <form onSubmit={handleSaveDonationPaymentDetails}>
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold">Account Holder Name</label>
+                        <input className="form-control" value={donationPaymentDetails.donation_account_name} onChange={(e) => setDonationPaymentDetails({ ...donationPaymentDetails, donation_account_name: e.target.value })} maxLength={255} />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold">Bank Name</label>
+                        <input className="form-control" value={donationPaymentDetails.donation_bank_name} onChange={(e) => setDonationPaymentDetails({ ...donationPaymentDetails, donation_bank_name: e.target.value })} maxLength={255} />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold">Account Number</label>
+                        <input className="form-control" value={donationPaymentDetails.donation_account_number} onChange={(e) => setDonationPaymentDetails({ ...donationPaymentDetails, donation_account_number: e.target.value })} maxLength={255} />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold">IFSC Code</label>
+                        <input className="form-control" value={donationPaymentDetails.donation_ifsc_code} onChange={(e) => setDonationPaymentDetails({ ...donationPaymentDetails, donation_ifsc_code: e.target.value })} maxLength={255} />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold">UPI ID</label>
+                        <input className="form-control" value={donationPaymentDetails.donation_upi_id} onChange={(e) => setDonationPaymentDetails({ ...donationPaymentDetails, donation_upi_id: e.target.value })} maxLength={255} />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label small fw-bold">UPI QR Image (Optional)</label>
+                        <input
+                          type="file"
+                          className="form-control"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={(e) => {
+                            setDonationQrFile(e.target.files?.[0] || null);
+                            setRemoveDonationQr(false);
+                          }}
+                        />
+                        <div className="form-text">JPG, PNG, or WebP; maximum 5 MB.</div>
+                        {donationQrFile && (
+                          <div className="small text-muted mt-2">Selected: {donationQrFile.name}</div>
+                        )}
+                        {donationPaymentDetails.donation_upi_qr_url && !removeDonationQr && !donationQrFile && (
+                          <div className="d-flex align-items-start gap-3 mt-2">
+                            <img
+                              src={`${api.defaults.baseURL}/public/donation-payment-qr`}
+                              alt="Current donation UPI QR"
+                              className="border rounded"
+                              style={{ width: 110, height: 110, objectFit: 'contain' }}
+                            />
+                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setRemoveDonationQr(true)}>
+                              Remove QR
+                            </button>
+                          </div>
+                        )}
+                        {removeDonationQr && (
+                          <div className="small text-danger mt-2">Current QR will be removed when you save.</div>
+                        )}
+                      </div>
+                    </div>
+                    <button type="submit" className="btn btn-akal-primary btn-sm mt-3" disabled={savingDonationPaymentDetails}>
+                      <Save size={14} className="me-1" />{savingDonationPaymentDetails ? 'Saving…' : 'Save Payment Details'}
+                    </button>
+                  </form>
+                </div>
+                <div className="akal-card p-4">
                 <div className="d-flex justify-content-between align-items-center mb-3">
                   <h5 className="fw-bold text-dark mb-0">Manage Donation Campaigns</h5>
                   <button
@@ -4454,6 +4608,7 @@ const AdminDashboard = () => {
                   </table>
                 </div>
               </div>
+              </div>
             )}
 
             {/* Sub-tab: Donations Received (donor records) */}
@@ -4475,13 +4630,15 @@ const AdminDashboard = () => {
                         <th>Message</th>
                         <th>Txn ID</th>
                         <th>Date</th>
+                        <th>Proof</th>
                         <th>Status</th>
+                        <th>Review</th>
                       </tr>
                     </thead>
                     <tbody>
                       {donationsList.length === 0 && (
                         <tr>
-                          <td colSpan="7" className="text-center text-muted py-4">No donations received yet.</td>
+                          <td colSpan="9" className="text-center text-muted py-4">No donations received yet.</td>
                         </tr>
                       )}
                       {donationsList.map((d) => (
@@ -4496,14 +4653,48 @@ const AdminDashboard = () => {
                           <td className="font-monospace small">{d.transaction_id || '—'}</td>
                           <td className="text-muted">{d.created_at ? new Date(d.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}</td>
                           <td>
-                            {d.status === 'completed' && <span className="badge bg-success">Completed</span>}
+                            {d.has_proof ? (
+                              <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => handleOpenDonationProof(d)} disabled={donationProofLoadingId === d.id}>
+                                <Eye size={14} className="me-1" />{donationProofLoadingId === d.id ? 'Loading…' : 'View'}
+                              </button>
+                            ) : '—'}
+                          </td>
+                          <td>
+                            {d.status === 'completed' && <span className="badge bg-success">Approved</span>}
                             {d.status === 'pending' && <span className="badge bg-warning text-dark">Pending</span>}
-                            {d.status === 'failed' && <span className="badge bg-danger">Failed</span>}
+                            {d.status === 'failed' && <span className="badge bg-danger">Rejected</span>}
+                          </td>
+                          <td>
+                            {d.status === 'pending' && (
+                              <div className="d-flex gap-1">
+                                <button type="button" className="btn btn-sm btn-success" onClick={() => handleDonationReview(d, 'approve')} disabled={reviewingDonationId === d.id || !d.has_proof}>
+                                  {reviewingDonationId === d.id ? 'Saving…' : 'Approve'}
+                                </button>
+                                <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => handleDonationReview(d, 'reject')} disabled={reviewingDonationId === d.id}>
+                                  Reject
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+            {donationProofView && (
+              <div className="modal show d-block" role="dialog" aria-modal="true" style={{ background: 'rgba(0,0,0,.65)', zIndex: 1080 }} onClick={() => setDonationProofView(null)}>
+                <div className="modal-dialog modal-dialog-centered modal-lg" onClick={(event) => event.stopPropagation()}>
+                  <div className="modal-content">
+                    <div className="modal-header">
+                      <h5 className="modal-title">Payment Proof — {donationProofView.donor}</h5>
+                      <button type="button" className="btn-close" aria-label="Close" onClick={() => setDonationProofView(null)} />
+                    </div>
+                    <div className="modal-body text-center">
+                      <img src={donationProofView.url} alt="Donation payment proof" className="img-fluid rounded" style={{ maxHeight: '70vh' }} />
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

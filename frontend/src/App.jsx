@@ -5,6 +5,7 @@ import { SettingsProvider } from './context/SettingsContext';
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
 import PreviewBanner from './components/common/PreviewBanner';
+import ChatbotAssistant from './components/common/ChatbotAssistant';
 
 // Pages
 import HomePage from './pages/public/HomePage';
@@ -74,6 +75,7 @@ function App() {
             {/* Bottom-fixed bar — yahin render hona chahiye taaki top par gap na aaye */}
             <PreviewBanner />
           </div>
+          <ChatbotAssistant />
         </Router>
       </SettingsProvider>
     </AuthProvider>

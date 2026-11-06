@@ -1,5 +1,15 @@
 # React + Vite
 
+## Alumni portal and AI assistant
+
+The AI assistant is available as a floating widget throughout the portal. It
+expects the chatbot API to expose `GET /health` and `POST /chat`.
+
+Set `VITE_CHATBOT_API_URL` in `frontend/.env` to the chatbot API origin
+(defaults to `http://127.0.0.1:8000`), then restart the Vite dev server after
+changing the environment file. The chatbot API must allow requests from the
+frontend's origin.
+
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 
 Currently, two official plugins are available:

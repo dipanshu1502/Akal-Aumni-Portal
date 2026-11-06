@@ -1962,7 +1962,7 @@ class AdminController extends BaseController
     public function getDonations()
     {
         $builder = $this->db->table('donations')
-            ->select('donations.*, donation_campaigns.title as campaign_title')
+            ->select('donations.id, donations.campaign_id, donations.user_id, donations.donor_name, donations.donor_email, donations.amount, donations.message, donations.payment_method, donations.transaction_id, donations.status, donations.is_anonymous, donations.created_at, donations.proof_path, donation_campaigns.title as campaign_title')
             ->join('donation_campaigns', 'donation_campaigns.id = donations.campaign_id', 'left')
             ->orderBy('donations.created_at', 'DESC');
 
@@ -1972,6 +1972,241 @@ class AdminController extends BaseController
         }
 
         $donations = $builder->get()->getResultArray();
+        foreach ($donations as &$donation) {
+            $donation['has_proof'] = !empty($donation['proof_path']);
+            unset($donation['proof_path']);
+        }
+        unset($donation);
+
         return $this->respondSuccess($donations, 'Donations retrieved');
+    }
+
+    /** Return payment account details editable by donation managers. */
+    public function getDonationPaymentDetails()
+    {
+        $keys = [
+            'donation_account_name',
+            'donation_bank_name',
+            'donation_account_number',
+            'donation_ifsc_code',
+            'donation_upi_id',
+            'donation_upi_qr_url',
+        ];
+        $rows = $this->db->table('system_settings')
+            ->whereIn('setting_key', array_merge($keys, ['donation_upi_qr_path']))
+            ->get()->getResultArray();
+        $details = array_fill_keys($keys, '');
+        $hasQr = false;
+        foreach ($rows as $row) {
+            if ($row['setting_key'] === 'donation_upi_qr_path') {
+                $hasQr = !empty($row['setting_value']);
+            } elseif ($row['setting_key'] !== 'donation_upi_qr_url') {
+                $details[$row['setting_key']] = $row['setting_value'] ?? '';
+            }
+        }
+        $details['donation_upi_qr_url'] = $hasQr ? '/api/public/donation-payment-qr' : '';
+
+        return $this->respondSuccess($details, 'Donation payment details retrieved');
+    }
+
+    /** Save public bank / UPI payment details for donations. */
+    public function saveDonationPaymentDetails()
+    {
+        $fields = [
+            'donation_account_name' => 'Account holder name',
+            'donation_bank_name' => 'Bank name',
+            'donation_account_number' => 'Account number',
+            'donation_ifsc_code' => 'IFSC code',
+            'donation_upi_id' => 'UPI ID',
+        ];
+        $details = [];
+        foreach ($fields as $key => $label) {
+            $value = trim((string) $this->request->getPost($key));
+            if (mb_strlen($value) > 255) {
+                return $this->respondValidationError([$key => $label . ' must be 255 characters or fewer']);
+            }
+            $details[$key] = $value;
+        }
+
+        $qrFile = $this->request->getFile('donation_upi_qr');
+        $removeQr = $this->request->getPost('remove_donation_upi_qr') === '1';
+        $newQrName = null;
+        if ($qrFile && $qrFile->getError() !== UPLOAD_ERR_NO_FILE) {
+            if (!$qrFile->isValid() || $qrFile->hasMoved()) {
+                return $this->respondValidationError(['donation_upi_qr' => 'Select a valid QR image']);
+            }
+            if ($qrFile->getSize() > 5 * 1024 * 1024) {
+                return $this->respondValidationError(['donation_upi_qr' => 'QR image must be 5 MB or smaller']);
+            }
+            $mimeType = $qrFile->getMimeType();
+            $allowedTypes = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+            if (!isset($allowedTypes[$mimeType])) {
+                return $this->respondValidationError(['donation_upi_qr' => 'Upload a JPG, PNG, or WebP QR image']);
+            }
+            if (getimagesize($qrFile->getTempName()) === false) {
+                return $this->respondValidationError(['donation_upi_qr' => 'The selected file is not a valid image']);
+            }
+            $removeQr = false;
+        }
+
+        $authUser = $this->request->authUser ?? [];
+        $oldQrSetting = $this->db->table('system_settings')
+            ->select('setting_value')
+            ->where('setting_key', 'donation_upi_qr_path')
+            ->get()->getRowArray();
+        $oldQrName = basename((string) ($oldQrSetting['setting_value'] ?? ''));
+        $uploadDirectory = WRITEPATH . 'uploads/donation-qr';
+        if ($qrFile && $qrFile->getError() !== UPLOAD_ERR_NO_FILE) {
+            if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0750, true) && !is_dir($uploadDirectory)) {
+                return $this->respondError('Donation QR storage is unavailable. Please try again later.', 500);
+            }
+            $newQrName = bin2hex(random_bytes(16)) . '.' . $allowedTypes[$qrFile->getMimeType()];
+            if (!$qrFile->move($uploadDirectory, $newQrName)) {
+                return $this->respondError('Donation QR image could not be saved. Please try again.', 500);
+            }
+        }
+
+        $nextQrName = $removeQr ? '' : ($newQrName ?? $oldQrName);
+        $details['donation_upi_qr_url'] = $nextQrName !== '' ? '/api/public/donation-payment-qr' : '';
+        $this->db->transBegin();
+        $settingsToSave = $details + ['donation_upi_qr_path' => $nextQrName];
+        foreach ($settingsToSave as $key => $value) {
+            $existing = $this->db->table('system_settings')
+                ->where('setting_key', $key)
+                ->get()->getRowArray();
+            $setting = [
+                'setting_value' => $value,
+                'setting_group' => 'donations',
+                'description' => 'Public donation payment account detail',
+                'updated_by' => $authUser['id'] ?? null,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ];
+            if ($existing) {
+                $this->db->table('system_settings')->where('setting_key', $key)->update($setting);
+            } else {
+                $this->db->table('system_settings')->insert(['setting_key' => $key] + $setting);
+            }
+        }
+
+        $this->audit(
+            (int) ($authUser['id'] ?? 0),
+            $authUser['role'] ?? 'admin',
+            'donation_payment_details_saved',
+            'system_settings',
+            'donations',
+            'Donation payment account details updated'
+        );
+
+        if ($this->db->transStatus() === false) {
+            $this->db->transRollback();
+            if ($newQrName !== null) {
+                $newQrPath = $uploadDirectory . DIRECTORY_SEPARATOR . $newQrName;
+                if (is_file($newQrPath) && !unlink($newQrPath)) {
+                    log_message('error', 'Could not remove a donation QR image after settings save failed.');
+                }
+            }
+            return $this->respondError('Donation payment details could not be saved. Please try again.', 500);
+        }
+        $this->db->transCommit();
+
+        if (($removeQr || $newQrName !== null) && $oldQrName !== '' && $oldQrName !== $newQrName) {
+            $oldQrPath = $uploadDirectory . DIRECTORY_SEPARATOR . $oldQrName;
+            if (is_file($oldQrPath) && !unlink($oldQrPath)) {
+                log_message('error', 'Could not remove the replaced donation QR image.');
+            }
+        }
+
+        return $this->respondSuccess($details, 'Donation payment details saved');
+    }
+
+    /** Stream a donation's private payment proof to authorized donation managers. */
+    public function getDonationProof($id)
+    {
+        $donation = $this->db->table('donations')
+            ->select('proof_path')
+            ->where('id', (int) $id)
+            ->get()->getRowArray();
+        if (!$donation || empty($donation['proof_path'])) {
+            return $this->respondError('Payment proof not found', 404);
+        }
+
+        $proofName = basename($donation['proof_path']);
+        $proofPath = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'donation-proofs' . DIRECTORY_SEPARATOR . $proofName;
+        if (!is_file($proofPath)) {
+            return $this->respondError('Payment proof file is unavailable', 404);
+        }
+
+        $extension = strtolower(pathinfo($proofName, PATHINFO_EXTENSION));
+        $mimeTypes = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'];
+        if (!isset($mimeTypes[$extension])) {
+            return $this->respondError('Payment proof file type is not supported', 415);
+        }
+
+        $proofContents = file_get_contents($proofPath);
+        if ($proofContents === false) {
+            return $this->respondError('Payment proof could not be read', 500);
+        }
+
+        return $this->response
+            ->setContentType($mimeTypes[$extension])
+            ->setHeader('Content-Disposition', 'inline; filename="donation-proof-' . (int) $id . '.' . $extension . '"')
+            ->setHeader('X-Content-Type-Options', 'nosniff')
+            ->setBody($proofContents);
+    }
+
+    /** Approve or reject a pending donation after checking its payment proof. */
+    public function reviewDonation($id)
+    {
+        $json = $this->request->getJSON(true) ?? [];
+        $decision = $json['decision'] ?? '';
+        if (!in_array($decision, ['approve', 'reject'], true)) {
+            return $this->respondValidationError(['decision' => 'Choose approve or reject']);
+        }
+
+        $donation = $this->db->table('donations')
+            ->select('id, status, proof_path')
+            ->where('id', (int) $id)
+            ->get()->getRowArray();
+        if (!$donation) {
+            return $this->respondError('Donation not found', 404);
+        }
+        if ($donation['status'] !== 'pending') {
+            return $this->respondError('Only pending donations can be reviewed', 409);
+        }
+        if (empty($donation['proof_path'])) {
+            return $this->respondError('Donation has no payment proof to review', 409);
+        }
+
+        $status = $decision === 'approve' ? 'completed' : 'failed';
+        $authUser = $this->request->authUser ?? [];
+        $this->db->transBegin();
+        $this->db->table('donations')
+            ->where('id', (int) $id)
+            ->where('status', 'pending')
+            ->update([
+                'status' => $status,
+                'reviewed_by' => (int) ($authUser['id'] ?? 0),
+                'reviewed_at' => date('Y-m-d H:i:s'),
+            ]);
+        if ($this->db->affectedRows() !== 1) {
+            $this->db->transRollback();
+            return $this->respondError('Donation was already reviewed. Refresh and try again.', 409);
+        }
+
+        $this->audit(
+            (int) ($authUser['id'] ?? 0),
+            $authUser['role'] ?? 'admin',
+            $decision === 'approve' ? 'donation_approved' : 'donation_rejected',
+            'donations',
+            (string) $id,
+            'Donation ' . $decision . ' after payment proof review'
+        );
+        if ($this->db->transStatus() === false) {
+            $this->db->transRollback();
+            return $this->respondError('Donation review could not be saved. Please try again.', 500);
+        }
+        $this->db->transCommit();
+
+        return $this->respondSuccess(['id' => (int) $id, 'status' => $status], 'Donation ' . ($decision === 'approve' ? 'approved' : 'rejected'));
     }
 }

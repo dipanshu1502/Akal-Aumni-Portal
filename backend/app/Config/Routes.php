@@ -18,6 +18,7 @@ $routes->group('api', function ($routes) {
     // Public Routes
     $routes->group('public', function ($routes) {
         $routes->get('settings', 'Api\PublicController::getSettings');
+        $routes->get('donation-payment-qr', 'Api\PublicController::getDonationPaymentQr');
         $routes->get('stats', 'Api\PublicController::getStats');
         $routes->get('alumni', 'Api\PublicController::getAlumni');
         $routes->get('alumni/(:any)', 'Api\PublicController::getAlumniDetail/$1');
@@ -41,7 +42,9 @@ $routes->group('api', function ($routes) {
     // Authenticated user routes (any logged-in role — e.g. donate)
     $routes->group('user', ['filter' => 'auth'], function ($routes) {
         $routes->post('donate', 'Api\PublicController::makeDonation');
+        $routes->get('donations', 'Api\StudentController::getMyDonations');
         $routes->post('jobs/(:num)/apply', 'Api\PublicController::applyForJob/$1');
+        $routes->get('my-activities', 'Api\StudentController::getMyActivities');
     });
 
     // Alumni Authenticated Routes
@@ -144,6 +147,10 @@ $routes->group('api', function ($routes) {
         $routes->post('donation-campaigns', 'Api\AdminController::saveDonationCampaign', ['filter' => 'permission:manage_donations']);
         $routes->delete('donation-campaigns/(:num)', 'Api\AdminController::deleteDonationCampaign/$1', ['filter' => 'permission:manage_donations']);
         $routes->get('donations', 'Api\AdminController::getDonations', ['filter' => 'permission:manage_donations']);
+        $routes->get('donations/(:num)/proof', 'Api\AdminController::getDonationProof/$1', ['filter' => 'permission:manage_donations']);
+        $routes->put('donations/(:num)/review', 'Api\AdminController::reviewDonation/$1', ['filter' => 'permission:manage_donations']);
+        $routes->get('donation-payment-details', 'Api\AdminController::getDonationPaymentDetails', ['filter' => 'permission:manage_donations']);
+        $routes->post('donation-payment-details', 'Api\AdminController::saveDonationPaymentDetails', ['filter' => 'permission:manage_donations']);
 
         // Audit Logs (requires view_audit_logs)
         $routes->get('audit-logs', 'Api\AdminController::getAuditLogs', ['filter' => 'permission:view_audit_logs']);

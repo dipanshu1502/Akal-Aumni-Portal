@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
-import { GraduationCap, Award, Briefcase, Calendar, CheckCircle2, MapPin, Save } from 'lucide-react';
+import { GraduationCap, Award, Briefcase, Calendar, CheckCircle2, MapPin, Save, HeartHandshake } from 'lucide-react';
 
 const StudentDashboard = () => {
   const [profile, setProfile] = useState(null);
   const [mentorships, setMentorships] = useState([]);
-  const [activities, setActivities] = useState({ applications: [], events: [] });
+  const [activities, setActivities] = useState({ applications: [], events: [], donations: [] });
   const [activitiesError, setActivitiesError] = useState('');
   const [loading, setLoading] = useState(true);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -39,7 +39,7 @@ const StudentDashboard = () => {
           ? activitiesResult.reason
           : activitiesResult.value;
         console.error('Error fetching student activities:', error);
-        setActivitiesError(error?.message || 'Could not load your applications and event registrations.');
+        setActivitiesError(error?.message || 'Could not load your applications, event registrations, and donations.');
       }
 
       setLoading(false);
@@ -94,6 +94,7 @@ const StudentDashboard = () => {
               </Link>
             </div>
           </div>
+
         </div>
 
         <div className="row g-4">
@@ -144,6 +145,7 @@ const StudentDashboard = () => {
                         <span>Requested: {new Date(m.created_at).toLocaleDateString()}</span>
                         {m.mentor_email && <span className="text-primary">{m.mentor_email}</span>}
                       </div>
+
                     </div>
                   ))}
                 </div>
@@ -282,6 +284,47 @@ const StudentDashboard = () => {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="row g-4 mt-1">
+            <div className="col-12">
+              <div className="akal-card p-4">
+                <div className="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                  <h5 className="fw-bold text-dark mb-0">My Donations</h5>
+                  <Link to="/donations" className="btn btn-sm btn-link text-primary text-decoration-none">Browse campaigns</Link>
+                </div>
+                {activitiesError ? (
+                  <div className="alert alert-warning small mb-0" role="alert">{activitiesError}</div>
+                ) : activities.donations.length === 0 ? (
+                  <div className="text-center py-4 text-muted">
+                    <HeartHandshake size={36} className="opacity-50 mb-2" />
+                    <p className="mb-0">You have not submitted any donations yet.</p>
+                  </div>
+                ) : (
+                  <div className="d-flex flex-column gap-3">
+                    {activities.donations.map((donation) => {
+                      const statusLabel = donation.status === 'completed' ? 'Approved' : donation.status === 'failed' ? 'Rejected' : 'Pending verification';
+                      const statusClass = donation.status === 'completed' ? 'bg-success' : donation.status === 'failed' ? 'bg-danger' : 'bg-warning text-dark';
+                      return (
+                        <div key={donation.id} className="p-3 bg-light rounded-3 border d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                          <div>
+                            <div className="fw-bold text-dark">{donation.campaign_title || 'Donation campaign'}</div>
+                            <div className="small text-muted mt-1">
+                              {donation.created_at && <span>{new Date(donation.created_at).toLocaleDateString()}</span>}
+                              {donation.transaction_id && <span className="ms-3">Txn: {donation.transaction_id}</span>}
+                            </div>
+                          </div>
+                          <div className="text-end">
+                            <div className="fw-bold text-dark">₹{Number(donation.amount || 0).toLocaleString('en-IN')}</div>
+                            <span className={`badge ${statusClass}`}>{statusLabel}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

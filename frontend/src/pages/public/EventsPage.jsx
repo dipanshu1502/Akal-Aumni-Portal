@@ -4,15 +4,16 @@ import { useAuth } from '../../context/AuthContext';
 import { Calendar, MapPin, Clock, Users, Video, CheckCircle2, UserPlus, X } from 'lucide-react';
 
 const EventsPage = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, isAuthenticated } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
-  const [registeredEventIds, setRegisteredEventIds] = useState([]);
+  const [registrationState, setRegistrationState] = useState({ userId: null, eventIds: [] });
   const [registrationEvent, setRegistrationEvent] = useState(null);
   const [registrationForm, setRegistrationForm] = useState({ attendee_name: '', attendee_email: '', attendee_phone: '' });
   const [registrationSaving, setRegistrationSaving] = useState(false);
   const [registrationError, setRegistrationError] = useState('');
+  const currentUserId = user?.id ? Number(user.id) : null;
 
   const now = new Date();
 
@@ -40,6 +41,35 @@ const EventsPage = () => {
     fetchEvents();
   }, []);
 
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+
+    let cancelled = false;
+    const userId = currentUserId;
+    const fetchRegistrations = async () => {
+      try {
+        const response = await api.get('/user/my-activities');
+        if (!cancelled && response.status) {
+          setRegistrationState({
+            userId,
+            eventIds: (response.data.events || []).map((registration) => Number(registration.event_id)),
+          });
+        }
+      } catch (error) {
+        if (!cancelled) console.error('Failed to load event registrations:', error);
+      }
+    };
+
+    fetchRegistrations();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, currentUserId, user?.id]);
+
+  const registeredEventIds = registrationState.userId === currentUserId
+    ? registrationState.eventIds
+    : [];
+
   const filteredEvents = events.filter(e => {
     if (activeTab === 'all') return true;
     if (activeTab === 'upcoming') return isUpcoming(e);
@@ -61,7 +91,13 @@ const EventsPage = () => {
         : `/public/events/${registrationEvent.id}/register`;
       const response = await api.post(registrationPath, registrationForm);
       if (!response.status) throw new Error(response.message || 'Registration failed');
-      setRegisteredEventIds((current) => [...new Set([...current, registrationEvent.id])]);
+      setRegistrationState((current) => ({
+        userId: currentUserId,
+        eventIds: [...new Set([
+          ...(current.userId === currentUserId ? current.eventIds : []),
+          Number(registrationEvent.id),
+        ])],
+      }));
       setEvents((current) => current.map((item) => item.id === registrationEvent.id
         ? { ...item, registration_count: response.data.registration_count }
         : item));
@@ -203,7 +239,7 @@ const EventsPage = () => {
                   </div>
 
                   <div className="mt-auto">
-                    {registeredEventIds.includes(ev.id) ? (
+                    {registeredEventIds.includes(Number(ev.id)) ? (
                       <button className="btn btn-success w-100 d-flex align-items-center justify-content-center gap-2" disabled>
                         <CheckCircle2 size={16} /> Registered
                       </button>

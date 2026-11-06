@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import AlumniCard from '../../components/common/AlumniCard';
 import { useAuth } from '../../context/AuthContext';
-import { Award, BookOpen, MessageSquare, CheckCircle2, Sparkles, Send, X } from 'lucide-react';
+import { Award, CheckCircle2, Send, X } from 'lucide-react';
 
 const MentorshipPage = () => {
   const { user, isStudent, isAuthenticated } = useAuth();
@@ -13,6 +13,8 @@ const MentorshipPage = () => {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [mentorshipState, setMentorshipState] = useState({ userId: null, mentorIds: new Set() });
+  const currentUserId = user?.id ? Number(user.id) : null;
 
   useEffect(() => {
     const fetchMentors = async () => {
@@ -27,6 +29,35 @@ const MentorshipPage = () => {
     };
     fetchMentors();
   }, []);
+
+  useEffect(() => {
+    if (!isStudent || !user?.id) return;
+
+    let cancelled = false;
+    const userId = currentUserId;
+    const fetchMentorshipRequests = async () => {
+      try {
+        const res = await api.get('/student/my-mentorships');
+        if (!cancelled && res.status) {
+          setMentorshipState({
+            userId,
+            mentorIds: new Set(res.data.map((request) => Number(request.mentor_user_id))),
+          });
+        }
+      } catch (err) {
+        if (!cancelled) console.error('Failed to load mentorship requests:', err);
+      }
+    };
+
+    fetchMentorshipRequests();
+    return () => {
+      cancelled = true;
+    };
+  }, [isStudent, currentUserId, user?.id]);
+
+  const requestedMentorIds = mentorshipState.userId === currentUserId
+    ? mentorshipState.mentorIds
+    : new Set();
 
   const handleRequestSubmit = async (e) => {
     e.preventDefault();
@@ -44,6 +75,13 @@ const MentorshipPage = () => {
       });
 
       if (res.status) {
+        setMentorshipState((current) => ({
+          userId: currentUserId,
+          mentorIds: new Set([
+            ...(current.userId === currentUserId ? current.mentorIds : []),
+            Number(selectedMentor.user_id),
+          ]),
+        }));
         setSubmitted(true);
         setTimeout(() => {
           setSelectedMentor(null);
@@ -104,6 +142,7 @@ const MentorshipPage = () => {
               <div key={m.id} className="col-lg-4 col-md-6">
                 <AlumniCard 
                   alumni={m} 
+                  isRequested={requestedMentorIds.has(Number(m.user_id))}
                   onConnect={(mentorData) => setSelectedMentor(mentorData)}
                 />
               </div>

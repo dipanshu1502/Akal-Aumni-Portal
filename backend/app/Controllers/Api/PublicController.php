@@ -24,10 +24,55 @@ class PublicController extends BaseController
         $rows = $this->db->table('system_settings')->get()->getResultArray();
         $settings = [];
         foreach ($rows as $row) {
+            if ($row['setting_key'] === 'donation_upi_qr_path') {
+                continue;
+            }
             $settings[$row['setting_key']] = $row['setting_value'];
         }
+        $qrSetting = $this->db->table('system_settings')
+            ->select('setting_value')
+            ->where('setting_key', 'donation_upi_qr_path')
+            ->get()->getRowArray();
+        $settings['donation_upi_qr_url'] = !empty($qrSetting['setting_value'])
+            ? '/api/public/donation-payment-qr'
+            : '';
 
         return $this->respondSuccess($settings, 'Settings retrieved');
+    }
+
+    /** Serve the configured donation UPI QR image from private writable storage. */
+    public function getDonationPaymentQr()
+    {
+        $setting = $this->db->table('system_settings')
+            ->select('setting_value')
+            ->where('setting_key', 'donation_upi_qr_path')
+            ->get()->getRowArray();
+        $fileName = basename((string) ($setting['setting_value'] ?? ''));
+        if ($fileName === '') {
+            return $this->respondError('Donation UPI QR image is not configured', 404);
+        }
+
+        $filePath = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . 'donation-qr' . DIRECTORY_SEPARATOR . $fileName;
+        if (!is_file($filePath)) {
+            return $this->respondError('Donation UPI QR image is unavailable', 404);
+        }
+
+        $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        $mimeTypes = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'];
+        if (!isset($mimeTypes[$extension])) {
+            return $this->respondError('Donation UPI QR image type is not supported', 415);
+        }
+
+        $contents = file_get_contents($filePath);
+        if ($contents === false) {
+            return $this->respondError('Donation UPI QR image could not be read', 500);
+        }
+
+        return $this->response
+            ->setContentType($mimeTypes[$extension])
+            ->setHeader('Cache-Control', 'no-cache, must-revalidate')
+            ->setHeader('X-Content-Type-Options', 'nosniff')
+            ->setBody($contents);
     }
 
     /**
@@ -361,10 +406,7 @@ class PublicController extends BaseController
         return $this->respondSuccess($campaigns, 'Donation campaigns retrieved');
     }
 
-    /**
-     * Record a donation made by an authenticated user (any role).
-     * Body: { campaign_id, amount, message?, payment_method?, is_anonymous? }
-     */
+    /** Submit a bank-transfer donation and its payment proof for admin review. */
     public function makeDonation()
     {
         $authUser = $this->request->authUser ?? null;
@@ -372,15 +414,32 @@ class PublicController extends BaseController
             return $this->respondError('Authentication required to donate', 401);
         }
 
-        $json = $this->request->getJSON(true);
-        $campaignId = (int) ($json['campaign_id'] ?? 0);
-        $amount = (float) ($json['amount'] ?? 0);
+        $campaignId = (int) $this->request->getPost('campaign_id');
+        $amountInput = $this->request->getPost('amount');
+        $amount = is_numeric($amountInput) ? (float) $amountInput : 0;
+        $file = $this->request->getFile('payment_proof');
 
         if ($campaignId <= 0) {
             return $this->respondValidationError(['campaign_id' => 'Campaign is required']);
         }
-        if ($amount <= 0) {
+        if (!is_finite($amount) || $amount <= 0 || $amount > 9999999999.99) {
             return $this->respondValidationError(['amount' => 'Donation amount must be greater than 0']);
+        }
+        if (!$file || !$file->isValid() || $file->hasMoved()) {
+            return $this->respondValidationError(['payment_proof' => 'Upload a clear payment screenshot']);
+        }
+        if ($file->getSize() > 5 * 1024 * 1024) {
+            return $this->respondValidationError(['payment_proof' => 'Payment screenshot must be 5 MB or smaller']);
+        }
+
+        $mimeType = $file->getMimeType();
+        $allowedTypes = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+        ];
+        if (!isset($allowedTypes[$mimeType])) {
+            return $this->respondValidationError(['payment_proof' => 'Upload a JPG, PNG, or WebP screenshot']);
         }
 
         $campaign = $this->db->table('donation_campaigns')
@@ -409,29 +468,47 @@ class PublicController extends BaseController
             $donorName = $donorEmail ?: 'Anonymous Donor';
         }
 
-        $isAnonymous = !empty($json['is_anonymous']) ? 1 : 0;
+        $isAnonymous = $this->request->getPost('is_anonymous') === '1' ? 1 : 0;
+        $uploadDirectory = WRITEPATH . 'uploads/donation-proofs';
+        if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0750, true) && !is_dir($uploadDirectory)) {
+            return $this->respondError('Payment proof storage is unavailable. Please try again later.', 500);
+        }
 
-        $this->db->table('donations')->insert([
+        $proofName = bin2hex(random_bytes(16)) . '.' . $allowedTypes[$mimeType];
+        if (!$file->move($uploadDirectory, $proofName)) {
+            return $this->respondError('Payment screenshot could not be saved. Please try again.', 500);
+        }
+
+        $saved = $this->db->table('donations')->insert([
             'campaign_id'    => $campaignId,
             'user_id'        => $authUser['id'] ?? null,
             'donor_name'     => $isAnonymous ? 'Anonymous' : mb_substr($donorName, 0, 200),
             'donor_email'    => mb_substr($donorEmail, 0, 191),
-            'donor_phone'    => $json['donor_phone'] ?? null,
+            'donor_phone'    => null,
             'amount'         => $amount,
-            'message'        => $json['message'] ?? null,
-            'payment_method' => $json['payment_method'] ?? 'online',
-            'transaction_id' => 'TXN-' . strtoupper(bin2hex(random_bytes(6))),
-            'status'         => 'completed',
+            'message'        => mb_substr((string) $this->request->getPost('message'), 0, 5000),
+            'payment_method' => 'bank_transfer',
+            'transaction_id' => mb_substr(trim((string) $this->request->getPost('transaction_id')), 0, 255) ?: null,
+            'proof_path'     => 'donation-proofs/' . $proofName,
+            'status'         => 'pending',
             'is_anonymous'   => $isAnonymous,
             'created_at'     => date('Y-m-d H:i:s'),
         ]);
+        if (!$saved) {
+            $orphanedProof = $uploadDirectory . DIRECTORY_SEPARATOR . $proofName;
+            if (is_file($orphanedProof) && !unlink($orphanedProof)) {
+                log_message('error', 'Could not remove an orphaned donation proof file.');
+            }
+            return $this->respondError('Donation could not be submitted. Please try again.', 500);
+        }
         $donationId = $this->db->insertID();
 
         return $this->respondSuccess([
             'donation_id' => $donationId,
             'amount'      => $amount,
             'campaign'    => $campaign['title'],
-        ], 'Thank you! Your donation has been recorded.');
+            'status'      => 'pending',
+        ], 'Donation proof submitted. Your contribution will be added after admin verification.');
     }
 
     /**
